@@ -1,0 +1,427 @@
+.detail {
+  display: grid;
+  gap: 1.1rem;
+}
+.detail > .back-link {
+  justify-self: start;
+  margin: 0 0 0.25rem;
+}
+.detail-intro,
+.detail-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 11px;
+}
+.detail-intro {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.4rem;
+}
+.detail-intro > .pill {
+  margin-left: auto;
+}
+.detail-intro .eyebrow {
+  margin-bottom: 0.3rem;
+}
+.detail-intro h2 {
+  font-size: 1.35rem;
+  margin: 0;
+}
+.detail-slug {
+  font-size: 0.72rem;
+  color: var(--muted);
+  margin: 0.3rem 0 0;
+}
+.detail-logo {
+  width: 3.4rem;
+  height: 3.4rem;
+  flex: 0 0 3.4rem;
+  background: #edf3ff;
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  color: #1d58b6;
+  font:
+    800 1.6rem Manrope,
+    Arial,
+    sans-serif;
+}
+.detail-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.detail-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(230px, 0.85fr);
+  gap: 1.1rem;
+  align-items: start;
+}
+.detail-main {
+  display: grid;
+  gap: 1.1rem;
+  min-width: 0;
+}
+.detail-card {
+  padding: 1.35rem;
+}
+.detail-card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.7rem;
+  margin-bottom: 1rem;
+}
+.detail-card-head h3 {
+  font-size: 1.04rem;
+  margin: 0;
+}
+.detail-card-head > span {
+  font-size: 0.66rem;
+  color: var(--muted);
+  font-weight: 800;
+}
+.detail-card dl {
+  margin: 0;
+}
+.detail-card dl > div {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  gap: 0.7rem;
+  padding: 0.8rem 0;
+  border-top: 1px solid var(--line);
+  font-size: 0.74rem;
+}
+.detail-card dt {
+  color: var(--muted);
+}
+.detail-card dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.detail-card > p {
+  font-size: 0.73rem;
+  color: var(--muted);
+}
+.profile-form textarea {
+  width: 100%;
+  min-height: 7rem;
+  resize: vertical;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0.75rem;
+  font: inherit;
+}
+.profile-form textarea:focus-visible {
+  outline: 2px solid #1d58b6;
+  outline-offset: 2px;
+}
+.profile-saved {
+  color: #28724f !important;
+  font-weight: 700;
+}
+.logo-card label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  margin: 0.8rem 0 0.4rem;
+}
+.logo-card input[type="file"] {
+  display: block;
+  max-width: 100%;
+  font-size: 0.72rem;
+}
+.logo-card .button-row {
+  margin-top: 0.85rem;
+}
+.detail-empty {
+  color: var(--muted);
+  font-size: 0.74rem;
+}
+.application-list {
+  display: grid;
+  gap: 0.8rem;
+}
+.application-item {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 1rem;
+}
+.application-heading {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+.application-heading h4 {
+  font-size: 0.83rem;
+  margin: 0;
+}
+.application-heading small {
+  color: var(--muted);
+  font:
+    400 0.65rem ui-monospace,
+    monospace;
+  overflow-wrap: anywhere;
+}
+.application-item p {
+  font-size: 0.68rem;
+  color: var(--muted);
+  margin: 0.8rem 0 0.4rem;
+}
+.permission-chips {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+}
+.permission-chips li {
+  border-radius: 5px;
+  background: #edf3ff;
+  color: #275799;
+  padding: 0.27rem 0.45rem;
+  font:
+    700 0.67rem ui-monospace,
+    monospace;
+}
+.permission-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.85rem;
+  margin-top: 0.8rem;
+}
+.redirect-uris {
+  border-top: 1px solid var(--line);
+  margin-top: 1rem;
+  padding-top: 1rem;
+}
+.redirect-uris h5 {
+  margin: 0;
+  font-size: 0.78rem;
+}
+.redirect-uris form {
+  display: grid;
+  gap: 0.45rem;
+}
+.redirect-uris label {
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+.redirect-uris textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 4.2rem;
+  padding: 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font:
+    0.72rem ui-monospace,
+    monospace;
+  resize: vertical;
+}
+.credential-panel {
+  border-top: 1px solid var(--line);
+  margin-top: 1rem;
+  padding-top: 1rem;
+  display: grid;
+  gap: 0.7rem;
+  min-width: 0;
+}
+.credential-panel .detail-card-head {
+  margin: 0;
+}
+.credential-panel h5 {
+  font-size: 0.78rem;
+  margin: 0;
+}
+.credential-panel > p,
+.credential-panel .credential-confirm p,
+.credential-panel .credential-recovery p,
+.credential-panel .credential-issued p {
+  margin: 0;
+  font-size: 0.72rem;
+  line-height: 1.5;
+  color: var(--muted);
+}
+.credential-panel .error {
+  color: #9b2532;
+}
+.credential-list {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.55rem;
+}
+.credential-list li,
+.credential-confirm,
+.credential-recovery,
+.credential-issued {
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 0.75rem;
+  display: grid;
+  gap: 0.55rem;
+  min-width: 0;
+}
+.credential-recovery {
+  border-color: #c77a32;
+  background: #fff8ed;
+}
+.credential-issued {
+  border-color: #44876a;
+  background: #f2faf5;
+}
+.credential-row {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.credential-row strong,
+.credential-row small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.credential-row strong {
+  font-size: 0.72rem;
+}
+.credential-row small {
+  font-size: 0.66rem;
+  color: var(--muted);
+  margin-top: 0.2rem;
+}
+.credential-panel code,
+.credential-panel .secret {
+  overflow-wrap: anywhere;
+}
+.credential-issued dl {
+  margin: 0;
+}
+.permission-description-form {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 0.6rem;
+}
+.permission-description-form label {
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+.permission-description-form input {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0.6rem;
+  font: inherit;
+}
+.permission-description-form input:focus-visible {
+  outline: 2px solid #1d58b6;
+  outline-offset: 2px;
+}
+.catalog-list {
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0 0;
+  display: grid;
+  gap: 0.8rem;
+}
+.catalog-list li {
+  border-top: 1px solid var(--line);
+  padding-top: 0.7rem;
+  overflow-wrap: anywhere;
+}
+.catalog-list strong,
+.catalog-list span {
+  display: block;
+}
+.catalog-list strong {
+  font:
+    0.74rem ui-monospace,
+    monospace;
+  color: #224c8c;
+}
+.catalog-list span {
+  font-size: 0.7rem;
+  color: var(--muted);
+  margin-top: 0.25rem;
+}
+/*
+ * REGRA DE CONTRASTE — dark mode
+ * Todo elemento interativo (input, select, textarea, button) DEVE declarar
+ * explicitamente suas variáveis de cor em :root[data-theme="dark"] e em
+ * @media (prefers-color-scheme: dark) :root:not([data-theme="light"]).
+ * Nunca confiar no default do browser para esses elementos em dark mode.
+ * Contraste mínimo: 4.5:1 para texto (WCAG AA).
+ */
+.detail-error {
+  display: flex;
+  gap: 0.7rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.detail-error > .error {
+  margin: 0;
+}
+@media (prefers-color-scheme: dark) {
+  .credential-issued {
+    background: #052e16;
+    border-color: #166534;
+    color: #d8e3f0;
+  }
+
+  .credential-recovery {
+    background: #2c1f0a;
+    border-color: #92400e;
+    color: #d8e3f0;
+  }
+
+  .permission-chips li {
+    background: #0d1e3d;
+    color: #93b4f0;
+  }
+
+  .catalog-list strong {
+    color: #7ba7ea;
+  }
+
+  .profile-saved {
+    color: #4ade80 !important;
+  }
+
+  .credential-panel .error {
+    color: #fca5a5;
+  }
+
+  .detail-logo {
+    background: #0d1e3d;
+    color: #93b4f0;
+  }
+
+  .redirect-uris textarea,
+  .profile-form textarea,
+  .permission-description-form input {
+    background: #132035;
+    border-color: #1e3050;
+    color: #d8e3f0;
+  }
+}
+@media (max-width: 760px) {
+  .detail-grid {
+    grid-template-columns: 1fr;
+  }
+  .detail-intro {
+    flex-wrap: wrap;
+  }
+  .detail-intro > .pill {
+    margin-left: 0;
+  }
+  .detail-card dl > div {
+    grid-template-columns: 1fr;
+    gap: 0.2rem;
+  }
+}

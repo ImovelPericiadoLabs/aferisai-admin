@@ -1,0 +1,120 @@
+.commercial-page .workspace {
+  align-items: start;
+}
+.commercial-page select,
+.commercial-page textarea {
+  width: 100%;
+  border: 1px solid #c7d2e2;
+  border-radius: 8px;
+  background: #fff;
+  padding: 0.8rem;
+  color: var(--ink);
+  font: inherit;
+}
+.commercial-page select:focus-visible,
+.commercial-page textarea:focus-visible {
+  outline: 3px solid #8fb4ff;
+  outline-offset: 2px;
+}
+.commercial-page textarea {
+  min-height: 5.5rem;
+  resize: vertical;
+}
+.commercial-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+.commercial-grid label {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 0;
+}
+.commercial-grid input {
+  width: 100%;
+  min-width: 0;
+}
+.commercial-list {
+  padding: 0;
+  margin: 1rem 0;
+  list-style: none;
+  display: grid;
+  gap: 0.8rem;
+}
+.commercial-list li {
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 10px;
+  padding: 1rem;
+  overflow-wrap: anywhere;
+}
+.commercial-list li p {
+  font-size: 0.8rem;
+  line-height: 1.4;
+  margin: 0.7rem 0;
+}
+.commercial-list li small {
+  display: block;
+  color: var(--muted);
+}
+.commercial-list-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.4rem;
+}
+.commercial-decision {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 0.8rem;
+}
+.commercial-list li > .button {
+  margin-top: 0.8rem;
+}
+.commercial-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.8rem;
+}
+.commercial-actions .commercial-decision,
+.commercial-actions .commercial-simulate {
+  flex: 1 1 100%;
+}
+.commercial-simulate {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 0.4rem;
+}
+.commercial-preview-result {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.3rem 0.8rem;
+  font-size: 0.85rem;
+  margin: 0.5rem 0 0;
+}
+.commercial-preview-result dt {
+  color: var(--muted);
+}
+.commercial-form-actions {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+.commercial-list li {
+  background: var(--surface);
+}
+@media (prefers-color-scheme: dark) {
+  .commercial-page select,
+  .commercial-page textarea {
+    background: var(--surface);
+    border-color: var(--line);
+    color: var(--ink);
+  }
+}
+@media (max-width: 600px) {
+  .commercial-grid {
+    grid-template-columns: 1fr;
+  }
+}

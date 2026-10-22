@@ -1,0 +1,24 @@
+{
+  "name": "AferisAI · Equipe",
+  "short_name": "Equipe",
+  "description": "Área interna de operação e gestão de parcerias AferisAI.",
+  "lang": "pt-BR",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone"],
+  "background_color": "#f5f7fb",
+  "theme_color": "#071a39",
+  "orientation": "portrait-primary",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ],
+  "shortcuts": [
+    { "name": "Visão geral", "url": "/", "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Análises", "url": "/?page=analyses", "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Pedidos", "url": "/?page=requests", "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }] }
+  ]
+}

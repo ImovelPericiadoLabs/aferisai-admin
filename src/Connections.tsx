@@ -1,0 +1,422 @@
+import { useEffect, useState, type FormEvent } from "react";
+import {
+  ApiError,
+  listTeamConnections,
+  revokeTeamConnection,
+  type TeamConnection,
+} from "./api";
+import type { ToastKind } from "./useToast";
+
+function ScopeBadge({ scope }: { scope: string }) {
+  const isAnalysis = scope.startsWith("analysis:");
+  return (
+    <span className={`badge ${isAnalysis ? "badge-blue" : "badge-gray"}`}>
+      {scope}
+    </span>
+  );
+}
+
+function formatDate(iso: string) {
+  return new Intl.DateTimeFormat("pt-BR", {
+    dateStyle: "short",
+    timeStyle: "short",
+    timeZone: "America/Sao_Paulo",
+  }).format(new Date(iso));
+}
+
+export function Connections({
+  canRead,
+  canRevoke,
+  csrf,
+  onUnauthorized,
+  onToast,
+}: {
+  canRead: boolean;
+  canRevoke: boolean;
+  csrf: string;
+  onUnauthorized: () => void;
+  onToast?: (msg: string, kind: ToastKind) => void;
+}) {
+  const [items, setItems] = useState<TeamConnection[]>([]);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [appFilter, setAppFilter] = useState("");
+  const [activeFilter, setActiveFilter] = useState("");
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [revokingId, setRevokingId] = useState<string | null>(null);
+
+  async function load(cursor?: string, filter?: string) {
+    setLoading(true);
+    setError("");
+    try {
+      const result = await listTeamConnections(cursor, filter || undefined);
+      setItems((current) =>
+        cursor ? [...current, ...result.items] : result.items,
+      );
+      setNextCursor(result.next_cursor);
+    } catch (cause) {
+      if (cause instanceof ApiError && cause.status === 401) onUnauthorized();
+      else if (cause instanceof ApiError && cause.status === 403)
+        setError("Permissão insuficiente para consultar conexões.");
+      else if (cause instanceof ApiError && cause.status === 503)
+        setError("Serviço temporariamente indisponível. Tente novamente.");
+      else
+        setError(
+          cause instanceof ApiError
+            ? cause.detail
+            : "Não foi possível consultar as conexões.",
+        );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!canRead) return;
+    let live = true;
+    void listTeamConnections()
+      .then((result) => {
+        if (!live) return;
+        setItems(result.items);
+        setNextCursor(result.next_cursor);
+      })
+      .catch((cause: unknown) => {
+        if (!live) return;
+        if (cause instanceof ApiError && cause.status === 401) onUnauthorized();
+        else if (cause instanceof ApiError && cause.status === 403)
+          setError("Permissão insuficiente para consultar conexões.");
+        else if (cause instanceof ApiError && cause.status === 503)
+          setError("Serviço temporariamente indisponível. Tente novamente.");
+        else
+          setError(
+            cause instanceof ApiError
+              ? cause.detail
+              : "Não foi possível consultar as conexões.",
+          );
+      })
+      .finally(() => {
+        if (live) setLoading(false);
+      });
+    return () => {
+      live = false;
+    };
+  }, [canRead, onUnauthorized]);
+
+  if (!canRead)
+    return (
+      <p className="error" role="alert">
+        Este papel não pode consultar conexões de parceiros.
+      </p>
+    );
+
+  function submitFilter(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setActiveFilter(appFilter);
+    void load(undefined, appFilter);
+  }
+
+  async function handleRevoke(item: TeamConnection) {
+    setRevokingId(item.id);
+    try {
+      await revokeTeamConnection(item.id, csrf);
+      setItems((current) => current.filter((c) => c.id !== item.id));
+      setConfirmId(null);
+      onToast?.("Conexão revogada.", "success");
+    } catch (cause) {
+      let msg = "Não foi possível revogar a conexão.";
+      if (cause instanceof ApiError) {
+        if (cause.status === 401) {
+          onUnauthorized();
+          return;
+        }
+        if (cause.status === 404)
+          msg = "Conexão já revogada ou não encontrada.";
+        else if (cause.status === 403)
+          msg = "Permissão insuficiente para revogar.";
+        else msg = cause.detail;
+      }
+      onToast?.(msg, "error");
+      setConfirmId(null);
+    } finally {
+      setRevokingId(null);
+    }
+  }
+
+  return (
+    <div className="content">
+      <header className="page-head">
+        <div>
+          <p className="eyebrow">Parcerias</p>
+          <h1>Conexões ativas</h1>
+          <p className="muted">
+            Consentimentos de titulares vinculados a aplicações parceiras.
+          </p>
+        </div>
+        <button
+          className="button secondary"
+          disabled={loading}
+          onClick={() => void load(undefined, activeFilter)}
+        >
+          Atualizar
+        </button>
+      </header>
+
+      <form
+        onSubmit={submitFilter}
+        style={{
+          display: "flex",
+          gap: "0.6rem",
+          marginBottom: "1.5rem",
+          flexWrap: "wrap",
+        }}
+      >
+        <label htmlFor="app-filter" style={{ display: "none" }}>
+          Filtrar por ID da aplicação
+        </label>
+        <input
+          id="app-filter"
+          className="input"
+          style={{ maxWidth: "420px", flex: "1 1 200px" }}
+          placeholder="ID da aplicação (UUID)"
+          value={appFilter}
+          onChange={(e) => setAppFilter(e.target.value)}
+          maxLength={36}
+        />
+        <button type="submit" className="button secondary" disabled={loading}>
+          Filtrar
+        </button>
+        {activeFilter && (
+          <button
+            type="button"
+            className="button secondary"
+            onClick={() => {
+              setAppFilter("");
+              setActiveFilter("");
+              void load(undefined, "");
+            }}
+          >
+            Limpar filtro
+          </button>
+        )}
+      </form>
+
+      {error && (
+        <p className="error" role="alert">
+          {error}
+        </p>
+      )}
+
+      {loading && items.length === 0 ? (
+        <div
+          className="skeleton-rows"
+          role="status"
+          aria-label="Carregando conexões"
+        >
+          {[0.7, 0.85, 0.6, 0.75, 0.65].map((w, i) => (
+            <div
+              key={i}
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr 1fr auto",
+                gap: "1rem",
+                padding: "0.9rem 1rem",
+                borderBottom: "1px solid var(--line)",
+              }}
+            >
+              {[w, 0.6, 0.5, 0.3].map((ww, j) => (
+                <div
+                  key={j}
+                  className="skeleton"
+                  style={{ height: "0.85rem", width: `${ww * 100}%` }}
+                />
+              ))}
+            </div>
+          ))}
+        </div>
+      ) : !error && items.length === 0 ? (
+        <div className="empty-state">
+          <p>
+            Nenhuma conexão encontrada
+            {activeFilter ? " para essa aplicação" : ""}.
+          </p>
+        </div>
+      ) : (
+        <div style={{ overflowX: "auto" }}>
+          <table className="data-table" aria-label="Conexões ativas">
+            <thead>
+              <tr>
+                <th>ID da conexão</th>
+                <th>ID do titular</th>
+                <th>ID da aplicação</th>
+                <th>Escopos</th>
+                <th>Versão</th>
+                <th>Conectado em</th>
+                {canRevoke && <th>Ações</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((item) => (
+                <tr key={item.id}>
+                  <td>
+                    <code
+                      style={{
+                        fontSize: "0.75rem",
+                        fontFamily: "ui-monospace, monospace",
+                        overflowWrap: "anywhere",
+                      }}
+                    >
+                      {item.id}
+                    </code>
+                  </td>
+                  <td>
+                    <code
+                      style={{
+                        fontSize: "0.75rem",
+                        fontFamily: "ui-monospace, monospace",
+                        overflowWrap: "anywhere",
+                      }}
+                    >
+                      {item.user_id}
+                    </code>
+                  </td>
+                  <td>
+                    <code
+                      style={{
+                        fontSize: "0.75rem",
+                        fontFamily: "ui-monospace, monospace",
+                        overflowWrap: "anywhere",
+                      }}
+                    >
+                      {item.application_id}
+                    </code>
+                  </td>
+                  <td>
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: "0.3rem",
+                        flexWrap: "wrap",
+                      }}
+                    >
+                      {item.scopes.map((s) => (
+                        <ScopeBadge key={s} scope={s} />
+                      ))}
+                    </div>
+                  </td>
+                  <td>{item.grant_version}</td>
+                  <td style={{ whiteSpace: "nowrap" }}>
+                    {formatDate(item.granted_at)}
+                  </td>
+                  {canRevoke && (
+                    <td>
+                      {confirmId === item.id ? (
+                        <div
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: "0.4rem",
+                            minWidth: "200px",
+                          }}
+                        >
+                          <p
+                            style={{
+                              fontSize: "0.75rem",
+                              margin: 0,
+                              color: "var(--text)",
+                            }}
+                          >
+                            Revogar a conexão{" "}
+                            <code
+                              style={{
+                                fontFamily: "ui-monospace, monospace",
+                                wordBreak: "break-all",
+                              }}
+                            >
+                              {item.id}
+                            </code>{" "}
+                            de{" "}
+                            <code
+                              style={{
+                                fontFamily: "ui-monospace, monospace",
+                                wordBreak: "break-all",
+                              }}
+                            >
+                              {item.user_id}
+                            </code>
+                            ?
+                          </p>
+                          <div style={{ display: "flex", gap: "0.4rem" }}>
+                            <button
+                              type="button"
+                              className="button secondary"
+                              style={{
+                                fontSize: "0.75rem",
+                                padding: "0.3rem 0.7rem",
+                              }}
+                              disabled={revokingId === item.id}
+                              onClick={() => void handleRevoke(item)}
+                            >
+                              {revokingId === item.id
+                                ? "Revogando…"
+                                : "Confirmar"}
+                            </button>
+                            <button
+                              type="button"
+                              className="button secondary"
+                              style={{
+                                fontSize: "0.75rem",
+                                padding: "0.3rem 0.7rem",
+                              }}
+                              disabled={revokingId === item.id}
+                              onClick={() => setConfirmId(null)}
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          className="button secondary"
+                          style={{
+                            fontSize: "0.75rem",
+                            padding: "0.3rem 0.7rem",
+                          }}
+                          disabled={revokingId !== null}
+                          onClick={() => {
+                            setConfirmId(item.id);
+                          }}
+                        >
+                          Revogar
+                        </button>
+                      )}
+                    </td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {loading && items.length > 0 && (
+        <p className="directory-state" role="status">
+          Atualizando…
+        </p>
+      )}
+
+      {nextCursor && (
+        <button
+          type="button"
+          className="button secondary"
+          disabled={loading}
+          style={{ marginTop: "1rem" }}
+          onClick={() => void load(nextCursor, activeFilter)}
+        >
+          {loading ? "Carregando…" : "Mais"}
+        </button>
+      )}
+    </div>
+  );
+}

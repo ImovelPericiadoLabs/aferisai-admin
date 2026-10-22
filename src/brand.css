@@ -1,0 +1,31 @@
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font: inherit;
+  letter-spacing: normal;
+}
+.brand img {
+  width: 132px;
+  height: auto;
+  display: block;
+  flex: none;
+}
+.brand > span:last-child {
+  display: block;
+  width: auto;
+  margin-top: 0;
+  padding-left: 0.6rem;
+  border-left: 1px solid #c8d2e0;
+  color: #536680;
+  font:
+    800 0.59rem Manrope,
+    Arial,
+    sans-serif;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+.brand-light > span:last-child {
+  color: #b8c9e3;
+  border-color: #58709a;
+}

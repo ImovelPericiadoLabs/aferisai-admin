@@ -1,0 +1,132 @@
+.directory {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  overflow: hidden;
+}
+.directory-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 1rem;
+  padding: 1.5rem 1.7rem;
+  border-bottom: 1px solid var(--line);
+}
+.directory-head h2 {
+  margin: 0;
+}
+.directory-head form {
+  min-width: min(100%, 350px);
+}
+.directory-head label {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 800;
+  margin-bottom: 0.4rem;
+}
+.directory-head form > div {
+  display: flex;
+  gap: 0.5rem;
+}
+.directory-head input {
+  min-width: 0;
+  flex: 1;
+  height: 44px;
+  border: 1px solid #cbd6e5;
+  border-radius: 7px;
+  padding: 0 0.75rem;
+  color: var(--ink);
+}
+.directory-state {
+  color: var(--muted);
+  font-size: 0.8rem;
+  padding: 2rem;
+}
+.directory > .error {
+  margin: 1rem;
+}
+.directory-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) 120px;
+  gap: 1rem;
+  align-items: center;
+  padding: 1rem 1.7rem;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.76rem;
+}
+.directory-row:last-child {
+  border-bottom: 0;
+}
+.directory-row strong,
+.directory-row small {
+  display: block;
+}
+.directory-row strong {
+  font-size: 0.81rem;
+}
+.directory-name {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  text-align: left;
+  color: #074db9;
+  font: inherit;
+}
+.directory-name:hover {
+  text-decoration: underline;
+}
+.directory-row small {
+  color: var(--muted);
+  font:
+    400 0.65rem ui-monospace,
+    monospace;
+  overflow-wrap: anywhere;
+  margin-top: 0.2rem;
+}
+.directory-labels {
+  background: #f8fafd;
+  color: #7889a0;
+  font-size: 0.67rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding-top: 0.7rem;
+  padding-bottom: 0.7rem;
+}
+.directory .load-more {
+  margin: 1rem 1.7rem;
+}
+.back-link {
+  border: 0;
+  background: transparent;
+  color: #45658e;
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 0;
+  margin: 0 0 1.5rem;
+}
+.back-link:hover {
+  text-decoration: underline;
+}
+@media (max-width: 760px) {
+  .directory-head {
+    display: block;
+    padding: 1.2rem;
+  }
+  .directory-head form {
+    margin-top: 1.3rem;
+  }
+  .directory-row {
+    grid-template-columns: 1fr auto;
+    padding: 0.9rem 1.2rem;
+  }
+  .directory-row span:nth-child(2) {
+    display: none;
+  }
+  .directory-labels {
+    display: none;
+  }
+  .directory .load-more {
+    margin: 1rem 1.2rem;
+  }
+}
