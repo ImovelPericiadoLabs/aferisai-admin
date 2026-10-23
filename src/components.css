@@ -720,3 +720,18 @@ textarea.input {
 .advanced-lookup[open] > summary {
   margin-bottom: var(--space-2);
 }
+
+.confirm-reason {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0 0 var(--space-5);
+}
+
+.confirm-reason textarea.input {
+  width: 100%;
+  min-height: 84px;
+}
+
+.confirm-reason-error {
+  color: var(--danger);
+}
