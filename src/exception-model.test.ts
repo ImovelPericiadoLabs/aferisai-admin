@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import type { PaymentExceptionCase } from "./api";
 import {
   affectedItemRows,
+  canViewOriginals,
+  originalTargets,
   dueState,
   filterCases,
   nextAction,
@@ -279,5 +281,57 @@ describe("affectedItemRows", () => {
         error: null,
       },
     ]);
+  });
+});
+
+describe("canViewOriginals", () => {
+  it("is for the roles the backend lets open an original", () => {
+    expect(canViewOriginals("administrator")).toBe(true);
+    expect(canViewOriginals("manager")).toBe(true);
+    expect(canViewOriginals("financial")).toBe(false);
+    expect(canViewOriginals("viewer")).toBe(false);
+  });
+});
+
+describe("originalTargets", () => {
+  it("offers the case work and each purchase document that has a work", () => {
+    const targets = originalTargets(
+      kase({
+        work_id: "w0",
+        request_id: "r0",
+        affected_items: [
+          { ordinal: 2, work_id: null, work_status: null, error_code: null },
+          {
+            ordinal: 1,
+            work_id: "w1",
+            work_status: "error",
+            error_code: null,
+            request_id: "r1",
+          },
+          { ordinal: 3, work_id: "w3", work_status: "done", error_code: null },
+        ],
+      }),
+    );
+    expect(targets).toEqual([
+      {
+        key: "case",
+        label: "Documento do caso",
+        workId: "w0",
+        requestId: "r0",
+      },
+      { key: "item-1", label: "Documento 1", workId: "w1", requestId: "r1" },
+      { key: "item-3", label: "Documento 3", workId: "w3", requestId: null },
+    ]);
+  });
+  it("does not repeat the case document when a purchase item is the same work", () => {
+    const targets = originalTargets(
+      kase({
+        work_id: "w1",
+        affected_items: [
+          { ordinal: 1, work_id: "w1", work_status: "error", error_code: null },
+        ],
+      }),
+    );
+    expect(targets.map((t) => t.key)).toEqual(["item-1"]);
   });
 });

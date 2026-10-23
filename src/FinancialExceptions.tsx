@@ -473,6 +473,7 @@ export function FinancialExceptions({
               <ExceptionPanel
                 key={selected.id}
                 item={selected}
+                csrf={csrf}
                 role={role}
                 memberId={memberId}
                 person={person}

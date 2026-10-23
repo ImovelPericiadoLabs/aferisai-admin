@@ -5,6 +5,8 @@ import { Disclosure, RadioGroup } from "./controls";
 import { statusLabel } from "./display-labels";
 import {
   affectedItemRows,
+  canViewOriginals,
+  originalTargets,
   dueState,
   nextAction,
   reassignBlock,
@@ -13,6 +15,8 @@ import {
 } from "./exception-model";
 import { EntityPicker } from "./EntityPicker";
 import { searchTeamMembers } from "./lookups";
+import { OriginalViewer, type OriginalTarget } from "./OriginalViewer";
+import { resolveRequestId } from "./original-lookup";
 import { stageTone } from "./status-tones";
 
 type Role = TeamMember["role"];
@@ -22,6 +26,7 @@ export type ExecuteAction =
 
 type Props = {
   item: PaymentExceptionCase;
+  csrf: string;
   role: Role;
   memberId: string;
   person: (id: string | null) => string;
@@ -65,6 +70,7 @@ const dateTime = new Intl.DateTimeFormat("pt-BR", {
 
 export function ExceptionPanel({
   item,
+  csrf,
   role,
   memberId,
   person,
@@ -84,12 +90,37 @@ export function ExceptionPanel({
   const [resolution, setResolution] = useState<"correct" | "refund">("correct");
   const [target, setTarget] = useState<"manager" | "financial">("manager");
   const [newMember, setNewMember] = useState("");
+  const [viewing, setViewing] = useState<OriginalTarget | null>(null);
+  const [locating, setLocating] = useState<string | null>(null);
+  const [originalError, setOriginalError] = useState("");
+  const targets = canViewOriginals(role) ? originalTargets(item) : [];
   const stage = stageOf(item);
   const affectedRows = affectedItemRows(item);
   const due = dueState(item.due_at, now);
   const action = nextAction(item, role, memberId);
   const block = reassignBlock(item, role, target);
   const memberSearch = useMemo(() => searchTeamMembers(target), [target]);
+
+  async function openOriginal(ref: (typeof targets)[number]) {
+    setLocating(ref.key);
+    setOriginalError("");
+    const found = await resolveRequestId(ref);
+    setLocating(null);
+    if (!found.ok) {
+      if (found.unauthorized) onUnauthorized();
+      else setOriginalError(found.message);
+      return;
+    }
+    setViewing({
+      requestId: found.requestId,
+      title: ref.label,
+      facts: [
+        { label: "Caso", value: item.id },
+        { label: "Trabalho", value: ref.workId },
+        { label: "Pedido", value: found.requestId },
+      ],
+    });
+  }
 
   const steps = [
     {
@@ -211,6 +242,35 @@ export function ExceptionPanel({
                 </li>
               ))}
             </ul>
+          </section>
+        )}
+        {targets.length > 0 && (
+          <section className="detail-panel-section">
+            <h3 className="detail-panel-section-title">Original</h3>
+            <p className="form-hint">
+              A leitura registra o seu motivo e fica na trilha de auditoria.
+            </p>
+            {originalError && (
+              <div className="alert alert-warning" role="alert">
+                {originalError}
+              </div>
+            )}
+            <div className="exc-originals">
+              {targets.map((ref) => (
+                <button
+                  key={ref.key}
+                  type="button"
+                  className="btn btn-secondary btn-md"
+                  aria-haspopup="dialog"
+                  disabled={locating !== null}
+                  onClick={() => void openOriginal(ref)}
+                >
+                  {locating === ref.key
+                    ? "Localizando…"
+                    : `Ver ${ref.label.toLocaleLowerCase("pt-BR")}`}
+                </button>
+              ))}
+            </div>
           </section>
         )}
         <section className="detail-panel-section">
@@ -439,6 +499,12 @@ export function ExceptionPanel({
           })
         }
         onCancel={() => setAsking(null)}
+      />
+      <OriginalViewer
+        target={viewing}
+        csrf={csrf}
+        onClose={() => setViewing(null)}
+        onUnauthorized={onUnauthorized}
       />
     </>
   );

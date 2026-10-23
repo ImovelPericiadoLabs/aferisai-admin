@@ -153,3 +153,40 @@ export function affectedItemRows(
       error: entry.error_code,
     }));
 }
+
+/** Same roles the backend allows to open an original (manager and administrator). */
+export const canViewOriginals = (role: string) =>
+  role === "administrator" || role === "manager";
+
+export type OriginalTargetRef = {
+  key: string;
+  label: string;
+  workId: string;
+  requestId: string | null;
+};
+
+export function originalTargets(
+  item: PaymentExceptionCase,
+): OriginalTargetRef[] {
+  const items = [...(item.affected_items ?? [])]
+    .filter((entry) => entry.work_id !== null)
+    .sort((a, b) => a.ordinal - b.ordinal)
+    .map((entry) => ({
+      key: `item-${entry.ordinal}`,
+      label: `Documento ${entry.ordinal}`,
+      workId: entry.work_id as string,
+      requestId: entry.request_id ?? null,
+    }));
+  const caseCovered = items.some((entry) => entry.workId === item.work_id);
+  return caseCovered
+    ? items
+    : [
+        {
+          key: "case",
+          label: "Documento do caso",
+          workId: item.work_id,
+          requestId: item.request_id ?? null,
+        },
+        ...items,
+      ];
+}

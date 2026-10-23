@@ -218,10 +218,13 @@ export type ExceptionAffectedItem = {
   work_id: string | null;
   work_status: string | null;
   error_code: string | null;
+  /** Only present once the backend exposes it; lets the original be opened directly. */
+  request_id?: string | null;
 };
 export type PaymentExceptionCase = {
   id: string;
   work_id: string;
+  request_id?: string | null;
   opened_at: string;
   due_at: string;
   reason_code: string;

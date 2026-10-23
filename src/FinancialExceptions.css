@@ -85,3 +85,9 @@
 .exc-affected .badge {
   justify-self: start;
 }
+
+.exc-originals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
