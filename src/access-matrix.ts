@@ -22,8 +22,14 @@ export const CAPABILITIES: Capability[] = [
   {
     id: "partner-view",
     area: "Parceiros",
-    label: "Ver organizações e aplicações",
+    label: "Ver organizações, aplicações e permissões concedidas",
     roles: readers,
+  },
+  {
+    id: "partner-integration-view",
+    area: "Parceiros",
+    label: "Ver credenciais, webhooks, entregas e redirects",
+    roles: managers,
   },
   {
     id: "partner-edit",

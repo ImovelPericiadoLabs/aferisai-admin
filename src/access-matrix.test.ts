@@ -48,6 +48,16 @@ describe("capabilitiesFor", () => {
     expect(confirm("manager")).toBe(false);
   });
 
+  it("lets viewer see organizations but not the integration internals", () => {
+    const has = (role: Parameters<typeof capabilitiesFor>[0], id: string) =>
+      capabilitiesFor(role).some((item) => item.id === id);
+    expect(has("viewer", "partner-view")).toBe(true);
+    expect(has("viewer", "partner-integration-view")).toBe(false);
+    expect(has("manager", "partner-integration-view")).toBe(true);
+    expect(has("administrator", "partner-integration-view")).toBe(true);
+    expect(has("financial", "partner-integration-view")).toBe(false);
+  });
+
   it("keeps viewer read-only on partners", () => {
     expect(labels("viewer").length).toBeGreaterThan(0);
     expect(
