@@ -8,13 +8,15 @@ import {
   grantApplicationPermission,
   invitePartnerMember,
   mediaUrl,
-  putOrganizationLogo,
+  putOrganizationLogoWithProgress,
   replaceOrganizationProfile,
   revokeApplicationPermission,
   type OrganizationDetail as Detail,
 } from "./api";
 import "./detail.css";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { LOGO_RULE } from "./file-rules";
+import { ImageUploader } from "./ImageUploader";
 import { ApplicationCreationWizard } from "./ApplicationCreationWizard";
 import { OrganizationApplicationsDirectory } from "./OrganizationApplicationsDirectory";
 import { ApplicationWorkspace } from "./ApplicationWorkspace";
@@ -68,8 +70,6 @@ export function OrganizationDetail({
   const [permissionNotice, setPermissionNotice] = useState("");
   const [logoBlobUrl, setLogoBlobUrl] = useState<string | null>(null);
   const [logoRevision, setLogoRevision] = useState(0);
-  const [logoFile, setLogoFile] = useState<File | null>(null);
-  const [logoBusy, setLogoBusy] = useState(false);
   const [logoError, setLogoError] = useState("");
   const [logoNotice, setLogoNotice] = useState("");
   const [section, setSection] = useState<"application" | "partnership">(
@@ -214,31 +214,32 @@ export function OrganizationDetail({
     );
   }
 
-  async function changeLogo(remove: boolean) {
-    if (!isAdmin || (!remove && !logoFile)) return;
-    setLogoBusy(true);
+  async function refreshLogo(notice: string) {
+    setLogoBlobUrl(null);
+    setDetail(await getOrganization(organizationId));
+    setLogoRevision((value) => value + 1);
     setLogoError("");
+    setLogoNotice(notice);
+  }
+
+  async function uploadLogo(
+    file: Blob,
+    onProgress: (fraction: number) => void,
+  ) {
     setLogoNotice("");
-    try {
-      if (remove) await deleteOrganizationLogo(organizationId, csrfToken);
-      else if (logoFile)
-        await putOrganizationLogo(organizationId, logoFile, csrfToken);
-      setLogoBlobUrl(null);
-      setDetail(await getOrganization(organizationId));
-      setLogoRevision((value) => value + 1);
-      setLogoFile(null);
-      setLogoNotice(remove ? "Logo removido." : "Logo atualizado.");
-    } catch (cause) {
-      if (cause instanceof ApiError && cause.status === 401) onUnauthorized();
-      else
-        setLogoError(
-          cause instanceof ApiError
-            ? cause.detail
-            : "Não foi possível atualizar o logo.",
-        );
-    } finally {
-      setLogoBusy(false);
-    }
+    await putOrganizationLogoWithProgress(
+      organizationId,
+      file,
+      csrfToken,
+      onProgress,
+    );
+    await refreshLogo("Logo atualizado.");
+  }
+
+  async function removeLogo() {
+    setLogoNotice("");
+    await deleteOrganizationLogo(organizationId, csrfToken);
+    await refreshLogo("Logo removido.");
   }
 
   function requestInvite(event: FormEvent<HTMLFormElement>) {
@@ -635,57 +636,16 @@ export function OrganizationDetail({
                     Imagem da organização, visível somente para a equipe nesta
                     área.
                   </p>
-                  {isAdmin && (
-                    <>
-                      <label htmlFor="logo-file">
-                        Enviar PNG ou JPEG, até 2 MiB
-                      </label>
-                      <input
-                        id="logo-file"
-                        type="file"
-                        accept="image/png,image/jpeg"
-                        onChange={(event) => {
-                          const file = event.target.files?.[0] || null;
-                          setLogoError("");
-                          setLogoFile(
-                            file &&
-                              ["image/png", "image/jpeg"].includes(file.type) &&
-                              file.size <= 2 * 1024 * 1024
-                              ? file
-                              : null,
-                          );
-                          if (
-                            file &&
-                            (!["image/png", "image/jpeg"].includes(file.type) ||
-                              file.size > 2 * 1024 * 1024)
-                          )
-                            setLogoError(
-                              "Escolha um PNG ou JPEG de até 2 MiB.",
-                            );
-                        }}
-                      />
-                      <div className="button-row">
-                        <button
-                          className="button primary"
-                          type="button"
-                          disabled={logoBusy || !logoFile}
-                          onClick={() => void changeLogo(false)}
-                        >
-                          {logoBusy ? "Enviando…" : "Enviar logo"}
-                        </button>
-                        {detail.logo_url && (
-                          <button
-                            className="button secondary"
-                            type="button"
-                            disabled={logoBusy}
-                            onClick={() => void changeLogo(true)}
-                          >
-                            Remover logo
-                          </button>
-                        )}
-                      </div>
-                    </>
-                  )}
+                  <ImageUploader
+                    label="Logo"
+                    currentSrc={logoBlobUrl}
+                    rule={LOGO_RULE}
+                    shape="circle"
+                    canEdit={isAdmin}
+                    onUpload={uploadLogo}
+                    onRemove={removeLogo}
+                    onUnauthorized={onUnauthorized}
+                  />
                   {logoError && (
                     <p className="error" role="alert">
                       {logoError}
