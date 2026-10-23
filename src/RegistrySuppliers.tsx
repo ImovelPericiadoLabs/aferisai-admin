@@ -1,5 +1,4 @@
 import {
-  Fragment,
   useCallback,
   useEffect,
   useMemo,
@@ -18,7 +17,7 @@ import {
   type RegistrySupplierKind,
 } from "./api";
 import { ConfirmDialog } from "./ConfirmDialog";
-import { OnrEndpointSettings } from "./OnrEndpointSettings";
+import { SupplierAccountEditor } from "./SupplierAccountEditor";
 import {
   activationBlock,
   shortDigest,
@@ -90,7 +89,8 @@ export function RegistrySuppliers({
   const [pending, setPending] = useState<Pending>(null);
   const [busy, setBusy] = useState(false);
   const [creating, setCreating] = useState(false);
-  const [openAccountId, setOpenAccountId] = useState<string | null>(null);
+  const [editing, setEditing] = useState<RegistrySupplierAccount | null>(null);
+  const editTrigger = useRef<HTMLElement | null>(null);
   const [form, setForm] = useState<SupplierForm>(emptyForm);
   const [submitted, setSubmitted] = useState(false);
   const [formError, setFormError] = useState("");
@@ -350,95 +350,77 @@ export function RegistrySuppliers({
                 {visible.map((item) => {
                   const status = supplierStatusView(item.status);
                   return (
-                    <Fragment key={item.id}>
-                      <tr>
-                        <td data-label="Conta">
-                          <strong>{item.label}</strong>
-                          <small className="sup-sub">
-                            {supplierLabel(item.provider)} · versão{" "}
-                            {item.version}
-                          </small>
-                        </td>
-                        <td data-label="Credencial">{item.credential_hint}</td>
-                        <td data-label="Vínculo">
-                          <code title={item.account_binding_sha256}>
-                            {shortDigest(item.account_binding_sha256)}
-                          </code>
-                        </td>
-                        <td data-label="Estado">
-                          <span className={`badge badge-${status.tone}`}>
-                            {status.label}
-                          </span>
-                        </td>
-                        <td data-label="Atualizada">
-                          {dateTime.format(new Date(item.updated_at))}
-                        </td>
-                        <td data-label="Ações">
-                          <div className="sup-actions">
-                            {item.provider === "onr" && (
-                              <button
-                                type="button"
-                                className="btn btn-secondary btn-sm"
-                                aria-expanded={openAccountId === item.id}
-                                aria-controls={`onr-connection-${item.id}`}
-                                onClick={() =>
-                                  setOpenAccountId(
-                                    openAccountId === item.id ? null : item.id,
-                                  )
-                                }
-                              >
-                                Conexão
-                              </button>
-                            )}
-                            {item.status !== "active" && (
-                              <button
-                                type="button"
-                                className="btn btn-secondary btn-sm"
-                                aria-haspopup="dialog"
-                                data-supplier-id={item.id}
-                                onClick={() =>
-                                  setPending({
-                                    action: "activate",
-                                    account: item,
-                                  })
-                                }
-                              >
-                                Ativar
-                              </button>
-                            )}
-                            {item.status === "active" && (
-                              <button
-                                type="button"
-                                className="btn btn-ghost-danger btn-sm"
-                                aria-haspopup="dialog"
-                                data-supplier-id={item.id}
-                                onClick={() =>
-                                  setPending({
-                                    action: "suspend",
-                                    account: item,
-                                  })
-                                }
-                              >
-                                Suspender
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                      {item.provider === "onr" && openAccountId === item.id && (
-                        <tr id={`onr-connection-${item.id}`}>
-                          <td colSpan={6}>
-                            <OnrEndpointSettings
-                              accountId={item.id}
-                              accountLabel={item.label}
-                              csrf={csrf}
-                              onUnauthorized={onUnauthorized}
-                              onToast={onToast}
-                            />
-                          </td>
-                        </tr>
-                      )}
-                    </Fragment>
+                    <tr key={item.id}>
+                      <td data-label="Conta">
+                        <strong>{item.label}</strong>
+                        <small className="sup-sub">
+                          {supplierLabel(item.provider)} · versão {item.version}
+                        </small>
+                      </td>
+                      <td data-label="Credencial">{item.credential_hint}</td>
+                      <td data-label="Vínculo">
+                        <code title={item.account_binding_sha256}>
+                          {shortDigest(item.account_binding_sha256)}
+                        </code>
+                      </td>
+                      <td data-label="Estado">
+                        <span className={`badge badge-${status.tone}`}>
+                          {status.label}
+                        </span>
+                      </td>
+                      <td data-label="Atualizada">
+                        {dateTime.format(new Date(item.updated_at))}
+                      </td>
+                      <td data-label="Ações">
+                        <div className="sup-actions">
+                          {item.provider === "onr" && (
+                            <button
+                              type="button"
+                              className="btn btn-secondary btn-sm"
+                              aria-haspopup="dialog"
+                              onClick={(event) => {
+                                editTrigger.current = event.currentTarget;
+                                setEditing(item);
+                              }}
+                            >
+                              Editar
+                            </button>
+                          )}
+                          {item.status !== "active" && (
+                            <button
+                              type="button"
+                              className="btn btn-secondary btn-sm"
+                              aria-haspopup="dialog"
+                              data-supplier-id={item.id}
+                              onClick={() =>
+                                setPending({
+                                  action: "activate",
+                                  account: item,
+                                })
+                              }
+                            >
+                              Ativar
+                            </button>
+                          )}
+                          {item.status === "active" && (
+                            <button
+                              type="button"
+                              className="btn btn-ghost-danger btn-sm"
+                              aria-haspopup="dialog"
+                              data-supplier-id={item.id}
+                              onClick={() =>
+                                setPending({
+                                  action: "suspend",
+                                  account: item,
+                                })
+                              }
+                            >
+                              Suspender
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
                   );
                 })}
               </tbody>
@@ -460,6 +442,15 @@ export function RegistrySuppliers({
           </button>
         </footer>
       )}
+
+      <SupplierAccountEditor
+        account={editing}
+        csrf={csrf}
+        returnFocus={() => editTrigger.current}
+        onClose={() => setEditing(null)}
+        onUnauthorized={onUnauthorized}
+        onToast={onToast}
+      />
 
       <ConfirmDialog
         open={pending !== null}
