@@ -1,54 +1,64 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ApiError, listTeamAnalysisRequests } from "./api";
+import { matchesQuery, rowsToCsv } from "./ops-model";
 import {
-  ApiError,
-  listTeamAnalysisRequests,
-  type RequestOperationPage,
-} from "./api";
-import "./request-directory.css";
+  AgeBadge,
+  BottomSheet,
+  OpsKpis,
+  OpsTimeline,
+  OpsViews,
+  RecordDrawer,
+} from "./OpsParts";
+import { OpsTable, OpsViewMenu, useOpsPrefs, type OpsColumn } from "./OpsTable";
+import {
+  REQUEST_VIEWS,
+  admissionLabel,
+  documentLabels,
+  documentTone,
+  paymentLabel,
+  paymentTone,
+  requestKpis,
+  requestTimeline,
+  requestTone,
+  requestView,
+  viewCounts,
+  workLabel,
+  workTone,
+  type RequestRow,
+  type RequestViewId,
+} from "./requests-model";
+import { useNow } from "./useNow";
+import "./ops.css";
 
-type RequestItem = RequestOperationPage["items"][number];
+const dateTime = new Intl.DateTimeFormat("pt-BR", {
+  dateStyle: "short",
+  timeStyle: "short",
+});
 
-const documentLabels = {
-  available: "Original disponível",
-  expired: "Original vencido",
-  purged: "Original eliminado",
-};
+const DOCUMENT_FILTERS = [
+  { value: "", label: "Qualquer original" },
+  { value: "available", label: "Original disponível" },
+  { value: "expired", label: "Original vencido" },
+  { value: "purged", label: "Original eliminado" },
+];
 
-function paymentLabel(item: RequestItem): string {
-  if (item.charge_attempt === "unknown") return "Cobrança em conciliação";
-  if (item.payment_status === "received") return "Pagamento confirmado";
-  if (item.payment_status === "review") return "Pagamento em conferência";
-  if (item.payment_status === "prepared")
-    return item.charge_attempt === "not_sent"
-      ? "Cobrança ainda não enviada"
-      : "Cobrança pendente";
-  return "Sem intenção PIX";
+const shortId = (id: string) => id.slice(-8);
+
+function download(filename: string, text: string) {
+  const url = URL.createObjectURL(
+    new Blob([text], { type: "text/csv;charset=utf-8" }),
+  );
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-function admissionLabel(item: RequestItem): string {
-  const labels: Record<string, string> = {
-    eligible: "Arquivo no limite técnico",
-    unsupported: "Arquivo fora do limite técnico",
-    non_registry: "Fonte fora da oferta",
-  };
-  return item.admission_outcome
-    ? (labels[item.admission_outcome] ?? "Preflight em conferência")
-    : "Preflight ausente";
-}
-
-function workLabel(item: RequestItem): string {
-  const labels: Record<string, string> = {
-    blocked: "Trabalho bloqueado",
-    pending: "Na fila",
-    running: "Em processamento",
-    suspended: "Trabalho suspenso",
-    unknown: "Resultado externo incerto",
-    failed: "Falha de processamento",
-    completed: "Processamento concluído",
-  };
-  return item.work_status
-    ? (labels[item.work_status] ?? "Estado em conferência")
-    : "Ainda sem trabalho";
+function Badge({ tone, children }: { tone: string; children: string }) {
+  return <span className={`badge badge-${tone}`}>{children}</span>;
 }
 
 export function RequestDirectory({
@@ -62,44 +72,31 @@ export function RequestDirectory({
   openSource: (requestId: string) => void;
   openReview: (workId: string) => void;
 }) {
-  const [items, setItems] = useState<RequestItem[]>([]);
+  const [items, setItems] = useState<RequestRow[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [view, setView] = useState<RequestViewId>("all");
+  const [query, setQuery] = useState("");
+  const [documentState, setDocumentState] = useState("");
+  const [selected, setSelected] = useState<RequestRow | null>(null);
+  const [sheet, setSheet] = useState(false);
+  const [prefs, setPrefs] = useOpsPrefs("requests");
+  const trigger = useRef<HTMLElement | null>(null);
+  const sheetTrigger = useRef<HTMLButtonElement>(null);
+  const now = useNow();
 
-  async function load(cursor?: string) {
-    setLoading(true);
-    setError("");
-    try {
-      const result = await listTeamAnalysisRequests(cursor);
-      setItems((current) =>
-        cursor ? [...current, ...result.items] : result.items,
-      );
-      setNextCursor(result.next_cursor);
-    } catch (cause) {
-      if (cause instanceof ApiError && cause.status === 401) onUnauthorized();
-      else
-        setError(
-          cause instanceof ApiError
-            ? cause.detail
-            : "Não foi possível consultar os pedidos.",
+  const load = useCallback(
+    async (cursor?: string) => {
+      setLoading(true);
+      try {
+        const result = await listTeamAnalysisRequests(cursor);
+        setItems((current) =>
+          cursor ? [...current, ...result.items] : result.items,
         );
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    if (!canRead) return;
-    let live = true;
-    void listTeamAnalysisRequests()
-      .then((result) => {
-        if (!live) return;
-        setItems(result.items);
         setNextCursor(result.next_cursor);
-      })
-      .catch((cause: unknown) => {
-        if (!live) return;
+        setError("");
+      } catch (cause) {
         if (cause instanceof ApiError && cause.status === 401) onUnauthorized();
         else
           setError(
@@ -107,164 +104,447 @@ export function RequestDirectory({
               ? cause.detail
               : "Não foi possível consultar os pedidos.",
           );
-      });
-    return () => {
-      live = false;
-    };
-  }, [canRead, onUnauthorized]);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [onUnauthorized],
+  );
+
+  useEffect(() => {
+    if (canRead) queueMicrotask(() => void load());
+  }, [canRead, load]);
+
+  const counts = useMemo(() => viewCounts(items), [items]);
+  const visible = useMemo(
+    () =>
+      items.filter(
+        (item) =>
+          (view === "all" || requestView(item) === view) &&
+          (!documentState || item.document_state === documentState) &&
+          matchesQuery(
+            [item.request_id, workLabel(item), paymentLabel(item)],
+            query,
+          ),
+      ),
+    [items, view, documentState, query],
+  );
+
+  const columns: OpsColumn<RequestRow>[] = useMemo(
+    () => [
+      {
+        id: "id",
+        label: "Pedido",
+        locked: true,
+        render: (item) => (
+          <span className="ops-id">
+            <strong>{shortId(item.request_id)}</strong>
+            <small>{dateTime.format(new Date(item.created_at))}</small>
+          </span>
+        ),
+        text: (item) => item.request_id,
+      },
+      {
+        id: "pages",
+        label: "Páginas",
+        hideBelow: "tablet",
+        render: (item) => item.page_count,
+        text: (item) => String(item.page_count),
+      },
+      {
+        id: "document",
+        label: "Original",
+        render: (item) => (
+          <Badge tone={documentTone(item)}>
+            {documentLabels[item.document_state]}
+          </Badge>
+        ),
+        text: (item) => documentLabels[item.document_state],
+      },
+      {
+        id: "admission",
+        label: "Arquivo",
+        hideBelow: "tablet",
+        render: (item) => admissionLabel(item),
+        text: admissionLabel,
+      },
+      {
+        id: "payment",
+        label: "Pagamento",
+        render: (item) => (
+          <Badge tone={paymentTone(item)}>{paymentLabel(item)}</Badge>
+        ),
+        text: paymentLabel,
+      },
+      {
+        id: "work",
+        label: "Análise",
+        render: (item) => (
+          <Badge tone={workTone(item)}>{workLabel(item)}</Badge>
+        ),
+        text: workLabel,
+      },
+      {
+        id: "age",
+        label: "Idade",
+        align: "end",
+        render: (item) => <AgeBadge iso={item.created_at} now={now} />,
+        text: (item) => item.created_at,
+      },
+    ],
+    [now],
+  );
+
+  function exportCsv() {
+    const shown = columns.filter((column) => !prefs.hidden.includes(column.id));
+    download(
+      `pedidos-arquivo_${new Date(now).toISOString().slice(0, 10)}.csv`,
+      rowsToCsv(
+        shown.map((column) => column.label),
+        visible.map((item) => shown.map((column) => column.text(item))),
+      ),
+    );
+  }
 
   if (!canRead)
     return (
-      <p className="error" role="alert">
-        Este papel não pode consultar pedidos jurídicos.
-      </p>
+      <section className="page ops">
+        <p className="alert alert-danger" role="alert">
+          Este papel não pode consultar pedidos jurídicos.
+        </p>
+      </section>
     );
 
+  const rowActions = (item: RequestRow) => (
+    <button
+      type="button"
+      className="btn btn-secondary btn-sm"
+      onClick={() => openSource(item.request_id)}
+    >
+      Fonte
+    </button>
+  );
+
   return (
-    <div className="content">
-      <header className="page-head">
+    <section className="page ops" aria-labelledby="req-title">
+      <header className="ops-head">
         <div>
-          <p className="eyebrow">Triagem operacional</p>
-          <h1>Pedidos de análise</h1>
-          <p className="muted">
-            Acompanhe o original, o PIX e o trabalho por pedido. Cada ação
-            confere o estado novamente.
+          <p className="ops-eyebrow">Operação</p>
+          <h1 className="page-title" id="req-title">
+            Pedidos de arquivo
+          </h1>
+          <p className="page-subtitle">
+            O original, o PIX e a análise de cada pedido num só lugar. Toque ou
+            pressione Enter numa linha para abrir a ficha.
           </p>
         </div>
-        <button
-          className="button secondary"
-          disabled={loading}
-          onClick={() => void load()}
-        >
-          Atualizar
-        </button>
+        <div className="ops-head-actions">
+          <OpsViewMenu columns={columns} prefs={prefs} onChange={setPrefs} />
+          <button
+            type="button"
+            className="btn btn-secondary btn-md ops-desktop-only"
+            disabled={visible.length === 0}
+            onClick={exportCsv}
+          >
+            Exportar CSV
+          </button>
+          <button
+            type="button"
+            className="btn btn-secondary btn-md"
+            disabled={loading}
+            onClick={() => void load()}
+          >
+            Atualizar
+          </button>
+        </div>
       </header>
-      <section className="request-directory" aria-label="Pedidos de análise">
-        {error && (
-          <p className="error" role="alert">
-            {error}
-          </p>
+
+      <OpsKpis
+        items={requestKpis(items)}
+        active={view === "all" ? null : view}
+        onPick={(id) => setView((id as RequestViewId | null) ?? "all")}
+      />
+
+      <OpsViews
+        label="Visões"
+        active={view}
+        onPick={(id) => setView(id as RequestViewId)}
+        views={REQUEST_VIEWS.map((entry) => ({
+          ...entry,
+          count: counts[entry.id],
+        }))}
+      />
+
+      <div className="ops-filters">
+        <div className="ops-search">
+          <label className="sr-only" htmlFor="req-search">
+            Buscar pedido
+          </label>
+          <input
+            id="req-search"
+            className="input"
+            type="search"
+            placeholder="Buscar pelo código do pedido"
+            autoComplete="off"
+            spellCheck={false}
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
+        </div>
+        <select
+          className="input ops-filter-desktop"
+          aria-label="Situação do original"
+          value={documentState}
+          onChange={(event) => setDocumentState(event.target.value)}
+        >
+          {DOCUMENT_FILTERS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+        {(query || documentState || view !== "all") && (
+          <button
+            type="button"
+            className="btn btn-ghost btn-md ops-filter-desktop"
+            onClick={() => {
+              setQuery("");
+              setDocumentState("");
+              setView("all");
+            }}
+          >
+            Limpar
+          </button>
         )}
-        {!error && !loading && items.length === 0 && (
-          <p className="directory-state">Nenhum pedido encontrado.</p>
+        <button
+          ref={sheetTrigger}
+          type="button"
+          className="btn btn-secondary btn-md ops-filter-phone"
+          aria-haspopup="dialog"
+          onClick={() => setSheet(true)}
+        >
+          Filtros{documentState ? " (1)" : ""}
+        </button>
+      </div>
+
+      {error && (
+        <div className="error-state" role="alert">
+          <strong>Não foi possível consultar os pedidos</strong>
+          <span>{error}</span>
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            onClick={() => void load()}
+          >
+            Tentar novamente
+          </button>
+        </div>
+      )}
+
+      {loading && items.length === 0 && !error ? (
+        <div
+          className="rules-skeleton"
+          role="status"
+          aria-label="Carregando pedidos"
+        >
+          <span className="skeleton" />
+          <span className="skeleton" />
+          <span className="skeleton" />
+          <span className="skeleton" />
+        </div>
+      ) : !error && visible.length === 0 ? (
+        <div className="empty-state" role="status">
+          <strong>
+            {items.length === 0
+              ? "Nenhum pedido encontrado"
+              : "Nenhum pedido nesta visão"}
+          </strong>
+          <span>
+            {items.length === 0
+              ? "Os pedidos de arquivo aparecem aqui assim que os clientes enviarem."
+              : "Troque a visão ou limpe a busca para ver os outros pedidos carregados."}
+          </span>
+        </div>
+      ) : (
+        <OpsTable
+          label="Pedidos de arquivo"
+          columns={columns}
+          rows={visible}
+          rowKey={(item) => item.request_id}
+          hidden={prefs.hidden}
+          density={prefs.density}
+          selectedKey={selected?.request_id ?? null}
+          rowTone={requestTone}
+          actions={rowActions}
+          onOpen={(item, element) => {
+            trigger.current = element;
+            setSelected(item);
+          }}
+          card={(item) => (
+            <>
+              <span className="ops-card-top">
+                <strong>{shortId(item.request_id)}</strong>
+                <AgeBadge iso={item.created_at} now={now} />
+              </span>
+              <span className="ops-card-badges">
+                <Badge tone={paymentTone(item)}>{paymentLabel(item)}</Badge>
+                <Badge tone={workTone(item)}>{workLabel(item)}</Badge>
+              </span>
+              <span className="ops-card-meta">
+                {item.page_count} {item.page_count === 1 ? "página" : "páginas"}{" "}
+                · {documentLabels[item.document_state]}
+              </span>
+            </>
+          )}
+        />
+      )}
+
+      <div className="ops-foot">
+        <span>
+          {visible.length === items.length
+            ? `${items.length} pedidos carregados`
+            : `${visible.length} de ${items.length} carregados`}
+          <span className="ops-hint"> · J e K navegam, Enter abre</span>
+        </span>
+        {nextCursor && (
+          <button
+            type="button"
+            className="btn btn-secondary btn-md"
+            disabled={loading}
+            onClick={() => void load(nextCursor)}
+          >
+            {loading ? "Carregando…" : "Carregar mais"}
+          </button>
         )}
-        <ul>
-          {items.map((item) => (
-            <li key={item.request_id}>
-              <div>
-                <strong>Pedido nº {item.request_id.slice(-8)}</strong>
-                <small>
-                  {new Date(item.created_at).toLocaleString("pt-BR")} ·{" "}
-                  {item.page_count}{" "}
-                  {item.page_count === 1 ? "página" : "páginas"}
-                </small>
-                <small className="request-id">{item.request_id}</small>
-              </div>
-              <div className="request-states">
-                <span
-                  className={`badge ${item.document_state === "available" ? "badge-green" : item.document_state === "expired" ? "badge-yellow" : "badge-gray"}`}
-                >
-                  {documentLabels[item.document_state]}
-                </span>
-                <span className="badge badge-blue">{admissionLabel(item)}</span>
-                <span
-                  className={`badge ${item.payment_status === "received" ? "badge-green" : item.payment_status === "review" ? "badge-yellow" : item.charge_attempt === "unknown" ? "badge-yellow" : "badge-gray"}`}
-                >
-                  {paymentLabel(item)}
-                </span>
-                <span
-                  className={`badge ${item.work_status === "completed" ? "badge-green" : item.work_status === "running" ? "badge-blue" : item.work_status === "failed" ? "badge-red" : item.work_status === "suspended" || item.work_status === "unknown" ? "badge-yellow" : "badge-gray"}`}
-                >
-                  {workLabel(item)}
-                </span>
-              </div>
-              <div className="request-actions">
+      </div>
+
+      <RecordDrawer
+        open={selected !== null}
+        title={selected ? `Pedido ${shortId(selected.request_id)}` : ""}
+        subtitle={
+          selected ? dateTime.format(new Date(selected.created_at)) : undefined
+        }
+        badges={
+          selected && (
+            <>
+              <Badge tone={paymentTone(selected)}>
+                {paymentLabel(selected)}
+              </Badge>
+              <Badge tone={workTone(selected)}>{workLabel(selected)}</Badge>
+            </>
+          )
+        }
+        onClose={() => setSelected(null)}
+        returnFocus={() => trigger.current}
+      >
+        {selected && (
+          <>
+            <section className="detail-panel-section">
+              <h3 className="detail-panel-section-title">Linha do tempo</h3>
+              <OpsTimeline
+                steps={requestTimeline(
+                  selected,
+                  dateTime.format(new Date(selected.created_at)),
+                )}
+              />
+              <p className="ops-missing">
+                A data de cada etapa ainda não vem do backend; só a criação.
+              </p>
+            </section>
+            <section className="detail-panel-section">
+              <h3 className="detail-panel-section-title">Resumo</h3>
+              <dl className="ops-facts">
+                <div>
+                  <dt>Código completo</dt>
+                  <dd>
+                    <code>{selected.request_id}</code>
+                  </dd>
+                </div>
+                <div>
+                  <dt>Páginas</dt>
+                  <dd>{selected.page_count}</dd>
+                </div>
+                <div>
+                  <dt>Original</dt>
+                  <dd>{documentLabels[selected.document_state]}</dd>
+                </div>
+                <div>
+                  <dt>Arquivo</dt>
+                  <dd>{admissionLabel(selected)}</dd>
+                </div>
+              </dl>
+            </section>
+            <section className="detail-panel-section">
+              <h3 className="detail-panel-section-title">Ações</h3>
+              <div className="ops-actions">
                 <button
                   type="button"
-                  className="button secondary"
-                  onClick={() => openSource(item.request_id)}
+                  className="btn btn-secondary btn-md"
+                  onClick={() => openSource(selected.request_id)}
                 >
                   Conferir fonte
                 </button>
-                {item.work_id && (
+                {selected.work_id && (
                   <button
                     type="button"
-                    className="button secondary"
-                    onClick={() => openReview(item.work_id!)}
+                    className="btn btn-secondary btn-md"
+                    onClick={() => openReview(selected.work_id!)}
                   >
                     Conferir análise
                   </button>
                 )}
               </div>
-            </li>
-          ))}
-        </ul>
-        {nextCursor && (
-          <button
-            type="button"
-            className="button secondary load-more"
-            disabled={loading}
-            onClick={() => void load(nextCursor)}
-          >
-            Carregar mais
-          </button>
+            </section>
+          </>
         )}
-        {loading && items.length === 0 && (
-          <div
-            className="skeleton-rows"
-            role="status"
-            aria-label="Carregando pedidos"
+      </RecordDrawer>
+
+      <BottomSheet
+        open={sheet}
+        title="Filtros"
+        onClose={() => setSheet(false)}
+        returnFocus={() => sheetTrigger.current}
+        footer={
+          <>
+            <button
+              type="button"
+              className="btn btn-secondary btn-md"
+              onClick={() => {
+                setDocumentState("");
+                setSheet(false);
+              }}
+            >
+              Limpar
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary btn-md"
+              onClick={() => setSheet(false)}
+            >
+              Ver {visible.length}{" "}
+              {visible.length === 1 ? "resultado" : "resultados"}
+            </button>
+          </>
+        }
+      >
+        <div className="form-field">
+          <label className="form-field-label" htmlFor="req-doc-sheet">
+            Situação do original
+          </label>
+          <select
+            id="req-doc-sheet"
+            className="input"
+            value={documentState}
+            onChange={(event) => setDocumentState(event.target.value)}
           >
-            {[1, 2, 3, 4, 5].map((i) => (
-              <div
-                key={i}
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1.2fr 1.4fr auto",
-                  gap: "20px",
-                  padding: "20px 26px",
-                  borderBottom: "1px solid var(--line)",
-                }}
-              >
-                <div style={{ display: "grid", gap: "6px" }}>
-                  <div
-                    className="skeleton"
-                    style={{ height: "0.9rem", width: "70%" }}
-                  />
-                  <div
-                    className="skeleton"
-                    style={{ height: "0.75rem", width: "90%" }}
-                  />
-                </div>
-                <div style={{ display: "grid", gap: "5px" }}>
-                  {[0.8, 0.7, 0.75, 0.6].map((w, j) => (
-                    <div
-                      key={j}
-                      className="skeleton"
-                      style={{ height: "0.75rem", width: `${w * 100}%` }}
-                    />
-                  ))}
-                </div>
-                <div style={{ display: "flex", gap: "8px" }}>
-                  <div
-                    className="skeleton"
-                    style={{
-                      height: "36px",
-                      width: "100px",
-                      borderRadius: "8px",
-                    }}
-                  />
-                </div>
-              </div>
+            {DOCUMENT_FILTERS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
             ))}
-          </div>
-        )}
-        {loading && items.length > 0 && (
-          <p className="directory-state" role="status">
-            Atualizando…
-          </p>
-        )}
-      </section>
-    </div>
+          </select>
+        </div>
+      </BottomSheet>
+    </section>
   );
 }
