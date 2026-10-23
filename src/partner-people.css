@@ -1,0 +1,126 @@
+.people-sub {
+  margin: 2px 0 0;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.people-list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  list-style: none;
+}
+
+.people-list li {
+  display: grid;
+  padding: var(--space-3) var(--space-4);
+  gap: var(--space-3);
+  grid-template-columns: 34px minmax(0, 1fr) auto auto;
+  align-items: center;
+  background: var(--surface);
+}
+
+.people-list li + li {
+  border-top: 1px solid var(--border);
+}
+
+.people-avatar {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--primary-faint);
+  color: var(--primary);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-semibold);
+}
+
+.people-main {
+  display: grid;
+  min-width: 0;
+}
+
+.people-main strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.people-main small {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.people-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  justify-content: flex-end;
+}
+
+.people-more {
+  justify-self: start;
+}
+
+.people-timeline {
+  position: relative;
+  display: grid;
+  margin: 0;
+  padding: 0 0 0 var(--space-5);
+  gap: var(--space-4);
+  list-style: none;
+}
+
+.people-timeline::before {
+  content: "";
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  left: 5px;
+  width: 2px;
+  background: var(--border);
+}
+
+.people-timeline li {
+  position: relative;
+  display: grid;
+  gap: 2px;
+}
+
+.people-timeline li::before {
+  content: "";
+  position: absolute;
+  top: 5px;
+  left: calc(-1 * var(--space-5));
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--surface);
+  border-radius: 50%;
+  background: var(--primary);
+}
+
+.people-timeline small {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.people-timeline p {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-sm);
+}
+
+@media (max-width: 720px) {
+  .people-list li {
+    grid-template-columns: 34px minmax(0, 1fr);
+  }
+
+  .people-list li .badge,
+  .people-actions {
+    grid-column: 2;
+    justify-self: start;
+  }
+}

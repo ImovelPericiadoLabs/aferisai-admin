@@ -1034,6 +1034,137 @@ export const invitePartnerMember = (
       body: JSON.stringify({ email }),
     },
   );
+export type PartnerInvitationStatus =
+  | "delivery_unconfirmed"
+  | "smtp_accepted"
+  | "accepted"
+  | "expired"
+  | "revoked"
+  | "blocked";
+export type PartnerInvitationSummary = {
+  id: string;
+  status: PartnerInvitationStatus;
+  actor_team_member_id: string;
+  created_at: string;
+  expires_at: string;
+  attempted_at: string | null;
+  smtp_accepted_at: string | null;
+  consumed_at: string | null;
+  revoked_at: string | null;
+  confirmation_blocked_at: string | null;
+};
+export type PartnerPerson = {
+  id: string;
+  membership_id: string;
+  email: string;
+  identity_status: string;
+  membership_status: string;
+  last_access_at: string | null;
+  invitation: PartnerInvitationSummary | null;
+};
+export type PartnerPeoplePage = {
+  items: PartnerPerson[];
+  next_cursor: string | null;
+};
+export type PartnerManagementEvent = {
+  id: string;
+  action: string;
+  invitation_id: string | null;
+  actor_team_member_id: string | null;
+  actor_partner_member_id: string | null;
+  previous_value: string | null;
+  new_value: string | null;
+  reason: string;
+  created_at: string;
+};
+export type PartnerManagementEventPage = {
+  items: PartnerManagementEvent[];
+  next_cursor: string | null;
+};
+
+const partnerPeoplePath = (organizationId: string) =>
+  `/v1/team/organizations/${encodeURIComponent(organizationId)}`;
+
+export const listPartnerPeople = (organizationId: string, cursor?: string) =>
+  request<PartnerPeoplePage>(
+    `${partnerPeoplePath(organizationId)}/partner-people?limit=20${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`,
+    { method: "GET" },
+  );
+
+export const listPartnerPersonEvents = (
+  organizationId: string,
+  memberId: string,
+  cursor?: string,
+) =>
+  request<PartnerManagementEventPage>(
+    `${partnerPeoplePath(organizationId)}/partner-people/${encodeURIComponent(memberId)}/events?limit=20${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`,
+    { method: "GET" },
+  );
+
+const managementPost = (
+  organizationId: string,
+  tail: string,
+  reason: string,
+  csrfToken: string,
+) =>
+  request<unknown>(`${partnerPeoplePath(organizationId)}/${tail}`, {
+    method: "POST",
+    headers: { "X-CSRF-Token": csrfToken },
+    body: JSON.stringify({ reason }),
+  });
+
+export const resendPartnerInvitation = (
+  organizationId: string,
+  invitationId: string,
+  reason: string,
+  csrfToken: string,
+) =>
+  managementPost(
+    organizationId,
+    `partner-invitations/${encodeURIComponent(invitationId)}/resend`,
+    reason,
+    csrfToken,
+  );
+
+export const revokePartnerInvitation = (
+  organizationId: string,
+  invitationId: string,
+  reason: string,
+  csrfToken: string,
+) =>
+  managementPost(
+    organizationId,
+    `partner-invitations/${encodeURIComponent(invitationId)}/revoke`,
+    reason,
+    csrfToken,
+  );
+
+export const suspendPartnerPerson = (
+  organizationId: string,
+  memberId: string,
+  reason: string,
+  csrfToken: string,
+) =>
+  managementPost(
+    organizationId,
+    `partner-people/${encodeURIComponent(memberId)}/suspend`,
+    reason,
+    csrfToken,
+  );
+
+export const reactivatePartnerPerson = (
+  organizationId: string,
+  memberId: string,
+  reason: string,
+  csrfToken: string,
+) =>
+  managementPost(
+    organizationId,
+    `partner-people/${encodeURIComponent(memberId)}/reactivate`,
+    reason,
+    csrfToken,
+  );
+
 export const createOrganization = (body: OnboardingBody, csrfToken: string) =>
   request<OnboardingResult>("/v1/team/organizations", {
     method: "POST",

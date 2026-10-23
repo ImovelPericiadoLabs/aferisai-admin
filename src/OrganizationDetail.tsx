@@ -6,7 +6,6 @@ import {
   getOrganization,
   getLogoBlobUrl,
   grantApplicationPermission,
-  invitePartnerMember,
   mediaUrl,
   putOrganizationLogoWithProgress,
   replaceOrganizationProfile,
@@ -17,9 +16,8 @@ import type { ToastKind } from "./useToast";
 import "./partner-detail.css";
 import "./commercial-rules.css";
 import { Breadcrumbs } from "./Breadcrumbs";
-import { ConfirmDialog } from "./ConfirmDialog";
+import { PartnerPeople } from "./PartnerPeople";
 import { Disclosure } from "./controls";
-import { FieldAction } from "./FieldAction";
 import { LOGO_RULE } from "./file-rules";
 import { ImageUploader } from "./ImageUploader";
 import { ApplicationCreationWizard } from "./ApplicationCreationWizard";
@@ -29,8 +27,6 @@ import {
   applicationPermissionDescription,
   applicationPermissionLabel,
 } from "./display-labels";
-
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 type Props = {
   organizationId: string;
@@ -82,12 +78,6 @@ export function OrganizationDetail({
   const [selectedApplicationId, setSelectedApplicationId] = useState<
     string | null
   >(null);
-  const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteEditable, setInviteEditable] = useState(false);
-  const [inviteConfirm, setInviteConfirm] = useState(false);
-  const [inviteBusy, setInviteBusy] = useState(false);
-  const [inviteError, setInviteError] = useState("");
-  const [inviteNotice, setInviteNotice] = useState("");
   const [identifierNotice, setIdentifierNotice] = useState("");
 
   useEffect(() => {
@@ -251,45 +241,6 @@ export function OrganizationDetail({
     setLogoNotice("");
     await deleteOrganizationLogo(organizationId, csrfToken);
     await refreshLogo("Logo removido.");
-  }
-
-  function requestInvite(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!isAdmin) return;
-    const email = inviteEmail.trim();
-    setInviteNotice("");
-    if (!EMAIL_PATTERN.test(email)) {
-      setInviteError("Informe um e-mail válido, como nome@empresa.com.br.");
-      return;
-    }
-    setInviteError("");
-    setInviteConfirm(true);
-  }
-
-  async function sendInvite() {
-    if (!isAdmin || !inviteEmail.trim()) return;
-    setInviteBusy(true);
-    setInviteError("");
-    setInviteNotice("");
-    try {
-      await invitePartnerMember(organizationId, inviteEmail.trim(), csrfToken);
-      setInviteNotice(
-        "Convite enviado por e-mail. O link fica válido por 24 horas.",
-      );
-      setInviteEmail("");
-      setInviteEditable(false);
-    } catch (cause) {
-      if (cause instanceof ApiError && cause.status === 401) onUnauthorized();
-      else
-        setInviteError(
-          cause instanceof ApiError
-            ? cause.detail
-            : "Não foi possível confirmar o envio do convite. Consulte o cadastro antes de tentar novamente.",
-        );
-    } finally {
-      setInviteBusy(false);
-      setInviteConfirm(false);
-    }
   }
 
   async function copyIdentifier() {
@@ -639,6 +590,15 @@ export function OrganizationDetail({
                     </div>
                   </section>
 
+                  <PartnerPeople
+                    organizationId={organizationId}
+                    organizationName={detail.name}
+                    csrfToken={csrfToken}
+                    isAdmin={isAdmin}
+                    onUnauthorized={onUnauthorized}
+                    onToast={onToast}
+                  />
+
                   <section className="card" aria-labelledby="logo-title">
                     <div className="card-header">
                       <h2 className="card-title" id="logo-title">
@@ -675,90 +635,6 @@ export function OrganizationDetail({
                       )}
                     </div>
                   </section>
-
-                  {isAdmin && (
-                    <section
-                      className="card"
-                      aria-labelledby="partner-invitation-title"
-                    >
-                      <div className="card-header">
-                        <h2
-                          className="card-title"
-                          id="partner-invitation-title"
-                        >
-                          Acesso do parceiro
-                        </h2>
-                      </div>
-                      <div className="card-body">
-                        <p className="form-hint">
-                          Convide a pessoa responsável. Ela criará uma senha e
-                          ativará o autenticador antes de entrar na própria
-                          integração.
-                        </p>
-                        <form
-                          noValidate
-                          onSubmit={requestInvite}
-                          className="form-stack"
-                        >
-                          <FieldAction
-                            id="partner-invite-email"
-                            label="E-mail do responsável"
-                            action={
-                              <button
-                                className="btn btn-primary btn-md"
-                                disabled={inviteBusy || !inviteEmail.trim()}
-                              >
-                                {inviteBusy ? "Enviando…" : "Enviar convite"}
-                              </button>
-                            }
-                          >
-                            <input
-                              id="partner-invite-email"
-                              className="input"
-                              name="responsible-contact"
-                              type="text"
-                              inputMode="email"
-                              autoComplete="off"
-                              autoCapitalize="none"
-                              spellCheck={false}
-                              readOnly={!inviteEditable}
-                              onFocus={() => setInviteEditable(true)}
-                              value={inviteEmail}
-                              onChange={(event) =>
-                                setInviteEmail(event.target.value)
-                              }
-                            />
-                          </FieldAction>
-                        </form>
-                        {inviteError && (
-                          <div className="alert alert-danger" role="alert">
-                            {inviteError}
-                          </div>
-                        )}
-                        {inviteNotice && (
-                          <div className="alert alert-success" role="status">
-                            {inviteNotice}
-                          </div>
-                        )}
-                        <ConfirmDialog
-                          open={inviteConfirm}
-                          title="Enviar convite de acesso?"
-                          description="O convite será enviado agora por e-mail e o link vale por 24 horas. Confira o endereço: se estiver errado, outra pessoa receberá o acesso."
-                          details={[
-                            { label: "Parceria", value: detail?.name ?? "—" },
-                            {
-                              label: "Enviar para",
-                              value: inviteEmail.trim(),
-                            },
-                          ]}
-                          confirmLabel="Enviar convite"
-                          busy={inviteBusy}
-                          onConfirm={() => void sendInvite()}
-                          onCancel={() => setInviteConfirm(false)}
-                        />
-                      </div>
-                    </section>
-                  )}
                 </div>
 
                 <section
