@@ -1,0 +1,84 @@
+.onr-endpoint {
+  padding: var(--space-5);
+  margin-bottom: var(--space-5);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+
+.onr-endpoint-heading,
+.onr-endpoint-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.onr-endpoint-heading h2,
+.onr-endpoint-reset h3 {
+  margin: 0;
+}
+.onr-endpoint-heading p,
+.onr-endpoint-note,
+.onr-endpoint-reset p {
+  color: var(--text-muted);
+}
+
+.onr-endpoint-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3) var(--space-5);
+  margin: var(--space-4) 0;
+}
+
+.onr-endpoint-summary dt {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+.onr-endpoint-summary dd {
+  margin: var(--space-1) 0 0;
+  overflow-wrap: anywhere;
+}
+.onr-endpoint-summary code,
+.onr-endpoint-reset code {
+  overflow-wrap: anywhere;
+}
+
+.onr-endpoint-form,
+.onr-endpoint-reset {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-5);
+  max-width: 640px;
+}
+
+.onr-endpoint-form input,
+.onr-endpoint-form textarea,
+.onr-endpoint-reset textarea {
+  width: 100%;
+}
+.onr-endpoint-form textarea,
+.onr-endpoint-reset textarea {
+  min-height: 80px;
+}
+.onr-endpoint-form small {
+  color: var(--text-muted);
+}
+.onr-endpoint-actions {
+  justify-content: flex-start;
+  margin-top: var(--space-2);
+}
+.onr-endpoint-reset {
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+}
+.onr-endpoint-reset .btn {
+  justify-self: start;
+}
+
+@media (max-width: 640px) {
+  .onr-endpoint-summary {
+    grid-template-columns: 1fr;
+  }
+}

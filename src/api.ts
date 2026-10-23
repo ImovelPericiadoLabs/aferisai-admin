@@ -2268,6 +2268,45 @@ export const suspendRegistrySupplierAccount = (
   csrfToken: string,
 ) => supplierDecision(id, "suspend", expectedVersion, reason, csrfToken);
 
+export type OnrEndpoint = {
+  origin: string;
+  mode: "official" | "proxy";
+  proxy_key_configured: boolean;
+  version: number;
+};
+
+export const getOnrEndpoint = () =>
+  request<OnrEndpoint>("/v1/team/onr-endpoint", { method: "GET" });
+
+export const setOnrEndpoint = (
+  origin: string,
+  proxyKey: string,
+  expectedVersion: number,
+  reason: string,
+  csrfToken: string,
+) =>
+  request<OnrEndpoint>("/v1/team/onr-endpoint", {
+    method: "PUT",
+    headers: { "X-CSRF-Token": csrfToken },
+    body: JSON.stringify({
+      origin,
+      proxy_key: proxyKey,
+      expected_version: expectedVersion,
+      reason,
+    }),
+  });
+
+export const resetOnrEndpoint = (
+  expectedVersion: number,
+  reason: string,
+  csrfToken: string,
+) =>
+  request<OnrEndpoint>("/v1/team/onr-endpoint/reset", {
+    method: "POST",
+    headers: { "X-CSRF-Token": csrfToken },
+    body: JSON.stringify({ expected_version: expectedVersion, reason }),
+  });
+
 export type ManagementEvent = {
   id: string;
   actor_team_member_id: string;

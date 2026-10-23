@@ -124,7 +124,10 @@ describe("partner metrics and statement API", () => {
 import {
   activateRegistrySupplierAccount,
   createRegistrySupplierAccount,
+  getOnrEndpoint,
   listRegistrySupplierAccounts,
+  resetOnrEndpoint,
+  setOnrEndpoint,
   suspendRegistrySupplierAccount,
 } from "./api";
 
@@ -177,5 +180,38 @@ describe("registry supplier accounts API", () => {
     });
     await suspendRegistrySupplierAccount("a1", 4, "Troca de conta.", "csrf");
     expect(last().path).toBe("/v1/team/registry-supplier-accounts/a1/suspend");
+  });
+  it("changes and restores the RI Digital endpoint with version and CSRF", async () => {
+    const last = stub();
+    await getOnrEndpoint();
+    expect(last()).toMatchObject({
+      path: "/v1/team/onr-endpoint",
+      method: "GET",
+    });
+    await setOnrEndpoint(
+      "https://onr.sec-devchamps.workers.dev",
+      "synthetic-private-proxy-key-32chars",
+      2,
+      "Troca após indisponibilidade de rede",
+      "csrf",
+    );
+    expect(last()).toMatchObject({
+      path: "/v1/team/onr-endpoint",
+      method: "PUT",
+      headers: { "X-CSRF-Token": "csrf" },
+      body: {
+        expected_version: 2,
+        proxy_key: "synthetic-private-proxy-key-32chars",
+      },
+    });
+    expect(String(vi.mocked(fetch).mock.calls.at(-1)?.[0])).not.toContain(
+      "synthetic-private",
+    );
+    await resetOnrEndpoint(3, "Restaurar conexão oficial", "csrf");
+    expect(last()).toMatchObject({
+      path: "/v1/team/onr-endpoint/reset",
+      method: "POST",
+      body: { expected_version: 3, reason: "Restaurar conexão oficial" },
+    });
   });
 });
