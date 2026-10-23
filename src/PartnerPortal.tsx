@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useState,
+  type FormEvent,
+  type ReactNode,
+} from "react";
 import {
   ApiError,
   acceptPartnerOrganizationInvitation,
@@ -19,16 +25,22 @@ import {
   ApplicationWorkspace,
   type IntegrationTab,
 } from "./ApplicationWorkspace";
+import { Breadcrumbs } from "./Breadcrumbs";
 import "./partner-portal.css";
 
 type PartnerSession = { member: PartnerMember; csrf: string };
-const partnerNav: { tab: IntegrationTab; label: string; icon: string }[] = [
-  { tab: "overview", label: "Visão geral", icon: "⌂" },
-  { tab: "webhooks", label: "Webhooks", icon: "↗" },
-  { tab: "deliveries", label: "Entregas", icon: "▤" },
-  { tab: "credentials", label: "Credenciais", icon: "⚿" },
-  { tab: "access", label: "Acessos", icon: "◫" },
-];
+
+function PartnerAuthShell({ children }: { children: ReactNode }) {
+  return (
+    <main className="pp-auth">
+      <div className="pp-auth-brand">
+        <img src="/logo-dark.svg" alt="AferisAI" />
+        <span>Integrações</span>
+      </div>
+      <div className="pp-auth-card card">{children}</div>
+    </main>
+  );
+}
 
 function Invitation() {
   const token =
@@ -124,124 +136,119 @@ function Invitation() {
     }
   }
 
+  const err = error && (
+    <div className="alert alert-danger" role="alert">
+      {error}
+    </div>
+  );
   return (
-    <main className="partner-auth">
-      <div className="partner-auth-brand">
-        <img src="/logo-dark.svg" alt="AferisAI" />
-        <span>Integrações</span>
-      </div>
-      <div className="partner-auth-form">
-        <p className="integration-kicker">Convite para parceria</p>
-        {completed ? (
-          <>
-            <h1>Acesso preparado</h1>
-            <p>
-              Seu autenticador está confirmado. Entre com seu e-mail, senha e
-              código atual.
-            </p>
-            <a className="button primary" href="/#parceiro">
-              Entrar na integração
-            </a>
-          </>
-        ) : !token ? (
-          <>
-            <h1>Convite não encontrado</h1>
-            <p>Abra o link recebido por e-mail para preparar seu acesso.</p>
-          </>
-        ) : existingMember ? (
-          <div>
-            <h1>Adicionar empresa ao seu acesso</h1>
-            <p>
-              Convite para {existingMember.email}. Você poderá trocar de empresa
-              no topo do painel.
-            </p>
-            {error && (
-              <p className="error" role="alert">
-                {error}
-              </p>
-            )}
-            <button
-              type="button"
-              className="button primary"
-              disabled={busy || !existingCsrf}
-              onClick={() => void acceptExisting()}
-            >
-              {busy ? "Adicionando…" : "Aceitar convite"}
-            </button>
+    <PartnerAuthShell>
+      <p className="pp-kicker">Convite para parceria</p>
+      {completed ? (
+        <>
+          <h1 className="pp-title">Acesso preparado</h1>
+          <p className="form-hint">
+            Seu autenticador está confirmado. Entre com seu e-mail, senha e
+            código atual.
+          </p>
+          <a className="btn btn-primary btn-md" href="/#parceiro">
+            Entrar na integração
+          </a>
+        </>
+      ) : !token ? (
+        <>
+          <h1 className="pp-title">Convite não encontrado</h1>
+          <p className="form-hint">
+            Abra o link recebido por e-mail para preparar seu acesso.
+          </p>
+        </>
+      ) : existingMember ? (
+        <div className="pp-stack">
+          <h1 className="pp-title">Adicionar empresa ao seu acesso</h1>
+          <p className="form-hint">
+            Convite para {existingMember.email}. Você poderá trocar de empresa
+            no topo do painel.
+          </p>
+          {err}
+          <button
+            type="button"
+            className="btn btn-primary btn-md"
+            disabled={busy || !existingCsrf}
+            onClick={() => void acceptExisting()}
+          >
+            {busy ? "Adicionando…" : "Aceitar convite"}
+          </button>
+        </div>
+      ) : !secret ? (
+        <form className="pp-stack" onSubmit={(event) => void enroll(event)}>
+          <h1 className="pp-title">Crie seu acesso</h1>
+          <p className="form-hint">
+            Defina uma senha para a sua parceria. Depois, ative o código do
+            autenticador.
+          </p>
+          <div className="form-field">
+            <label className="form-field-label" htmlFor="partner-new-password">
+              Senha
+            </label>
+            <input
+              id="partner-new-password"
+              className="input"
+              type="password"
+              autoComplete="new-password"
+              minLength={15}
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              required
+            />
+            <span className="form-hint">Use pelo menos 15 caracteres.</span>
           </div>
-        ) : !secret ? (
-          <form onSubmit={(event) => void enroll(event)}>
-            <h1>Crie seu acesso</h1>
-            <p>
-              Defina uma senha para a sua parceria. Depois, ative o código do
-              autenticador.
-            </p>
-            <div className="field">
-              <label htmlFor="partner-new-password">Senha</label>
-              <input
-                id="partner-new-password"
-                type="password"
-                autoComplete="new-password"
-                minLength={15}
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                required
-              />
-              <small>Use pelo menos 15 caracteres.</small>
-            </div>
-            {error && (
-              <p className="error" role="alert">
-                {error}
-              </p>
-            )}
-            <button
-              className="button primary"
-              disabled={busy || password.length < 15}
-            >
-              {busy ? "Preparando…" : "Continuar"}
-            </button>
-          </form>
-        ) : (
-          <form onSubmit={(event) => void confirm(event)}>
-            <h1>Ative o autenticador</h1>
-            <p>
-              Adicione esta chave ao aplicativo autenticador. Ela aparece
-              somente agora.
-            </p>
-            <div className="partner-secret">
-              <span>Chave do autenticador</span>
-              <code>{secret}</code>
-            </div>
-            <div className="field">
-              <label htmlFor="partner-confirm-otp">Código de 6 dígitos</label>
-              <input
-                id="partner-confirm-otp"
-                inputMode="numeric"
-                autoComplete="one-time-code"
-                pattern="[0-9]{6}"
-                maxLength={6}
-                value={otp}
-                onChange={(event) =>
-                  setOtp(event.target.value.replace(/\D/g, ""))
-                }
-                required
-              />
-            </div>
-            {error && (
-              <p className="error" role="alert">
-                {error}
-              </p>
-            )}
-            <button
-              className="button primary"
-              disabled={busy || otp.length !== 6}
-            >
-              {busy ? "Confirmando…" : "Confirmar acesso"}
-            </button>
-          </form>
-        )}
-      </div>
-    </main>
+          {err}
+          <button
+            className="btn btn-primary btn-md"
+            disabled={busy || password.length < 15}
+          >
+            {busy ? "Preparando…" : "Continuar"}
+          </button>
+        </form>
+      ) : (
+        <form className="pp-stack" onSubmit={(event) => void confirm(event)}>
+          <h1 className="pp-title">Ative o autenticador</h1>
+          <p className="form-hint">
+            Adicione esta chave ao aplicativo autenticador. Ela aparece somente
+            agora.
+          </p>
+          <div className="secret-reveal-box">
+            <span className="form-field-label">Chave do autenticador</span>
+            <code>{secret}</code>
+          </div>
+          <div className="form-field">
+            <label className="form-field-label" htmlFor="partner-confirm-otp">
+              Código de 6 dígitos
+            </label>
+            <input
+              id="partner-confirm-otp"
+              className="input"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              pattern="[0-9]{6}"
+              maxLength={6}
+              value={otp}
+              onChange={(event) =>
+                setOtp(event.target.value.replace(/\D/g, ""))
+              }
+              required
+            />
+          </div>
+          {err}
+          <button
+            className="btn btn-primary btn-md"
+            disabled={busy || otp.length !== 6}
+          >
+            {busy ? "Confirmando…" : "Confirmar acesso"}
+          </button>
+        </form>
+      )}
+    </PartnerAuthShell>
   );
 }
 
@@ -265,7 +272,6 @@ export function PartnerPortal() {
   const [busy, setBusy] = useState(false);
   const [switching, setSwitching] = useState(false);
   const [error, setError] = useState("");
-  const [menuOpen, setMenuOpen] = useState(false);
   const isInvitation = window.location.hash.startsWith("#convite");
   const unauthorize = useCallback(() => {
     setSession(null);
@@ -412,39 +418,35 @@ export function PartnerPortal() {
   if (isInvitation) return <Invitation />;
   if (loading)
     return (
-      <main className="partner-auth">
+      <PartnerAuthShell>
         <div
-          className="integration-skeleton"
+          className="rules-skeleton"
           role="status"
           aria-label="Carregando parceria"
         >
-          <i />
-          <i />
-          <i />
+          <span className="skeleton" />
+          <span className="skeleton" />
+          <span className="skeleton" />
         </div>
-      </main>
+      </PartnerAuthShell>
     );
   if (!session)
     return (
-      <main className="partner-auth">
-        <div className="partner-auth-brand">
-          <img src="/logo-dark.svg" alt="AferisAI" />
-          <span>Integrações</span>
-        </div>
-        <form
-          className="partner-auth-form"
-          onSubmit={(event) => void login(event)}
-        >
-          <p className="integration-kicker">Sua parceria</p>
-          <h1>Entre na sua integração</h1>
-          <p>
+      <PartnerAuthShell>
+        <form className="pp-stack" onSubmit={(event) => void login(event)}>
+          <p className="pp-kicker">Sua parceria</p>
+          <h1 className="pp-title">Entre na sua integração</h1>
+          <p className="form-hint">
             Consulte eventos, configure seu webhook e gerencie credenciais da
             sua aplicação.
           </p>
-          <div className="field">
-            <label htmlFor="partner-email">E-mail</label>
+          <div className="form-field">
+            <label className="form-field-label" htmlFor="partner-email">
+              E-mail
+            </label>
             <input
               id="partner-email"
+              className="input"
               type="email"
               autoComplete="username"
               value={email}
@@ -452,10 +454,13 @@ export function PartnerPortal() {
               required
             />
           </div>
-          <div className="field">
-            <label htmlFor="partner-password">Senha</label>
+          <div className="form-field">
+            <label className="form-field-label" htmlFor="partner-password">
+              Senha
+            </label>
             <input
               id="partner-password"
+              className="input"
               type="password"
               autoComplete="current-password"
               value={password}
@@ -463,10 +468,13 @@ export function PartnerPortal() {
               required
             />
           </div>
-          <div className="field">
-            <label htmlFor="partner-otp">Código do autenticador</label>
+          <div className="form-field">
+            <label className="form-field-label" htmlFor="partner-otp">
+              Código do autenticador
+            </label>
             <input
               id="partner-otp"
+              className="input"
               inputMode="numeric"
               autoComplete="one-time-code"
               pattern="[0-9]{6}"
@@ -479,18 +487,18 @@ export function PartnerPortal() {
             />
           </div>
           {error && (
-            <p className="error" role="alert">
+            <div className="alert alert-danger" role="alert">
               {error}
-            </p>
+            </div>
           )}
-          <button className="button primary" disabled={busy}>
+          <button className="btn btn-primary btn-md" disabled={busy}>
             {busy ? "Entrando…" : "Entrar"}
           </button>
-          <a className="partner-team-link" href="/#">
+          <a className="pp-link" href="/#">
             Acesso da equipe
           </a>
         </form>
-      </main>
+      </PartnerAuthShell>
     );
 
   const selectedPermissions = application
@@ -505,97 +513,64 @@ export function PartnerPortal() {
   }));
 
   return (
-    <div className="partner-shell">
-      <aside
-        className={`partner-sidebar ${menuOpen ? "open" : ""}`}
-        aria-label="Navegação da parceria"
-      >
-        <div className="partner-sidebar-brand">
+    <div className="pp-shell">
+      <header className="pp-topbar">
+        <div className="pp-topbar-brand">
           <img src="/logo-dark.svg" alt="AferisAI" />
           <span>Integrações</span>
         </div>
-        <div className="partner-organization">
-          <small>MINHA PARCERIA</small>
-          <strong>
-            {session.member.organization_name || "Selecione uma empresa"}
-          </strong>
-          <span>
-            {visibleApplications.length === 1
-              ? "1 aplicação"
-              : `${visibleApplications.length} aplicações`}
-          </span>
-        </div>
-        <nav aria-label="Integração">
-          {partnerNav.map((item) => (
-            <button
-              key={item.tab}
-              type="button"
-              aria-current={tab === item.tab ? "page" : undefined}
-              onClick={() => {
-                setTab(item.tab);
-                setMenuOpen(false);
-              }}
-            >
-              <span aria-hidden="true">{item.icon}</span>
-              {item.label}
-            </button>
-          ))}
-        </nav>
-        <div className="partner-sidebar-foot">
-          <div className="partner-account">
-            <span>{session.member.email.slice(0, 2).toUpperCase()}</span>
-            <div>
-              <strong>{session.member.email}</strong>
-              <small>Parceiro</small>
-            </div>
-          </div>
-          <button type="button" disabled={busy} onClick={() => void logout()}>
-            Sair da conta
-          </button>
-        </div>
-      </aside>
-      {menuOpen && (
-        <button
-          className="partner-backdrop"
-          type="button"
-          aria-label="Fechar menu"
-          onClick={() => setMenuOpen(false)}
+        <PartnerOrganizationSwitcher
+          activeId={session.member.organization_id}
+          activeName={session.member.organization_name}
+          disabled={switching}
+          onSelect={changeOrganization}
+          onUnauthorized={unauthorize}
         />
-      )}
-      <div className="partner-main">
-        <header className="partner-topbar">
+        <div className="pp-account">
+          <span className="pp-avatar" aria-hidden="true">
+            {session.member.email.slice(0, 2).toUpperCase()}
+          </span>
+          <span className="pp-account-email">{session.member.email}</span>
           <button
-            className="partner-menu-button"
             type="button"
-            aria-label="Abrir menu"
-            onClick={() => setMenuOpen(true)}
+            className="btn btn-secondary btn-sm"
+            disabled={busy}
+            onClick={() => void logout()}
           >
-            ☰
+            Sair
           </button>
-          <PartnerOrganizationSwitcher
-            activeId={session.member.organization_id}
-            activeName={session.member.organization_name}
-            disabled={switching}
-            onSelect={changeOrganization}
-            onUnauthorized={unauthorize}
-          />
-          <strong>Minha integração</strong>
-        </header>
-        <main className="partner-content">
-          {error && (
-            <p className="error" role="alert">
-              {error}
-            </p>
-          )}
-          {!session.member.organization_id ? (
-            <div className="integration-empty">
-              <h1>Escolha uma empresa</h1>
-              <p>
-                Selecione no topo uma empresa à qual você tem acesso para ver as
-                aplicações.
-              </p>
-            </div>
-          ) : (
+        </div>
+      </header>
+      <main className="page pp-content">
+        {error && (
+          <div className="alert alert-danger" role="alert">
+            {error}
+          </div>
+        )}
+        {!session.member.organization_id ? (
+          <div className="empty-state" role="status">
+            <strong>Escolha uma empresa</strong>
+            <span>
+              Selecione no topo uma empresa à qual você tem acesso para ver as
+              aplicações.
+            </span>
+          </div>
+        ) : (
+          <>
+            <Breadcrumbs
+              items={[
+                {
+                  label: session.member.organization_name || "Minha parceria",
+                  onSelect:
+                    application && appRecords.length > 1
+                      ? () => setSelectedId(null)
+                      : undefined,
+                },
+                ...(application && appRecords.length > 1
+                  ? [{ label: application.name }]
+                  : []),
+              ]}
+            />
             <ApplicationWorkspace
               applications={appRecords}
               permissions={selectedPermissions}
@@ -615,9 +590,9 @@ export function PartnerPortal() {
               selectedTab={tab}
               onTabChange={setTab}
             />
-          )}
-        </main>
-      </div>
+          </>
+        )}
+      </main>
     </div>
   );
 }
