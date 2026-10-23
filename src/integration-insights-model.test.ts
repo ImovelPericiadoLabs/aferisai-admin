@@ -279,3 +279,61 @@ describe("filterPermissionGroups", () => {
     ).toEqual(["registry"]);
   });
 });
+
+describe("validateRedirectUris (backend parity)", () => {
+  const problem = (value: string) => validateRedirectUris([value]).problems[0];
+  it("rejects what the backend rejects", () => {
+    expect(problem("https://a.com/cb?x=1")).toBe("Não use parâmetros (?).");
+    expect(problem("https://user:pass@a.com/cb")).toBe(
+      "Não inclua usuário ou senha.",
+    );
+    expect(problem("https://localhost/cb")).toBe(
+      "Use um domínio público (sem IP nem localhost).",
+    );
+    expect(problem("https://10.0.0.1/cb")).toBe(
+      "Use um domínio público (sem IP nem localhost).",
+    );
+    expect(problem("https://a.com:8443/cb")).toBe("Use a porta padrão (443).");
+    expect(problem("https://ação.com/cb")).toBe(
+      "A URL tem caracteres não permitidos.",
+    );
+    expect(problem(`https://a.com/${"x".repeat(2050)}`)).toBe(
+      "A URL tem caracteres não permitidos.",
+    );
+  });
+  it("accepts the default port and a plain path", () => {
+    expect(
+      validateRedirectUris(["https://app.exemplo.com.br:443/auth/retorno"]).ok,
+    ).toBe(true);
+    expect(validateRedirectUris(["https://app.exemplo.com.br"]).ok).toBe(true);
+  });
+});
+
+describe("filterPermissionGroups counts", () => {
+  it("recomputes the granted count for what is shown", () => {
+    const groups = groupPermissions(
+      [
+        { code: "analysis:read", description: "" },
+        { code: "analysis:write", description: "" },
+        { code: "analysis:create", description: "" },
+      ],
+      ["analysis:read", "analysis:write"],
+    );
+    const missing = filterPermissionGroups(groups, "", "missing", (c) => c);
+    expect(missing[0].grantedCount).toBe(0);
+    expect(missing[0].items).toHaveLength(1);
+  });
+});
+
+describe("integrationReadiness after a suspension", () => {
+  it("requires a new test once the webhook is suspended", () => {
+    const result = integrationReadiness({
+      endpoint: endpoint({ status: "suspended" }),
+      credentials: [credential()],
+      deliveries: [],
+      grantedCount: 1,
+    });
+    expect(result.steps.find((s) => s.id === "tested")?.done).toBe(false);
+    expect(result.next).toMatchObject({ id: "tested", tab: "webhooks" });
+  });
+});

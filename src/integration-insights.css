@@ -1323,3 +1323,9 @@
     animation: none;
   }
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .wf-fill {
+    transition: none;
+  }
+}

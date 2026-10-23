@@ -158,7 +158,10 @@ export function ApplicationWorkspace({
       if (scroll)
         root.scrollTo({
           left: active.offsetLeft - (root.clientWidth - active.offsetWidth) / 2,
-          behavior: "smooth",
+          behavior: window.matchMedia("(prefers-reduced-motion: reduce)")
+            .matches
+            ? "auto"
+            : "smooth",
         });
     };
     place(true);
@@ -168,7 +171,7 @@ export function ApplicationWorkspace({
       .querySelectorAll('[role="tab"]')
       .forEach((tab) => observer.observe(tab));
     return () => observer.disconnect();
-  }, [activeTab, snapshot, canManage]);
+  }, [activeTab, snapshot, canManage, application?.id]);
 
   if (!application && applications.length > 1) {
     return (
@@ -387,7 +390,8 @@ export function ApplicationWorkspace({
                   data-tone={badge.tone}
                   data-dot={badge.label === null}
                 >
-                  {badge.label}
+                  <span aria-hidden="true">{badge.label}</span>
+                  <span className="sr-only">{badge.sr}</span>
                 </span>
               )}
             </button>
@@ -473,6 +477,11 @@ export function ApplicationWorkspace({
                 granted={application.permissions}
                 canChange={canManage && channel === "team" && editable}
                 busy={permissionBusy}
+                readOnlyHint={
+                  channel === "partner"
+                    ? "Somente leitura: a equipe da Aferis gerencia estes acessos."
+                    : "Somente leitura: seu perfil não pode alterar estes acessos, ou a aplicação está suspensa."
+                }
                 onRequest={(code, granted) =>
                   setPermissionToReview({ code, granted })
                 }

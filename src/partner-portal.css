@@ -59,6 +59,7 @@
 }
 
 .pp-shell {
+  --topbar-height: 56px;
   min-height: 100vh;
   background: var(--bg);
 }

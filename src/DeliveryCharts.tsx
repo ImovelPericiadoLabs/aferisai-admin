@@ -15,10 +15,19 @@ const PAD = { left: 34, right: 8, top: 10, bottom: 22 };
 function niceMax(value: number): number {
   if (value <= 4) return 4;
   const magnitude = 10 ** Math.floor(Math.log10(value));
-  return Math.ceil(value / magnitude) * magnitude;
+  const rounded = Math.ceil(value / magnitude) * magnitude;
+  return rounded % 2 === 0 ? rounded : rounded + 1;
 }
 
-function DaysChart({ buckets }: { buckets: DayBucket[] }) {
+function DaysChart({
+  buckets,
+  loaded,
+  note,
+}: {
+  buckets: DayBucket[];
+  loaded: number;
+  note: string;
+}) {
   const [active, setActive] = useState<number | null>(null);
   const max = niceMax(Math.max(...buckets.map((b) => b.total), 1));
   const innerW = W - PAD.left - PAD.right;
@@ -33,13 +42,38 @@ function DaysChart({ buckets }: { buckets: DayBucket[] }) {
     <figure className="dchart-card card">
       <figcaption>
         <strong>Entregas por dia</strong>
-        <span role="status">
+        <span>
           {shown
             ? `${shown.label} · ${shown.delivered} entregues · ${shown.problems} com problema${shown.other ? ` · ${shown.other} outras` : ""}`
-            : `${total} nos últimos ${buckets.length} dias`}
+            : `${total} de ${loaded} carregadas, em ${buckets.length} dias${note}`}
         </span>
       </figcaption>
-      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Entregas por dia">
+      <table className="sr-only">
+        <caption>
+          Entregas por dia entre as {loaded} carregadas{note}
+        </caption>
+        <thead>
+          <tr>
+            <th scope="col">Dia</th>
+            <th scope="col">Entregues</th>
+            <th scope="col">Com problema</th>
+            <th scope="col">Outras</th>
+          </tr>
+        </thead>
+        <tbody>
+          {buckets
+            .filter((bucket) => bucket.total > 0)
+            .map((bucket) => (
+              <tr key={bucket.key}>
+                <th scope="row">{bucket.label}</th>
+                <td>{bucket.delivered}</td>
+                <td>{bucket.problems}</td>
+                <td>{bucket.other}</td>
+              </tr>
+            ))}
+        </tbody>
+      </table>
+      <svg viewBox={`0 0 ${W} ${H}`} aria-hidden="true">
         {[0, 0.5, 1].map((fraction) => (
           <g key={fraction}>
             <line
@@ -72,12 +106,8 @@ function DaysChart({ buckets }: { buckets: DayBucket[] }) {
               key={bucket.key}
               className="dchart-col"
               data-active={active === index}
-              tabIndex={0}
-              aria-label={`${bucket.label}: ${bucket.delivered} entregues, ${bucket.problems} com problema, ${bucket.other} outras`}
               onMouseEnter={() => setActive(index)}
               onMouseLeave={() => setActive(null)}
-              onFocus={() => setActive(index)}
-              onBlur={() => setActive(null)}
             >
               <rect
                 className="dchart-hit"
@@ -151,7 +181,7 @@ function LatencyChart({ points }: { points: LatencyPoint[] }) {
     <figure className="dchart-card card">
       <figcaption>
         <strong>Latência</strong>
-        <span role="status">
+        <span>
           {shown
             ? `${shown.ms} ms · ${deliveryLabel(shown.status)}`
             : average !== null
@@ -197,12 +227,8 @@ function LatencyChart({ points }: { points: LatencyPoint[] }) {
               cx={x(index)}
               cy={y(point.ms)}
               r={active === index ? 5 : 3.5}
-              tabIndex={0}
-              aria-label={`${point.ms} ms, ${deliveryLabel(point.status)}`}
               onMouseEnter={() => setActive(index)}
               onMouseLeave={() => setActive(null)}
-              onFocus={() => setActive(index)}
-              onBlur={() => setActive(null)}
             />
           ))}
         </svg>
@@ -214,15 +240,18 @@ function LatencyChart({ points }: { points: LatencyPoint[] }) {
 export function DeliveryCharts({
   items,
   now,
+  note = "",
 }: {
   items: WebhookDelivery[];
   now?: number;
+  /** Extra scope shown to the reader, e.g. " (filtro: Falhas)". */
+  note?: string;
 }) {
   const buckets = useMemo(() => bucketDeliveries(items, 14, now), [items, now]);
   const points = useMemo(() => latencySeries(items, 30), [items]);
   return (
     <div className="dchart">
-      <DaysChart buckets={buckets} />
+      <DaysChart buckets={buckets} loaded={items.length} note={note} />
       <LatencyChart points={points} />
     </div>
   );

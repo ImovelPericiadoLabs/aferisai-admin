@@ -99,10 +99,11 @@ export function integrationReadiness(input: {
   grantedCount: number;
 }): { percent: number; steps: ReadinessStep[]; next: ReadinessStep | null } {
   const tested =
-    Boolean(input.endpoint?.last_successful_test_at) ||
-    input.deliveries.some(
-      (item) => item.is_test && item.status === "delivered",
-    );
+    input.endpoint?.status !== "suspended" &&
+    (Boolean(input.endpoint?.last_successful_test_at) ||
+      input.deliveries.some(
+        (item) => item.is_test && item.status === "delivered",
+      ));
   const steps: ReadinessStep[] = [
     {
       id: "endpoint",
@@ -190,6 +191,34 @@ export function groupPermissions(
 
 export const MAX_REDIRECT_URIS = 5;
 
+const HOST_PATTERN =
+  /^(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,63}$/;
+
+/** Mirrors the backend rules for callbacks so mistakes show up before saving. */
+function redirectProblem(value: string): string | null {
+  let parsed: URL;
+  try {
+    parsed = new URL(value);
+  } catch {
+    return "Informe uma URL completa.";
+  }
+  if (parsed.protocol !== "https:") return "Use HTTPS.";
+  if (value.includes("#")) return "Remova o trecho depois de #.";
+  if (value.includes("?")) return "Não use parâmetros (?).";
+  if (
+    value.length > 2048 ||
+    // eslint-disable-next-line no-control-regex
+    /[^\x21-\x7e]/.test(value) ||
+    value.includes("\\")
+  )
+    return "A URL tem caracteres não permitidos.";
+  if (parsed.username || parsed.password) return "Não inclua usuário ou senha.";
+  if (!HOST_PATTERN.test(parsed.hostname))
+    return "Use um domínio público (sem IP nem localhost).";
+  if (parsed.port && parsed.port !== "443") return "Use a porta padrão (443).";
+  return null;
+}
+
 export function validateRedirectUris(list: string[]): {
   ok: boolean;
   problems: Record<number, string>;
@@ -198,16 +227,8 @@ export function validateRedirectUris(list: string[]): {
   const problems: Record<number, string> = {};
   const seen = new Set<string>();
   list.forEach((value, index) => {
-    let parsed: URL | null = null;
-    try {
-      parsed = new URL(value);
-    } catch {
-      parsed = null;
-    }
-    if (!parsed) problems[index] = "Informe uma URL completa.";
-    else if (parsed.protocol !== "https:") problems[index] = "Use HTTPS.";
-    else if (value.includes("#"))
-      problems[index] = "Remova o trecho depois de #.";
+    const found = redirectProblem(value);
+    if (found) problems[index] = found;
     else if (seen.has(value)) problems[index] = "Esta URL já está na lista.";
     seen.add(value);
   });
@@ -217,16 +238,6 @@ export function validateRedirectUris(list: string[]): {
     problems,
     tooMany,
   };
-}
-
-export type PermissionAction = "read" | "create" | "write" | "upload" | "other";
-
-export function permissionAction(code: string): PermissionAction {
-  if (code.endsWith(":upload")) return "upload";
-  const last = code.split(":").pop();
-  return last === "read" || last === "create" || last === "write"
-    ? last
-    : "other";
 }
 
 const fold = (value: string) =>
@@ -251,5 +262,19 @@ export function filterPermissionGroups(
         ).includes(needle);
       }),
     }))
+    .map((group) => ({
+      ...group,
+      grantedCount: group.items.filter((item) => item.granted).length,
+    }))
     .filter((group) => group.items.length > 0);
+}
+
+export type PermissionAction = "read" | "create" | "write" | "upload" | "other";
+
+export function permissionAction(code: string): PermissionAction {
+  if (code.endsWith(":upload")) return "upload";
+  const last = code.split(":").pop();
+  return last === "read" || last === "create" || last === "write"
+    ? last
+    : "other";
 }

@@ -94,6 +94,8 @@ export function RedirectUriManagement({
       );
     } catch (cause) {
       if (cause instanceof ApiError && cause.status === 401) onUnauthorized();
+      else if (cause instanceof ApiError && cause.status === 422)
+        setError(cause.detail);
       else {
         const observed = await refresh();
         if (
@@ -225,7 +227,11 @@ export function RedirectUriManagement({
               <FieldAction
                 id={`redirect-candidate-${applicationId}`}
                 label="Novo destino"
-                hint={candidateError || undefined}
+                hint={
+                  candidateError ? (
+                    <span role="alert">{candidateError}</span>
+                  ) : undefined
+                }
                 action={
                   <button
                     type="submit"

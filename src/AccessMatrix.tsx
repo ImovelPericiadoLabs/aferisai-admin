@@ -24,12 +24,14 @@ export function AccessMatrix({
   canChange,
   busy,
   onRequest,
+  readOnlyHint,
 }: {
   permissions: { code: string; description: string }[];
   granted: string[];
   canChange: boolean;
   busy: boolean;
   onRequest: (code: string, granted: boolean) => void;
+  readOnlyHint: string;
 }) {
   const [query, setQuery] = useState("");
   const [mode, setMode] = useState<"all" | "granted" | "missing">("all");
@@ -67,7 +69,7 @@ export function AccessMatrix({
           <small>
             {canChange
               ? "Use o interruptor; toda mudança pede confirmação."
-              : "Somente leitura: a equipe da Aferis gerencia estes acessos."}
+              : readOnlyHint}
           </small>
         </div>
         <div

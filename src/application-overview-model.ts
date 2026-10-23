@@ -109,6 +109,8 @@ export function summarizeDeliveries(items: WebhookDelivery[]): {
 export type TabBadge = {
   tone: "success" | "warning" | "neutral";
   label: string | null;
+  /** Text alternative for screen readers. */
+  sr: string;
 };
 
 /** Small status marks for the application tabs, from real data only. */
@@ -130,20 +132,35 @@ export function tabBadges(
   const endpoint = snapshot.endpoint;
   const webhooks: TabBadge =
     endpoint?.status === "active"
-      ? { tone: "success", label: null }
+      ? { tone: "success", label: null, sr: "Webhook ativo" }
       : endpoint?.status === "draft"
-        ? { tone: "neutral", label: null }
-        : { tone: "warning", label: "!" };
+        ? { tone: "neutral", label: null, sr: "Webhook em configuração" }
+        : {
+            tone: "warning",
+            label: "!",
+            sr: "Webhook não configurado ou suspenso",
+          };
   const problems = summarizeDeliveries(snapshot.deliveries).problems;
   const credentials = summarizeCredentials(snapshot.credentials);
   return {
     webhooks,
     deliveries:
-      problems > 0 ? { tone: "warning", label: String(problems) } : null,
+      problems > 0
+        ? {
+            tone: "warning",
+            label: String(problems),
+            sr: `${problems} entregas com problema entre as carregadas`,
+          }
+        : null,
     credentials: {
       tone: credentials.active > 0 ? "success" : "warning",
       label: `${credentials.active}/2`,
+      sr: `${credentials.active} de 2 credenciais ativas`,
     },
-    access: { tone: "neutral", label: `${grantedCount}/${totalPermissions}` },
+    access: {
+      tone: "neutral",
+      label: `${grantedCount}/${totalPermissions}`,
+      sr: `${grantedCount} de ${totalPermissions} permissões concedidas`,
+    },
   };
 }

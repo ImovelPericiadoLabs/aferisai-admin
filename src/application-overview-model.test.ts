@@ -208,19 +208,43 @@ describe("tabBadges", () => {
   };
   it("summarizes each tab with real state", () => {
     expect(tabBadges(snapshot, 5, 8)).toEqual({
-      webhooks: { tone: "success", label: null },
-      deliveries: { tone: "warning", label: "2" },
-      credentials: { tone: "success", label: "1/2" },
-      access: { tone: "neutral", label: "5/8" },
+      webhooks: { tone: "success", label: null, sr: "Webhook ativo" },
+      deliveries: {
+        tone: "warning",
+        label: "2",
+        sr: "2 entregas com problema entre as carregadas",
+      },
+      credentials: {
+        tone: "success",
+        label: "1/2",
+        sr: "1 de 2 credenciais ativas",
+      },
+      access: {
+        tone: "neutral",
+        label: "5/8",
+        sr: "5 de 8 permissões concedidas",
+      },
     });
   });
   it("flags what is missing", () => {
     const empty = { endpoint: null, credentials: [], deliveries: [] };
     expect(tabBadges(empty, 0, 8)).toEqual({
-      webhooks: { tone: "warning", label: "!" },
+      webhooks: {
+        tone: "warning",
+        label: "!",
+        sr: "Webhook não configurado ou suspenso",
+      },
       deliveries: null,
-      credentials: { tone: "warning", label: "0/2" },
-      access: { tone: "neutral", label: "0/8" },
+      credentials: {
+        tone: "warning",
+        label: "0/2",
+        sr: "0 de 2 credenciais ativas",
+      },
+      access: {
+        tone: "neutral",
+        label: "0/8",
+        sr: "0 de 8 permissões concedidas",
+      },
     });
   });
   it("shows nothing before the data arrives", () => {

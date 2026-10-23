@@ -206,7 +206,14 @@ export function WebhookDeliveries({
         </button>
       </header>
       {!loading && !error && items.length > 0 && (
-        <DeliveryCharts items={items} />
+        <DeliveryCharts
+          items={items}
+          note={
+            filter === "all"
+              ? ""
+              : ` (filtro: ${filters.find((item) => item.value === filter)?.label})`
+          }
+        />
       )}
       <div className="dfilters">
         <div className="seg" role="group" aria-label="Filtrar por estado">
@@ -229,9 +236,11 @@ export function WebhookDeliveries({
             >
               <span className="seg-dot" aria-hidden="true" />
               {item.label}
-              {filter === "all" && counts[item.value] !== undefined && (
-                <span className="seg-count">{counts[item.value]}</span>
-              )}
+              {filter === "all" &&
+                !cursor &&
+                counts[item.value] !== undefined && (
+                  <span className="seg-count">{counts[item.value]}</span>
+                )}
             </button>
           ))}
         </div>
