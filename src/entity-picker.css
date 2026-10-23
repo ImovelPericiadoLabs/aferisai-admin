@@ -156,6 +156,22 @@
   background: var(--surface-muted);
 }
 
+.picker-empty-action {
+  display: block;
+  padding: var(--space-2) var(--space-3);
+  border-top: 1px solid var(--border);
+  color: var(--primary);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-semibold);
+  text-decoration: none;
+}
+
+.picker-empty-action:hover,
+.picker-empty-action:focus-visible {
+  background: var(--primary-faint);
+  text-decoration: underline;
+}
+
 .picker-error {
   color: var(--danger);
 }
