@@ -55,7 +55,10 @@ export function validateSupplierForm(form: SupplierForm): {
     if (form.token.length < 1)
       errors.token = "A InfoSimples exige o token da conta.";
     const digest = form.portalDigest.trim();
-    if (digest !== "" && !/^[0-9a-f]{64}$/i.test(digest))
+    if (digest === "")
+      errors.portalDigest =
+        "Selecione o vínculo da conta RI Digital antes de cadastrar a InfoSimples.";
+    else if (!/^[0-9a-f]{64}$/i.test(digest))
       errors.portalDigest =
         "O digest da conta do portal tem 64 caracteres hexadecimais.";
   }
