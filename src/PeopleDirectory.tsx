@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useDialogFocus } from "./useDialogFocus";
 import { teamRoleLabel } from "./display-labels";
@@ -27,6 +27,10 @@ type Props = {
   onLoadMore: () => void;
   onRefresh: () => void;
   serverStatusFilter?: { value: string; onChange: (value: string) => void };
+  /** Replaces the read-only note in the detail drawer with management actions. */
+  renderManagement?: (person: Person) => ReactNode;
+  /** Extra control next to the refresh button (for example an invite). */
+  headerAction?: ReactNode;
 };
 
 function StatusBadge({ status }: { status: Person["status"] }) {
@@ -57,6 +61,8 @@ export function PeopleDirectory({
   onLoadMore,
   onRefresh,
   serverStatusFilter,
+  renderManagement,
+  headerAction,
 }: Props) {
   const [query, setQuery] = useState("");
   const [localStatus, setLocalStatus] = useState("");
@@ -123,14 +129,17 @@ export function PeopleDirectory({
           </h1>
           <p className="page-subtitle">{subtitle}</p>
         </div>
-        <button
-          className="btn btn-secondary btn-md"
-          type="button"
-          disabled={loading}
-          onClick={onRefresh}
-        >
-          Atualizar
-        </button>
+        <div className="people-header-actions">
+          <button
+            className="btn btn-secondary btn-md"
+            type="button"
+            disabled={loading}
+            onClick={onRefresh}
+          >
+            Atualizar
+          </button>
+          {headerAction}
+        </div>
       </header>
 
       {tabs.length > 1 && (
@@ -417,10 +426,13 @@ export function PeopleDirectory({
                   </section>
                   <section className="detail-panel-section">
                     <h3 className="detail-panel-section-title">Gestão</h3>
-                    <p className="people-note">
-                      Esta tela é somente de consulta. A API atual não permite
-                      convidar, alterar papel ou suspender contas por aqui.
-                    </p>
+                    {renderManagement ? (
+                      renderManagement(selected)
+                    ) : (
+                      <p className="people-note">
+                        Esta tela é somente de consulta.
+                      </p>
+                    )}
                   </section>
                 </>
               )}

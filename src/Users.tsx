@@ -1,15 +1,25 @@
 import { useEffect, useState } from "react";
 import { ApiError, listTeamUsers, type TeamUser } from "./api";
 import { PeopleDirectory } from "./PeopleDirectory";
+import { PersonManagement } from "./PersonManagement";
+import type { ToastKind } from "./useToast";
 import type { PeopleTab } from "./people-model";
 
 export function Users({
   canRead,
+  isAdmin,
+  csrf,
+  actorId,
   tabs,
   onTab,
   onUnauthorized,
+  onToast,
 }: {
   canRead: boolean;
+  isAdmin: boolean;
+  csrf: string;
+  actorId: string;
+  onToast: (message: string, tone: ToastKind) => void;
   tabs: PeopleTab[];
   onTab: (page: PeopleTab["page"]) => void;
   onUnauthorized: () => void;
@@ -87,7 +97,7 @@ export function Users({
   return (
     <PeopleDirectory
       title="Usuários"
-      subtitle="Contas cadastradas na plataforma. Selecione uma conta para ver os detalhes."
+      subtitle="Contas cadastradas na plataforma. Selecione uma conta para ver os detalhes ou, sendo administrador, suspender o acesso."
       tabs={tabs}
       activeTab="users"
       onTab={onTab}
@@ -99,6 +109,24 @@ export function Users({
       onLoadMore={() => void load(nextCursor ?? undefined, statusFilter)}
       onRefresh={() => void load(undefined, statusFilter)}
       serverStatusFilter={{ value: statusFilter, onChange: changeFilter }}
+      renderManagement={(person) => (
+        <PersonManagement
+          kind="user"
+          person={person}
+          csrf={csrf}
+          actorId={actorId}
+          isAdmin={isAdmin}
+          onUnauthorized={onUnauthorized}
+          onToast={onToast}
+          onChanged={(change) =>
+            setItems((current) =>
+              current.map((item) =>
+                item.id === person.id ? { ...item, ...change } : item,
+              ),
+            )
+          }
+        />
+      )}
     />
   );
 }

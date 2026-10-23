@@ -13,6 +13,7 @@ import {
   teamPeopleApi,
   type OrganizationDetail as Detail,
 } from "./api";
+import { OrganizationAdmin } from "./OrganizationAdmin";
 import { PermissionRegistration } from "./PermissionRegistration";
 import type { ToastKind } from "./useToast";
 import "./partner-detail.css";
@@ -575,6 +576,21 @@ export function OrganizationDetail({
                       )}
                     </div>
                   </section>
+
+                  {isAdmin && (
+                    <OrganizationAdmin
+                      organizationId={organizationId}
+                      organizationName={detail.name}
+                      status={detail.status}
+                      cnpjMasked={detail.cnpj_masked}
+                      csrf={csrfToken}
+                      onChanged={async () =>
+                        setDetail(await getOrganization(organizationId))
+                      }
+                      onUnauthorized={onUnauthorized}
+                      onToast={onToast}
+                    />
+                  )}
 
                   <PartnerPeople
                     api={peopleApi}

@@ -999,17 +999,24 @@ function TeamApp() {
           ) : currentPage === "users" && canReview ? (
             <Users
               canRead={canReview}
+              isAdmin={session.member.role === "administrator"}
+              csrf={session.csrf}
+              actorId={session.member.id}
               tabs={peopleTabs}
               onTab={navigate}
               onUnauthorized={unauthorize}
+              onToast={showToast}
             />
           ) : currentPage === "team-members" &&
             session.member.role === "administrator" ? (
             <TeamMembers
               isAdmin={session.member.role === "administrator"}
+              csrf={session.csrf}
+              actorId={session.member.id}
               tabs={peopleTabs}
               onTab={navigate}
               onUnauthorized={unauthorize}
+              onToast={showToast}
             />
           ) : currentPage === "analysis-providers" &&
             session.member.role === "administrator" ? (

@@ -226,3 +226,24 @@
     font-size: var(--text-caption);
   }
 }
+
+.pm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.pm-action {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.pm-history {
+  display: grid;
+  margin-top: var(--space-3);
+  gap: var(--space-3);
+}
+
+.pm-history > .btn {
+  justify-self: start;
+}

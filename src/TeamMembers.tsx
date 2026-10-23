@@ -1,15 +1,24 @@
 import { useEffect, useState } from "react";
 import { ApiError, listTeamMembers, type TeamMemberListItem } from "./api";
 import { PeopleDirectory } from "./PeopleDirectory";
+import { PersonManagement } from "./PersonManagement";
+import { TeamInvite } from "./TeamInvite";
+import type { ToastKind } from "./useToast";
 import type { PeopleTab } from "./people-model";
 
 export function TeamMembers({
   isAdmin,
+  csrf,
+  actorId,
   tabs,
   onTab,
   onUnauthorized,
+  onToast,
 }: {
   isAdmin: boolean;
+  csrf: string;
+  actorId: string;
+  onToast: (message: string, tone: ToastKind) => void;
   tabs: PeopleTab[];
   onTab: (page: PeopleTab["page"]) => void;
   onUnauthorized: () => void;
@@ -81,7 +90,7 @@ export function TeamMembers({
   return (
     <PeopleDirectory
       title="Equipe"
-      subtitle="Contas internas com acesso ao painel. Selecione um membro para ver os detalhes."
+      subtitle="Contas internas com acesso ao painel. Selecione um membro para ver os detalhes, alterar o papel ou suspender o acesso."
       tabs={tabs}
       activeTab="team-members"
       onTab={onTab}
@@ -92,6 +101,31 @@ export function TeamMembers({
       hasMore={Boolean(nextCursor)}
       onLoadMore={() => void load(nextCursor ?? undefined)}
       onRefresh={() => void load()}
+      headerAction={
+        <TeamInvite
+          csrf={csrf}
+          onUnauthorized={onUnauthorized}
+          onToast={onToast}
+        />
+      }
+      renderManagement={(person) => (
+        <PersonManagement
+          kind="team"
+          person={person}
+          csrf={csrf}
+          actorId={actorId}
+          isAdmin={isAdmin}
+          onUnauthorized={onUnauthorized}
+          onToast={onToast}
+          onChanged={(change) =>
+            setItems((current) =>
+              current.map((item) =>
+                item.id === person.id ? { ...item, ...change } : item,
+              ),
+            )
+          }
+        />
+      )}
     />
   );
 }
