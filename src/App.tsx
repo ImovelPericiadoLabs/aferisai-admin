@@ -1041,19 +1041,6 @@ function TeamApp() {
 
   useEffect(() => installNoAutofill(document.body), []);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
-  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(
-    () => {
-      const initial = pageFromHash();
-      return Object.fromEntries(
-        navGroups.map((group) => [
-          group.title,
-          group.title === "Painel" ||
-            group.pages.includes(initial) ||
-            (initial === "overview" && group.title === "Operação"),
-        ]),
-      );
-    },
-  );
   const menuCloseRef = useRef<HTMLButtonElement>(null);
   const menuToggleRef = useRef<HTMLButtonElement>(null);
   const sidebarRef = useRef<HTMLElement>(null);
@@ -1075,9 +1062,6 @@ function TeamApp() {
   const navigate = useCallback((next: Page) => {
     setPage(next);
     setAccountMenuOpen(false);
-    const group = navGroups.find((entry) => entry.pages.includes(next));
-    if (group)
-      setExpandedGroups((current) => ({ ...current, [group.title]: true }));
     window.location.hash = next === "overview" ? "" : next;
   }, []);
 
@@ -1085,9 +1069,6 @@ function TeamApp() {
     const sync = () => {
       const next = pageFromHash();
       setPage(next);
-      const group = navGroups.find((entry) => entry.pages.includes(next));
-      if (group)
-        setExpandedGroups((current) => ({ ...current, [group.title]: true }));
     };
     window.addEventListener("hashchange", sync);
     return () => window.removeEventListener("hashchange", sync);
@@ -1282,7 +1263,6 @@ function TeamApp() {
             );
             if (items.length === 0) return null;
             const isPanel = group.title === "Painel";
-            const isOpen = expandedGroups[group.title] ?? false;
             const activeGroup = items.some((item) => item.page === currentPage);
             return (
               <div
@@ -1290,44 +1270,20 @@ function TeamApp() {
                 key={group.title}
               >
                 {isPanel ? null : (
-                  <button
-                    className={`nav-group-trigger${activeGroup ? " active" : ""}`}
-                    type="button"
-                    aria-expanded={isOpen}
-                    aria-controls={`nav-group-${group.title}`}
-                    title={sidebarCollapsed ? group.title : undefined}
-                    onClick={() => {
-                      if (sidebarCollapsed && !menuOpen)
-                        setSidebarCollapsed(false);
-                      setExpandedGroups((current) => ({
-                        ...current,
-                        [group.title]: !current[group.title],
-                      }));
-                    }}
+                  <p
+                    className="nav-group-title"
+                    id={`nav-group-${group.title}`}
                   >
-                    <span className="nav-glyph">
-                      <ShellIcon
-                        name={
-                          group.title === "Operação"
-                            ? "operations-group"
-                            : group.title === "Comercial"
-                              ? "commercial-group"
-                              : "finance-group"
-                        }
-                      />
-                    </span>
-                    <span className="nav-group-label">{group.title}</span>
-                    <span
-                      className={`nav-group-chevron${isOpen ? " open" : ""}`}
-                    >
-                      <ShellIcon name="chevron" size={16} />
-                    </span>
-                  </button>
+                    {group.title}
+                  </p>
                 )}
                 <div
                   className="nav-group-items"
-                  id={`nav-group-${group.title}`}
-                  hidden={!isPanel && !isOpen}
+                  role="group"
+                  aria-labelledby={
+                    isPanel ? undefined : `nav-group-${group.title}`
+                  }
+                  aria-label={isPanel ? group.title : undefined}
                 >
                   {items.map((item) => (
                     <button
