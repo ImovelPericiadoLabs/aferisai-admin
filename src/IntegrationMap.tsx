@@ -9,6 +9,7 @@ import {
   statusLabel,
   type CatalogStatus,
 } from "./integration-catalog";
+import { MetricsPreview } from "./MetricsPreview";
 import { PermissionIcon } from "./PermissionIcon";
 import "./integration-map.css";
 
@@ -18,6 +19,7 @@ const tabs = [
   { id: "events", label: "Eventos" },
   { id: "metrics", label: "Métricas" },
   { id: "gaps", label: "Lacunas" },
+  { id: "preview", label: "Prévia de métricas" },
 ] as const;
 type Tab = (typeof tabs)[number]["id"];
 
@@ -83,26 +85,31 @@ export function IntegrationMap() {
           label="Mostrar propostas"
           description="Itens que ainda não existem no backend."
           checked={proposals}
-          onChange={setProposals}
+          onChange={(checked) => {
+            setProposals(checked);
+            if (!checked && tab === "preview") setTab("modes");
+          }}
         />
       </div>
 
       <div className="seg-tabs" role="tablist" aria-label="Seções do mapa">
-        {tabs.map((item) => (
-          <button
-            key={item.id}
-            id={`imap-tab-${item.id}`}
-            type="button"
-            role="tab"
-            className={`seg-tab${tab === item.id ? " active" : ""}`}
-            aria-selected={tab === item.id}
-            aria-controls="imap-panel"
-            tabIndex={tab === item.id ? 0 : -1}
-            onClick={() => setTab(item.id)}
-          >
-            {item.label}
-          </button>
-        ))}
+        {tabs
+          .filter((item) => proposals || item.id !== "preview")
+          .map((item) => (
+            <button
+              key={item.id}
+              id={`imap-tab-${item.id}`}
+              type="button"
+              role="tab"
+              className={`seg-tab${tab === item.id ? " active" : ""}`}
+              aria-selected={tab === item.id}
+              aria-controls="imap-panel"
+              tabIndex={tab === item.id ? 0 : -1}
+              onClick={() => setTab(item.id)}
+            >
+              {item.label}
+            </button>
+          ))}
       </div>
 
       <div id="imap-panel" role="tabpanel" aria-labelledby={`imap-tab-${tab}`}>
@@ -230,6 +237,8 @@ export function IntegrationMap() {
             </table>
           </div>
         )}
+
+        {tab === "preview" && <MetricsPreview />}
 
         {tab === "gaps" && (
           <ul className="imap-gaps">

@@ -166,3 +166,125 @@
     justify-content: flex-start;
   }
 }
+
+/* Metrics preview (sample data) */
+.mp {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.mp-kpis {
+  display: grid;
+  margin: 0;
+  gap: var(--space-3);
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+}
+
+.mp-kpi {
+  display: grid;
+  padding: var(--space-4);
+  gap: 2px;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+
+.mp-kpi dt {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.mp-kpi dd {
+  margin: 0;
+  font-size: var(--text-2xl);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--weight-semibold);
+}
+
+.mp-kpi small {
+  color: var(--text-subtle);
+  font-size: var(--text-caption);
+}
+
+.mp-grid {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  align-items: start;
+}
+
+.mp-card {
+  display: grid;
+  padding: var(--space-4);
+  gap: var(--space-3);
+  border-style: dashed;
+}
+
+.mp-card h3 {
+  margin: 0;
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+}
+
+.mp-funnel {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  gap: var(--space-3);
+  list-style: none;
+}
+
+.mp-funnel li {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: 150px minmax(0, 1fr) 40px;
+  align-items: center;
+  font-size: var(--text-sm);
+}
+
+.mp-bar {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 4px;
+  background: var(--surface-muted);
+}
+
+.mp-bar i {
+  display: block;
+  height: 100%;
+  border-radius: 4px;
+  background: var(--primary);
+  animation: appws-grow 600ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  transform-origin: left;
+}
+
+.mp-totals {
+  display: grid;
+  margin: 0;
+  gap: var(--space-2);
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+}
+
+.mp-totals div {
+  display: grid;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--surface-muted);
+}
+
+.mp-totals dt {
+  color: var(--text-muted);
+  font-size: var(--text-caption);
+}
+
+.mp-totals dd {
+  margin: 0;
+  font-weight: var(--weight-semibold);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mp-bar i {
+    animation: none;
+  }
+}

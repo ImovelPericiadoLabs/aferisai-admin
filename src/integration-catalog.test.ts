@@ -1,3 +1,7 @@
+import {
+  applicationPermissionLabel,
+  labelledPermissionCodes,
+} from "./display-labels";
 import { describe, expect, it } from "vitest";
 import {
   events,
@@ -33,5 +37,26 @@ describe("integration catalog", () => {
   it("never presents a proposal as the only entry of its kind", () => {
     expect(events.some((e) => e.status === "implemented")).toBe(true);
     expect(metrics.some((m) => m.status === "implemented")).toBe(true);
+  });
+
+  it("uses the same title the permission screens show for every real code", () => {
+    for (const entry of permissions.filter((p) => p.status === "implemented"))
+      expect(applicationPermissionLabel(entry.code)).toBe(entry.title);
+  });
+  it("flags labels that exist in the admin but not in the backend", () => {
+    const real = permissions
+      .filter((p) => p.status === "implemented")
+      .map((p) => p.code);
+    const legacy = labelledPermissionCodes
+      .filter((code) => !real.includes(code))
+      .sort();
+    // Legacy labels from the old project; remove from display-labels once no data uses them.
+    expect(legacy).toEqual([
+      "analysis:create",
+      "analysis:write",
+      "registry:create",
+      "registry:read",
+      "registry:write",
+    ]);
   });
 });

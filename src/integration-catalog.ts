@@ -159,7 +159,7 @@ export const permissions: PermissionEntry[] = [
   },
   {
     code: "analysis:submit:upload",
-    title: "Enviar arquivo para análise",
+    title: "Enviar matrícula para análise",
     status: "implemented",
     grantedByDefault: false,
     unlocks: "POST /v1/partner/analyses em nome do titular",

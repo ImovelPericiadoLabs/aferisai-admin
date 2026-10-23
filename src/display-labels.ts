@@ -148,6 +148,8 @@ export const decisionLabel = (value: string | null | undefined) =>
 export const scopeLabel = (value: string | null | undefined) =>
   label(scopeLabels, value, "Permissão não identificada");
 export const applicationPermissionLabel = scopeLabel;
+/** Codes that have a label here (some are legacy and do not exist in the backend). */
+export const labelledPermissionCodes = Object.keys(scopeLabels);
 const permissionDescriptions: Record<string, string> = {
   "application:read": "Consulta os dados da própria aplicação.",
   "analysis:read": "Consulta resultados e estado das análises.",

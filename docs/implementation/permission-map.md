@@ -67,6 +67,11 @@ Já existe (equipe): `GET /v1/team/organizations/{id}/partner-people` (gestor+),
 6. `GET /v1/team/connections` e `/v1/team/registry-requests` não checam papel (o financeiro lê; a segunda expõe `owner_user_id`).
 7. Documentação desatualizada em cinco arquivos (lista em `permission-inventory-backend.md` §1.4).
 
+## 7b. Decisões e ordem de entrega (aprovadas em 2026-10-23)
+- O parceiro vê só o que a aplicação dele originou. Cupom abandonado não consome limite (conta no pagamento). Acesso das pessoas segue por organização.
+- Fases: 1 atribuição, 2 comercial, 3 métricas e extrato, 4 eventos e entrega (paralela), 5 catálogo por API, escopos novos e papéis. Pedido ao backend: `construtor/backend/pedidos/003-mapa-de-permissoes-e-integracoes.md`.
+- Regra de evolução do mapa: cada fase entregue move o item de Proposta para Implementado em `src/integration-catalog.ts`, com o arquivo do backend que o comprova.
+
 ## 8. PROPOSTA de modelo completo (não existe hoje)
 - **Escopos novos:** cotação (`analysis:quote:read/create`), pagamento (`payment:create/read`), registro (`registry:create:number|address`, `registry:read`), certidão, documento original (separado e sensível), eventos por categoria (`events:analysis` etc.), e escopos de aplicação para métricas, comissões e conexões (`metrics:read`, `commissions:read`, `connections:read`, `webhooks:manage`).
 - **Atribuição:** gravar `origin_application_id` e `connection_id` em análise e operação de registro; diferenciar `analysis:read:own-origin` de `analysis:read:all`.
