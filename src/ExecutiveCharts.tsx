@@ -308,6 +308,12 @@ export function RankedBars({
 }) {
   const total = rows.reduce((sum, row) => sum + row.value, 0);
   const max = Math.max(...rows.map((row) => row.value), 1);
+  if (rows.length === 0)
+    return (
+      <p className="xc-empty" role="status">
+        Sem registros no período.
+      </p>
+    );
   return (
     <ul className="xc-ranked" aria-label={label}>
       {rows.map((row) => (

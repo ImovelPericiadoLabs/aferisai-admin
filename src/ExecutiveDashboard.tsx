@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { ApiError, getDashboardMetrics, type DashboardMetrics } from "./api";
 import {
   FunnelChart,
@@ -18,11 +18,11 @@ import {
   keyLabel,
   kpiCards,
   marginBps,
-  periodFor,
   rateBps,
   successBps,
 } from "./executive-model";
-import { buildSampleReports, SAMPLE_LABEL } from "./executive-sample";
+import { SECTION_LABELS } from "./executive-api";
+import { useExecutiveReports } from "./useExecutiveReports";
 import { Attention, type DashboardPageProps } from "./DashboardOverview";
 import { OrganizationAvatar } from "./OrganizationAvatar";
 import "./executive.css";
@@ -37,10 +37,6 @@ const BREAKDOWNS: { id: Breakdown; label: string }[] = [
 ];
 
 const number = new Intl.NumberFormat("pt-BR");
-
-function SampleBadge() {
-  return <span className="badge badge-warning">{SAMPLE_LABEL}</span>;
-}
 
 function Delta({ bps }: { bps: number | null }) {
   if (bps === null)
@@ -60,13 +56,11 @@ function Section({
   id,
   title,
   description,
-  sample = true,
   children,
 }: {
   id: string;
   title: string;
   description?: string;
-  sample?: boolean;
   children: React.ReactNode;
 }) {
   return (
@@ -78,7 +72,6 @@ function Section({
           </h2>
           {description && <p className="xe-sub">{description}</p>}
         </div>
-        {sample && <SampleBadge />}
       </div>
       {children}
     </section>
@@ -112,12 +105,8 @@ export function ExecutiveDashboard({
   const [live, setLive] = useState<DashboardMetrics | null>(null);
   const [liveFailed, setLiveFailed] = useState(false);
 
-  const period = useMemo(() => periodFor(days), [days]);
-  const data = useMemo(
-    () => buildSampleReports(period, compare),
-    [period, compare],
-  );
-  const { revenue } = data;
+  const reports = useExecutiveReports(days, compare, onUnauthorized);
+  const { period, failed } = reports;
 
   useEffect(() => {
     let alive = true;
@@ -133,14 +122,37 @@ export function ExecutiveDashboard({
     };
   }, [onUnauthorized]);
 
+  const { data } = reports;
+  if (!data)
+    return (
+      <div className="page xe">
+        <header className="page-header xe-header">
+          <div>
+            <h1 className="page-title">Painel executivo</h1>
+            <p className="page-subtitle">
+              Receita, margem, funil e operação da Aferis AI. Dias contados em
+              horário de Brasília.
+            </p>
+          </div>
+        </header>
+        <div
+          className="rules-skeleton"
+          role="status"
+          aria-label="Carregando indicadores"
+        >
+          <span className="skeleton" />
+          <span className="skeleton" />
+          <span className="skeleton" />
+        </div>
+      </div>
+    );
+  const { revenue } = data;
   const steps = conversionSteps(data.funnel);
   const paidRatio = rateBps(
     steps.find((s) => s.key === "paid")?.count ?? 0,
     steps[0]?.count ?? 0,
   );
-  const completedAi = data.fulfillment.groups.find(
-    (g) => g.key === "ia_upload",
-  );
+  const completedAi = data.fulfillment.groups.find((g) => g.key === "analysis");
   const cards = kpiCards({
     revenue: revenue.totals,
     previous: revenue.previous,
@@ -223,7 +235,10 @@ export function ExecutiveDashboard({
             type="button"
             className="btn btn-secondary btn-md"
             onClick={() =>
-              download(exportFilename(period, true), toCsv(data, period, true))
+              download(
+                exportFilename(period, false),
+                toCsv(data, period, false),
+              )
             }
           >
             Exportar CSV
@@ -238,13 +253,20 @@ export function ExecutiveDashboard({
         </div>
       </header>
 
-      <div className="alert alert-warning" role="note">
-        <strong>{SAMPLE_LABEL}.</strong> O backend ainda não tem as rotas de
-        receita, margem, funil e custo por período (pedido 006). Os números
-        abaixo são de exemplo e identificados como tal; o bloco “Situação agora”
-        usa dados reais. Período: {period.from.split("-").reverse().join("/")} a{" "}
-        {period.to.split("-").reverse().join("/")}.
-      </div>
+      {failed.length > 0 && (
+        <div className="alert alert-danger" role="alert">
+          Não foi possível carregar:{" "}
+          {failed.map((key) => SECTION_LABELS[key]).join(", ")}. Os blocos
+          afetados aparecem zerados.{" "}
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            onClick={reports.reload}
+          >
+            Tentar novamente
+          </button>
+        </div>
+      )}
 
       <section className="xe-live card" aria-labelledby="xe-live-title">
         <div className="xe-section-head">
@@ -338,8 +360,8 @@ export function ExecutiveDashboard({
           })}
         </dl>
         <p className="xe-note">
-          Indicadores de exemplo. Receita é o que foi pago no período; a margem
-          vem da cotação, não do custo realizado.
+          Receita é o que foi pago no período; a margem vem da cotação, não do
+          custo realizado.
         </p>
       </section>
 
@@ -509,6 +531,13 @@ export function ExecutiveDashboard({
                 </tr>
               </thead>
               <tbody>
+                {revenue.top_organizations.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="xc-empty">
+                      Sem vendas por parceiros no período.
+                    </td>
+                  </tr>
+                )}
                 {revenue.top_organizations.map((org, index) => (
                   <tr key={org.organization_id}>
                     <td data-label="#" className="xe-rank-cell">
@@ -614,6 +643,13 @@ export function ExecutiveDashboard({
               </tr>
             </thead>
             <tbody>
+              {data.fulfillment.groups.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="xc-empty">
+                    Nenhuma entrega concluída no período.
+                  </td>
+                </tr>
+              )}
               {data.fulfillment.groups.map((g) => {
                 const rate = successBps(g);
                 return (
@@ -701,6 +737,13 @@ export function ExecutiveDashboard({
                 </tr>
               </thead>
               <tbody>
+                {data.ai.groups.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="xc-empty">
+                      Nenhuma chamada de IA no período.
+                    </td>
+                  </tr>
+                )}
                 {data.ai.groups.map((g) => (
                   <tr key={g.key}>
                     <td data-label="Modelo" className="xe-title-cell">
@@ -745,14 +788,27 @@ export function ExecutiveDashboard({
             </div>
             <div>
               <dt>Latência mediana</dt>
-              <dd>{data.webhooks.p50_ms} ms</dd>
+              <dd>
+                {data.webhooks.p50_ms === null
+                  ? "—"
+                  : `${data.webhooks.p50_ms} ms`}
+              </dd>
             </div>
             <div>
               <dt>Latência p95</dt>
-              <dd>{formatDuration((data.webhooks.p95_ms ?? 0) / 1000)}</dd>
+              <dd>
+                {data.webhooks.p95_ms === null
+                  ? "—"
+                  : formatDuration(data.webhooks.p95_ms / 1000)}
+              </dd>
             </div>
           </dl>
           <h3 className="xe-h3">Maiores taxas de falha</h3>
+          {data.webhooks.worst_applications.length === 0 && (
+            <p className="xc-empty" role="status">
+              Nenhuma entrega com falha no período.
+            </p>
+          )}
           <ul className="xe-plain">
             {data.webhooks.worst_applications.map((app) => (
               <li key={app.application_id}>

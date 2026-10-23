@@ -11,7 +11,7 @@ import {
   successBps,
   type Period,
 } from "./executive-model";
-import { SAMPLE_LABEL } from "./executive-sample";
+import { SAMPLE_LABEL } from "./executive-export";
 import { csvEscape } from "./executive-export";
 
 export type Cell =

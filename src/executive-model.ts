@@ -73,6 +73,9 @@ export function formatPercentBps(bps: number): string {
 
 export function formatDuration(seconds: number | null): string {
   if (seconds === null) return "—";
+  if (seconds < 1) return `${Math.round(seconds * 1000)} ms`;
+  if (seconds < 10 && !Number.isInteger(seconds))
+    return `${seconds.toFixed(1).replace(".", ",")} s`;
   const total = Math.round(seconds);
   if (total < 60) return `${total} s`;
   if (total < 3600) {
@@ -233,6 +236,7 @@ const KEY_LABELS: Record<string, string> = {
   visualizacao: "Visualização",
   inteiro_teor_simples: "Inteiro teor simples",
   inteiro_teor: "Inteiro teor",
+  analysis: "Análise por IA",
   ia_upload: "Análise por IA",
   onr: "RI Digital (ONR)",
   infosimples: "InfoSimples",

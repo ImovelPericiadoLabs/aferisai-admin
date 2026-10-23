@@ -1,7 +1,6 @@
 /**
- * Contract proposed to the backend in pedido 006 (construtor/backend/pedidos/006-*.md).
+ * What the executive screens consume, mapped from `/v1/team/reports/*` by `executive-api.ts`.
  * Money is in cents, durations in seconds, rates in basis points, days in America/Sao_Paulo.
- * Until the routes exist the screen is fed by `executive-sample.ts` and says so.
  */
 export type RevenueTotals = {
   gross_cents: number;
@@ -85,6 +84,8 @@ export type CommissionsReport = {
   by_organization: {
     organization_id: string;
     name: string;
+    slug: string;
+    logo_url: string | null;
     owed_cents: number;
     settled_cents: number;
   }[];

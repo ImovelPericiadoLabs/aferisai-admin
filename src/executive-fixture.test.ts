@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { buildSampleReports, SAMPLE_LABEL } from "./executive-sample";
+import { buildSampleReports } from "./executive-fixture";
+import { SAMPLE_LABEL } from "./executive-export";
 import { periodFor } from "./executive-model";
 
 const period = periodFor(30, new Date("2026-10-23T15:00:00Z"));

@@ -19,6 +19,8 @@ const reais = (cents: number) => (cents / 100).toFixed(2).replace(".", ",");
 const br = (iso: string) =>
   `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`;
 
+export const SAMPLE_LABEL = "Dados de exemplo";
+
 export function exportFilename(period: Period, sample: boolean): string {
   return `painel-executivo_${period.from}_${period.to}${sample ? "_exemplo" : ""}.csv`;
 }
@@ -38,7 +40,7 @@ export function toCsv(
     row("Painel executivo Aferis AI"),
     row("Período", `${br(period.from)} a ${br(period.to)}`),
     row("Fuso", revenue.timezone),
-    row("Origem dos números", sample ? "Dados de exemplo" : "Dados do backend"),
+    row("Origem dos números", sample ? SAMPLE_LABEL : "Dados do backend"),
     "",
     row("Resumo"),
     row("Receita bruta", reais(t.gross_cents)),

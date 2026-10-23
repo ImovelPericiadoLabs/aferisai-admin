@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { DashboardReports } from "./DashboardOverview";
 import type { TeamMember } from "./api";
 import { FunnelChart, RankedBars, TrendChart } from "./ExecutiveCharts";
@@ -7,9 +7,9 @@ import {
   conversionSteps,
   formatBRL,
   formatCompactBRL,
-  periodFor,
 } from "./executive-model";
-import { buildSampleReports, SAMPLE_LABEL } from "./executive-sample";
+import { SECTION_LABELS } from "./executive-api";
+import { useExecutiveReports } from "./useExecutiveReports";
 import {
   REPORTS,
   cellText,
@@ -25,6 +25,7 @@ import "./executive.css";
 type Props = {
   role: TeamMember["role"];
   navigate: (page: never) => void;
+  onUnauthorized: () => void;
 };
 
 type TabId = ReportId | "volume";
@@ -106,28 +107,29 @@ function ReportTable({ table }: { table: Table }) {
   );
 }
 
-export function ReportsHub({ role, navigate }: Props) {
+export function ReportsHub({ role, navigate, onUnauthorized }: Props) {
   const [tab, setTab] = useState<TabId>("financeiro");
   const [days, setDays] = useState<number>(30);
   const [compare, setCompare] = useState(true);
-  const period = useMemo(() => periodFor(days), [days]);
-  const data = useMemo(
-    () => buildSampleReports(period, compare),
-    [period, compare],
+  const reports = useExecutiveReports(
+    days,
+    compare,
+    onUnauthorized,
+    role === "administrator",
   );
+  const { period, data, failed } = reports;
 
-  // Revenue, funnel and costs have no backend source yet, so only the real counts are shown
-  // to the roles that cannot see the executive numbers.
+  // The executive reports are administrator-only here; other roles keep the real counts.
   if (role !== "administrator")
     return <DashboardReports role={role} navigate={navigate as never} />;
 
   const tabs = [
     ...REPORTS.map((r) => ({ id: r.id, label: r.label, icon: r.icon })),
-    { id: "volume", label: "Volume (dados reais)", icon: "history" },
+    { id: "volume", label: "Volume de registros", icon: "history" },
   ];
   const current = REPORTS.find((r) => r.id === tab);
-  const tables = current ? reportTables(current.id, data, period) : [];
-  const { revenue } = data;
+  const tables = current && data ? reportTables(current.id, data, period) : [];
+  const revenue = data?.revenue;
 
   return (
     <div className="page xe">
@@ -166,8 +168,8 @@ export function ReportsHub({ role, navigate }: Props) {
               className="btn btn-secondary btn-md"
               onClick={() =>
                 download(
-                  reportFilename(current.id, period, true),
-                  tablesToCsv(current.label, tables, period, true),
+                  reportFilename(current.id, period, false),
+                  tablesToCsv(current.label, tables, period, false),
                 )
               }
             >
@@ -199,15 +201,31 @@ export function ReportsHub({ role, navigate }: Props) {
         aria-labelledby={`reports-tab-${tab}`}
         className="rp-panel"
       >
-        {current ? (
+        {current && !data ? (
+          <div
+            className="rules-skeleton"
+            role="status"
+            aria-label="Carregando relatório"
+          >
+            <span className="skeleton" />
+            <span className="skeleton" />
+          </div>
+        ) : current && data && revenue ? (
           <>
-            <div className="alert alert-warning" role="note">
-              <strong>{SAMPLE_LABEL}.</strong> {current.description} O backend
-              ainda não tem as rotas deste relatório (pedido 006); os números
-              são de exemplo até elas existirem. Período:{" "}
-              {period.from.split("-").reverse().join("/")} a{" "}
-              {period.to.split("-").reverse().join("/")}.
-            </div>
+            {failed.length > 0 && (
+              <div className="alert alert-danger" role="alert">
+                Não foi possível carregar:{" "}
+                {failed.map((key) => SECTION_LABELS[key]).join(", ")}. Os blocos
+                afetados aparecem zerados.{" "}
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={reports.reload}
+                >
+                  Tentar novamente
+                </button>
+              </div>
+            )}
 
             {current.id === "financeiro" && (
               <section className="card xe-section" aria-labelledby="rp-chart">

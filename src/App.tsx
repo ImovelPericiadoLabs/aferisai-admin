@@ -944,7 +944,11 @@ function TeamApp() {
               navigate={navigate}
             />
           ) : currentPage === "reports" ? (
-            <ReportsHub role={session.member.role} navigate={navigate} />
+            <ReportsHub
+              role={session.member.role}
+              navigate={navigate}
+              onUnauthorized={unauthorize}
+            />
           ) : currentPage === "organizations" ? (
             <Organizations
               csrf={session.csrf}

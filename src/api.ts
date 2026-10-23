@@ -2467,3 +2467,22 @@ export const deleteTeamApplication = (
       body: JSON.stringify({ reason }),
     },
   );
+
+/** Read-only executive aggregates (`/v1/team/reports/*`); the window is in America/Sao_Paulo. */
+export const getTeamReport = <T>(
+  path: string,
+  from: string,
+  to: string,
+  compare: boolean,
+  extra: Record<string, string> = {},
+) => {
+  const params = new URLSearchParams({
+    from,
+    to,
+    compare: String(compare),
+    ...extra,
+  });
+  return request<T>(`/v1/team/reports/${path}?${params.toString()}`, {
+    method: "GET",
+  });
+};

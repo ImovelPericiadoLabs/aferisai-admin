@@ -71,6 +71,9 @@ describe("formatting", () => {
     expect(formatDuration(150)).toBe("2 min 30 s");
     expect(formatDuration(3 * 3600 + 20 * 60)).toBe("3 h 20 min");
     expect(formatDuration(null)).toBe("—");
+    expect(formatDuration(0.268)).toBe("268 ms");
+    expect(formatDuration(1.52)).toBe("1,5 s");
+    expect(formatDuration(0)).toBe("0 ms");
   });
 });
 

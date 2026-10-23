@@ -7,7 +7,7 @@ import type {
 } from "./executive-contract";
 import type { Period } from "./executive-model";
 
-export const SAMPLE_LABEL = "Dados de exemplo";
+/** Deterministic labelled data, kept only as a test fixture. */
 
 /** Deterministic pseudo-random numbers, so a period always shows the same sample. */
 function mulberry32(seed: number) {
@@ -320,6 +320,8 @@ export function buildSampleReports(
       by_organization: top.slice(0, 6).map((org) => ({
         organization_id: org.organization_id,
         name: org.name,
+        slug: "x",
+        logo_url: null,
         owed_cents: Math.round(org.commission_cents * 0.34),
         settled_cents: Math.round(org.commission_cents * 0.52),
       })),
