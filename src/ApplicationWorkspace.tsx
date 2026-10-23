@@ -1,14 +1,7 @@
-import {
-  useId,
-  useLayoutEffect,
-  useRef,
-  useState,
-  type KeyboardEvent,
-  type ReactNode,
-} from "react";
+import { useId, useState, type ReactNode } from "react";
 import { AccessMatrix } from "./AccessMatrix";
+import { TabBar } from "./TabBar";
 import { ApplicationHero } from "./ApplicationHero";
-import { IntegrationIcon } from "./IntegrationIcon";
 import { tabBadges } from "./application-overview-model";
 import { ApplicationOverview } from "./ApplicationOverview";
 import { useApplicationSnapshot } from "./useApplicationSnapshot";
@@ -105,28 +98,6 @@ export function ApplicationWorkspace({
     if (next !== "access") setPermissionToReview(null);
     onTabChange?.(next);
   };
-  const handleTabKeyDown = (
-    event: KeyboardEvent<HTMLButtonElement>,
-    current: Tab,
-  ) => {
-    const index = visibleTabs.findIndex((item) => item.id === current);
-    const nextIndex =
-      event.key === "ArrowRight"
-        ? (index + 1) % visibleTabs.length
-        : event.key === "ArrowLeft"
-          ? (index - 1 + visibleTabs.length) % visibleTabs.length
-          : event.key === "Home"
-            ? 0
-            : event.key === "End"
-              ? visibleTabs.length - 1
-              : -1;
-    if (nextIndex < 0) return;
-    event.preventDefault();
-    setTab(visibleTabs[nextIndex].id);
-    event.currentTarget.parentElement
-      ?.querySelectorAll<HTMLButtonElement>('[role="tab"]')
-      [nextIndex]?.focus();
-  };
   const [showCreate, setShowCreate] = useState(false);
   const [permissionToReview, setPermissionToReview] = useState<{
     code: string;
@@ -146,32 +117,6 @@ export function ApplicationWorkspace({
     canManage && application !== undefined,
     onUnauthorized,
   );
-  const tabsRef = useRef<HTMLDivElement>(null);
-  useLayoutEffect(() => {
-    const root = tabsRef.current;
-    if (!root) return;
-    const place = (scroll: boolean) => {
-      const active = root.querySelector<HTMLElement>('[aria-selected="true"]');
-      if (!active) return;
-      root.style.setProperty("--ind-x", `${active.offsetLeft}px`);
-      root.style.setProperty("--ind-w", `${active.offsetWidth}px`);
-      if (scroll)
-        root.scrollTo({
-          left: active.offsetLeft - (root.clientWidth - active.offsetWidth) / 2,
-          behavior: window.matchMedia("(prefers-reduced-motion: reduce)")
-            .matches
-            ? "auto"
-            : "smooth",
-        });
-    };
-    place(true);
-    const observer = new ResizeObserver(() => place(false));
-    observer.observe(root);
-    root
-      .querySelectorAll('[role="tab"]')
-      .forEach((tab) => observer.observe(tab));
-    return () => observer.disconnect();
-  }, [activeTab, snapshot, canManage, application?.id]);
 
   if (!application && applications.length > 1) {
     return (
@@ -349,56 +294,30 @@ export function ApplicationWorkspace({
         }
       />
 
-      <div
-        ref={tabsRef}
-        className="appws-tabs"
-        role="tablist"
-        aria-label="Configurações da aplicação"
-      >
-        {visibleTabs.map((item) => {
-          const badge =
-            badges?.[
-              item.id === "webhooks"
-                ? "webhooks"
-                : item.id === "deliveries"
-                  ? "deliveries"
-                  : item.id === "credentials"
-                    ? "credentials"
-                    : item.id === "access"
-                      ? "access"
-                      : "webhooks"
-            ];
-          const showBadge = item.id !== "overview" && badge;
-          return (
-            <button
-              key={item.id}
-              id={`${tabBaseId}-tab-${item.id}`}
-              type="button"
-              role="tab"
-              className="appws-tab"
-              aria-selected={activeTab === item.id}
-              aria-controls={`${tabBaseId}-panel`}
-              tabIndex={activeTab === item.id ? 0 : -1}
-              onKeyDown={(event) => handleTabKeyDown(event, item.id)}
-              onClick={() => setTab(item.id)}
-            >
-              <IntegrationIcon name={tabIcons[item.id]} size={16} />
-              <span>{item.label}</span>
-              {showBadge && (
-                <span
-                  className="appws-tab-badge"
-                  data-tone={badge.tone}
-                  data-dot={badge.label === null}
-                >
-                  <span aria-hidden="true">{badge.label}</span>
-                  <span className="sr-only">{badge.sr}</span>
-                </span>
-              )}
-            </button>
-          );
-        })}
-        <span className="appws-tabs-ind" aria-hidden="true" />
-      </div>
+      <TabBar
+        label="Configurações da aplicação"
+        idBase={tabBaseId}
+        panelId={`${tabBaseId}-panel`}
+        active={activeTab}
+        onChange={(id) => setTab(id as Tab)}
+        tabs={visibleTabs.map((item) => ({
+          id: item.id,
+          label: item.label,
+          icon: tabIcons[item.id],
+          badge:
+            item.id === "overview"
+              ? null
+              : (badges?.[
+                  item.id === "webhooks"
+                    ? "webhooks"
+                    : item.id === "deliveries"
+                      ? "deliveries"
+                      : item.id === "credentials"
+                        ? "credentials"
+                        : "access"
+                ] ?? null),
+        }))}
+      />
 
       <div
         id={`${tabBaseId}-panel`}

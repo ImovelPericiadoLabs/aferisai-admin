@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent, type KeyboardEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import {
   ApiError,
   describeOrganizationPermission,
@@ -16,6 +16,7 @@ import type { ToastKind } from "./useToast";
 import "./partner-detail.css";
 import "./commercial-rules.css";
 import { Breadcrumbs } from "./Breadcrumbs";
+import { TabBar } from "./TabBar";
 import { PartnerPeople } from "./PartnerPeople";
 import { Disclosure } from "./controls";
 import { LOGO_RULE } from "./file-rules";
@@ -253,29 +254,6 @@ export function OrganizationDetail({
     }
   }
 
-  const sections = [
-    { id: "application", label: "Integrações" },
-    { id: "partnership", label: "Dados da parceria" },
-  ] as const;
-
-  function onSectionKeyDown(event: KeyboardEvent<HTMLDivElement>) {
-    const keys = ["ArrowLeft", "ArrowRight", "Home", "End"];
-    if (!keys.includes(event.key)) return;
-    event.preventDefault();
-    const index = sections.findIndex((item) => item.id === section);
-    const next =
-      event.key === "Home"
-        ? 0
-        : event.key === "End"
-          ? sections.length - 1
-          : (index + (event.key === "ArrowRight" ? 1 : -1) + sections.length) %
-            sections.length;
-    setSection(sections[next].id);
-    event.currentTarget
-      .querySelectorAll<HTMLButtonElement>('[role="tab"]')
-      [next]?.focus();
-  }
-
   const openApplication =
     detail && section === "application" && selectedApplicationId
       ? (detail.applications.find(
@@ -374,28 +352,26 @@ export function OrganizationDetail({
             </div>
           </header>
           {!openApplication && (
-            <div
-              className="seg-tabs"
-              role="tablist"
-              aria-label="Área da parceria"
-              onKeyDown={onSectionKeyDown}
-            >
-              {sections.map((item) => (
-                <button
-                  key={item.id}
-                  id={`partner-tab-${item.id}`}
-                  type="button"
-                  role="tab"
-                  className={`seg-tab${section === item.id ? " active" : ""}`}
-                  aria-selected={section === item.id}
-                  aria-controls="partner-panel"
-                  tabIndex={section === item.id ? 0 : -1}
-                  onClick={() => setSection(item.id)}
-                >
-                  {item.label}
-                </button>
-              ))}
-            </div>
+            <TabBar
+              label="Área da parceria"
+              idBase="partner"
+              panelId="partner-panel"
+              active={section}
+              onChange={(id) => setSection(id as "application" | "partnership")}
+              tabs={[
+                {
+                  id: "application",
+                  label: "Integrações",
+                  icon: "webhook",
+                  badge: {
+                    tone: "neutral",
+                    label: String(detail.applications.length),
+                    sr: `${detail.applications.length} aplicações`,
+                  },
+                },
+                { id: "partnership", label: "Dados da parceria", icon: "grid" },
+              ]}
+            />
           )}
           <div
             id="partner-panel"

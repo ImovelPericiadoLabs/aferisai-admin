@@ -213,3 +213,7 @@
     transition: none;
   }
 }
+
+.partner-detail .appws-tabs {
+  margin-bottom: var(--space-4);
+}
