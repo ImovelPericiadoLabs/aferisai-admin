@@ -28,6 +28,7 @@ import { RegistryRequestDirectory } from "./RegistryRequestDirectory";
 import { Connections } from "./Connections";
 import { Users } from "./Users";
 import { TeamMembers } from "./TeamMembers";
+import { AnalysisProviders } from "./AnalysisProviders";
 import "./App.css";
 import "./brand.css";
 import "./directory.css";
@@ -48,7 +49,8 @@ type Page =
   | "registry-requests"
   | "connections"
   | "users"
-  | "team-members";
+  | "team-members"
+  | "analysis-providers";
 type Session = { csrf: string; member: TeamMember };
 
 const nav: { page: Page; label: string; detail: string }[] = [
@@ -68,6 +70,11 @@ const nav: { page: Page; label: string; detail: string }[] = [
   { page: "connections", label: "Conexões", detail: "Consentimentos ativos" },
   { page: "users", label: "Usuários", detail: "Contas da plataforma" },
   { page: "team-members", label: "Membros", detail: "Equipe interna" },
+  {
+    page: "analysis-providers",
+    label: "Provedores IA",
+    detail: "Contas e limites",
+  },
   { page: "access", label: "Acessos", detail: "Estrutura de autoridade" },
   {
     page: "reconciliation",
@@ -947,7 +954,8 @@ function pageFromHash(): Page {
     value === "registry-requests" ||
     value === "connections" ||
     value === "users" ||
-    value === "team-members"
+    value === "team-members" ||
+    value === "analysis-providers"
     ? value
     : "overview";
 }
@@ -1053,6 +1061,8 @@ function App() {
         (item.page !== "connections" || canReview) &&
         (item.page !== "users" || canReview) &&
         (item.page !== "team-members" ||
+          session.member.role === "administrator") &&
+        (item.page !== "analysis-providers" ||
           session.member.role === "administrator"),
   );
 
@@ -1255,6 +1265,12 @@ function App() {
             session.member.role === "administrator" ? (
             <TeamMembers
               isAdmin={session.member.role === "administrator"}
+              onUnauthorized={unauthorize}
+            />
+          ) : currentPage === "analysis-providers" &&
+            session.member.role === "administrator" ? (
+            <AnalysisProviders
+              csrf={session.csrf}
               onUnauthorized={unauthorize}
             />
           ) : (

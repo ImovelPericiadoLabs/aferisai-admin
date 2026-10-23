@@ -1,0 +1,78 @@
+.provider-notice {
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--blue);
+  border-radius: 8px;
+  padding: 0.85rem 1rem;
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.provider-list {
+  display: grid;
+  gap: 1rem;
+  margin: 1rem 0;
+}
+
+.provider-card {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 1.25rem;
+  background: var(--surface);
+  margin-bottom: 1rem;
+}
+
+.provider-card h2,
+.provider-card h3 {
+  margin-top: 0;
+}
+
+.provider-card-title,
+.provider-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.provider-form,
+.provider-form label {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.provider-form {
+  margin-top: 1rem;
+  gap: 1rem;
+}
+
+.provider-grid,
+.provider-limits {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+}
+
+.provider-form input,
+.provider-form select {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.provider-form .error {
+  margin: 0;
+}
+
+@media (max-width: 560px) {
+  .provider-card {
+    padding: 1rem;
+  }
+  .provider-actions .button {
+    width: 100%;
+  }
+}
