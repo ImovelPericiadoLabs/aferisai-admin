@@ -41,6 +41,7 @@ import { Users } from "./Users";
 import { TeamMembers } from "./TeamMembers";
 import type { PeopleTab } from "./people-model";
 import { AnalysisProviders } from "./AnalysisProviders";
+import { Access } from "./Access";
 import { Passkeys } from "./Passkeys";
 import { installNoAutofill } from "./no-autofill";
 import { ShellIcon } from "./ShellIcon";
@@ -946,65 +947,6 @@ function Organizations({
   );
 }
 
-function Access() {
-  return (
-    <div className="content">
-      <header className="page-head">
-        <div>
-          <p className="eyebrow">Governança</p>
-          <h1>Acessos</h1>
-          <p className="muted">Estrutura de autoridade da plataforma.</p>
-        </div>
-        <span className="pill">Desenho atual</span>
-      </header>
-      <div className="workspace">
-        <section className="form-panel">
-          <h2>Hierarquia de acesso</h2>
-          <p className="muted">
-            Uma aplicação usa apenas permissões concedidas no catálogo da sua
-            organização.
-          </p>
-          <div className="hierarchy">
-            <div>
-              <span>01</span>
-              <strong>Equipe interna</strong>
-              <small>Operador autenticado e autorizado</small>
-            </div>
-            <div>
-              <span>02</span>
-              <strong>Organização</strong>
-              <small>Parceria e catálogo de permissões</small>
-            </div>
-            <div>
-              <span>03</span>
-              <strong>Aplicação</strong>
-              <small>Credencial técnica própria</small>
-            </div>
-            <div>
-              <span>04</span>
-              <strong>Permissão</strong>
-              <small>Ação concedida e auditada</small>
-            </div>
-          </div>
-        </section>
-        <aside className="side-panel">
-          <p className="eyebrow">Disponibilidade da API</p>
-          <h2>Próxima etapa</h2>
-          <p>
-            O cadastro concede somente <code>application:read</code>. Gerenciar
-            papéis da equipe ou outras permissões exigirá contratos e endpoints
-            próprios no backend.
-          </p>
-          <div className="side-note">
-            Uma credencial de parceiro não representa uma pessoa. O acesso a
-            dados pessoais exige consentimento explícito por aplicação e ação.
-          </div>
-        </aside>
-      </div>
-    </div>
-  );
-}
-
 function pageFromHash(): Page {
   const value = window.location.hash.slice(1);
   return value === "organizations" ||
@@ -1540,7 +1482,11 @@ function TeamApp() {
           ) : currentPage === "passkeys" ? (
             <Passkeys csrf={session.csrf} onUnauthorized={unauthorize} />
           ) : (
-            <Access />
+            <Access
+              role={session.member.role}
+              csrf={session.csrf}
+              onUnauthorized={unauthorize}
+            />
           )}
         </main>
         <footer>AferisAI</footer>

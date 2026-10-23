@@ -483,32 +483,6 @@ textarea:focus-visible {
   color: var(--danger);
   font-size: 0.74rem;
 }
-.hierarchy {
-  display: grid;
-  gap: 0.65rem;
-  margin-top: 1.5rem;
-}
-.hierarchy div {
-  display: grid;
-  grid-template-columns: 2rem 1fr;
-  gap: 0.15rem 0.75rem;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 0.85rem;
-}
-.hierarchy span {
-  grid-row: span 2;
-  color: var(--text-subtle);
-  font-size: 0.7rem;
-  font-weight: 800;
-}
-.hierarchy strong {
-  font-size: 0.78rem;
-}
-.hierarchy small {
-  font-size: 0.68rem;
-  color: var(--muted);
-}
 .side-panel code {
   background: var(--bg);
   padding: 0.1rem 0.25rem;

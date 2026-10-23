@@ -1,0 +1,152 @@
+.access-mine {
+  display: grid;
+  grid-template-columns: minmax(240px, 320px) 1fr;
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.access-role {
+  margin: 0 0 var(--space-2);
+  color: var(--text);
+  font-size: var(--text-xl);
+  font-weight: var(--weight-bold);
+  letter-spacing: -0.03em;
+}
+
+.access-heading {
+  margin: 0 0 var(--space-4);
+  color: var(--text);
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+}
+
+.access-area-block + .access-area-block {
+  margin-top: var(--space-4);
+}
+
+.access-list {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--text);
+  font-size: var(--text-sm);
+}
+
+.access-list li::before {
+  content: "✓";
+  margin-right: var(--space-2);
+  color: var(--success);
+  font-weight: var(--weight-bold);
+}
+
+.access-matrix th[scope="row"] {
+  background: var(--surface);
+  font-weight: var(--weight-medium);
+  text-align: left;
+}
+
+.access-matrix td,
+.access-matrix thead th:not(:first-child) {
+  text-align: center;
+}
+
+.access-area-row th {
+  background: var(--surface-muted);
+  color: var(--text-muted);
+  font-size: var(--text-label);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.06em;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.access-current {
+  background: var(--primary-faint);
+}
+
+.access-you {
+  color: var(--primary);
+  font-weight: var(--weight-medium);
+  text-transform: none;
+}
+
+.access-yes {
+  color: var(--success);
+  font-weight: var(--weight-bold);
+}
+
+.access-no {
+  color: var(--text-subtle);
+}
+
+.access-note {
+  margin-top: var(--space-3);
+}
+
+.access-picker {
+  max-width: 420px;
+  margin-bottom: var(--space-4);
+}
+
+.access-apps .alert {
+  margin-bottom: var(--space-4);
+}
+
+.access-code {
+  display: block;
+  color: var(--text-subtle);
+  font-family: ui-monospace, monospace;
+  font-size: var(--text-label);
+  font-weight: var(--weight-normal);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.access-skeleton {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.access-skeleton .skeleton {
+  display: block;
+  height: 48px;
+}
+
+.perm-toggle {
+  min-width: 112px;
+  height: 28px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text-muted);
+  font: inherit;
+  font-size: var(--text-caption);
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+}
+
+.perm-toggle.on {
+  border-color: var(--success);
+  background: var(--success-bg);
+  color: var(--success);
+}
+
+.perm-toggle:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.perm-toggle:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+  box-shadow: 0 0 0 4px var(--primary-ring);
+}
+
+@media (max-width: 760px) {
+  .access-mine {
+    grid-template-columns: 1fr;
+  }
+}
