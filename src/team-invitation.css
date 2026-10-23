@@ -1,0 +1,109 @@
+.team-invitation-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(380px, 1fr);
+  min-height: 100vh;
+}
+.team-invitation-story {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: clamp(32px, 6vw, 88px);
+  background: var(--navy);
+  color: white;
+}
+.team-invitation-story img {
+  width: 150px;
+  max-width: 55%;
+}
+.team-invitation-story h1 {
+  max-width: 600px;
+  font-size: clamp(2.6rem, 4vw, 4.4rem);
+  line-height: 1.05;
+  letter-spacing: -0.055em;
+}
+.team-invitation-story p:not(.eyebrow) {
+  max-width: 430px;
+  color: #d1d9e5;
+  line-height: 1.7;
+}
+.team-invitation-story small {
+  color: #b9c5d6;
+}
+.team-invitation-panel {
+  display: grid;
+  place-items: center;
+  padding: 32px;
+  background: var(--surface);
+}
+.team-invitation-card {
+  width: min(100%, 440px);
+}
+.team-invitation-card h2 {
+  color: var(--navy);
+  font-size: clamp(1.75rem, 3vw, 2.15rem);
+  letter-spacing: -0.035em;
+}
+.team-invitation-card p {
+  line-height: 1.65;
+}
+.team-invitation-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.team-invitation-form label {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.team-invitation-form input {
+  width: 100%;
+  height: 48px;
+}
+.team-invitation-form small {
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+.team-invitation-form .button,
+.team-invitation-card > .button {
+  min-height: 48px;
+  margin-top: 12px;
+}
+.team-invitation-secret {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--surface);
+}
+.team-invitation-secret span {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+.team-invitation-secret code {
+  overflow-wrap: anywhere;
+  font-size: 1rem;
+  letter-spacing: 0.08em;
+}
+@media (max-width: 760px) {
+  .team-invitation-layout {
+    display: block;
+  }
+  .team-invitation-story {
+    min-height: 180px;
+    gap: 32px;
+    padding: 28px;
+  }
+  .team-invitation-story h1 {
+    font-size: 2rem;
+  }
+  .team-invitation-story p:not(.eyebrow),
+  .team-invitation-story small {
+    display: none;
+  }
+  .team-invitation-panel {
+    min-height: calc(100vh - 180px);
+    padding: 32px 24px;
+  }
+}
