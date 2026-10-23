@@ -1,5 +1,6 @@
 import { useId, useState, type ReactNode } from "react";
 import { AccessMatrix } from "./AccessMatrix";
+import { ApplicationAudit } from "./ApplicationAudit";
 import { TabBar } from "./TabBar";
 import { ApplicationHero } from "./ApplicationHero";
 import { tabBadges } from "./application-overview-model";
@@ -23,7 +24,7 @@ type Application = {
 };
 type Permission = { code: string; description: string };
 export type IntegrationTab =
-  "overview" | "webhooks" | "deliveries" | "credentials" | "access";
+  "overview" | "webhooks" | "deliveries" | "credentials" | "access" | "audit";
 type Tab = IntegrationTab;
 
 type Props = {
@@ -40,6 +41,7 @@ type Props = {
     applicationId: string,
     code: string,
     granted: boolean,
+    reason?: string,
   ) => void;
   channel?: "team" | "partner";
   selectedTab?: IntegrationTab;
@@ -56,6 +58,7 @@ const tabIcons: Record<Tab, string> = {
   deliveries: "activity",
   credentials: "key",
   access: "shield",
+  audit: "history",
 };
 
 const tabs: { id: Tab; label: string }[] = [
@@ -64,6 +67,7 @@ const tabs: { id: Tab; label: string }[] = [
   { id: "deliveries", label: "Entregas" },
   { id: "credentials", label: "Credenciais" },
   { id: "access", label: "Acessos" },
+  { id: "audit", label: "Auditoria" },
 ];
 
 export function ApplicationWorkspace({
@@ -88,11 +92,14 @@ export function ApplicationWorkspace({
   const [tabState, setTabState] = useState<Tab>("overview");
   const tabBaseId = useId().replaceAll(":", "");
   const tab = selectedTab ?? tabState;
-  const activeTab =
-    canManage || tab === "overview" || tab === "access" ? tab : "overview";
+  // The audit trail is a team-only route (manager and administrator).
+  const canAudit = canManage && channel === "team";
   const visibleTabs = canManage
-    ? tabs
+    ? tabs.filter((item) => item.id !== "audit" || canAudit)
     : tabs.filter((item) => item.id === "overview" || item.id === "access");
+  const activeTab = visibleTabs.some((item) => item.id === tab)
+    ? tab
+    : "overview";
   const setTab = (next: Tab) => {
     setTabState(next);
     if (next !== "access") setPermissionToReview(null);
@@ -305,17 +312,15 @@ export function ApplicationWorkspace({
           label: item.label,
           icon: tabIcons[item.id],
           badge:
-            item.id === "overview"
-              ? null
-              : (badges?.[
-                  item.id === "webhooks"
-                    ? "webhooks"
-                    : item.id === "deliveries"
-                      ? "deliveries"
-                      : item.id === "credentials"
-                        ? "credentials"
-                        : "access"
-                ] ?? null),
+            item.id === "webhooks"
+              ? (badges?.webhooks ?? null)
+              : item.id === "deliveries"
+                ? (badges?.deliveries ?? null)
+                : item.id === "credentials"
+                  ? (badges?.credentials ?? null)
+                  : item.id === "access"
+                    ? (badges?.access ?? null)
+                    : null,
         }))}
       />
 
@@ -383,6 +388,13 @@ export function ApplicationWorkspace({
             onUnauthorized={onUnauthorized}
             onChanged={refreshSnapshot}
             channel={channel}
+          />
+        )}
+        {activeTab === "audit" && canAudit && (
+          <ApplicationAudit
+            key={application.id}
+            applicationId={application.id}
+            onUnauthorized={onUnauthorized}
           />
         )}
         {activeTab === "access" && (
@@ -464,12 +476,18 @@ export function ApplicationWorkspace({
             : "Confirmar concessão"
         }
         busy={permissionBusy}
-        onConfirm={() => {
+        reason={{
+          label: "Motivo (fica na trilha de auditoria)",
+          min: 3,
+          max: 500,
+        }}
+        onConfirm={(reason) => {
           if (!permissionToReview) return;
           onTogglePermission(
             application.id,
             permissionToReview.code,
             permissionToReview.granted,
+            reason,
           );
           setPermissionToReview(null);
         }}

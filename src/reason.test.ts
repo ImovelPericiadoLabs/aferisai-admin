@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { validateReason } from "./reason";
+import { changeReasonHeaders, validateReason } from "./reason";
 
 describe("validateReason", () => {
   it("rejects fewer than the minimum characters and names the minimum", () => {
@@ -33,5 +33,37 @@ describe("validateReason", () => {
     const result = validateReason("  abcdefghij  ", 10, 500);
     expect(result.ok).toBe(true);
     expect(result.length).toBe(10);
+  });
+});
+
+describe("changeReasonHeaders", () => {
+  it("sends nothing without a usable reason", () => {
+    expect(changeReasonHeaders(undefined)).toEqual({});
+    expect(changeReasonHeaders("   ")).toEqual({});
+    expect(changeReasonHeaders("ab")).toEqual({});
+  });
+  it("sends the trimmed reason in X-Change-Reason", () => {
+    expect(changeReasonHeaders("  Destino em manutenção  ")).toEqual({
+      "X-Change-Reason": "Destino em manutenção",
+    });
+  });
+  it("keeps header values valid: one line, typographic marks normalized, no characters outside Latin-1", () => {
+    expect(changeReasonHeaders("linha 1\nlinha\t2")).toEqual({
+      "X-Change-Reason": "linha 1 linha 2",
+    });
+    expect(changeReasonHeaders("“aspas” — reticências… ok")).toEqual({
+      "X-Change-Reason": '"aspas" - reticencias... ok'.replace(
+        "reticencias",
+        "reticências",
+      ),
+    });
+    expect(changeReasonHeaders("teste 😀 ok")["X-Change-Reason"]).toBe(
+      "teste ? ok",
+    );
+  });
+  it("cuts at the 500 character limit", () => {
+    expect(
+      changeReasonHeaders("x".repeat(600))["X-Change-Reason"],
+    ).toHaveLength(500);
   });
 });

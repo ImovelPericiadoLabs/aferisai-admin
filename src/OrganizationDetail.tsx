@@ -397,7 +397,7 @@ export function OrganizationDetail({
                   canEdit={detail.status === "active"}
                   onUnauthorized={onUnauthorized}
                   permissionBusy={permissionBusy !== null}
-                  onTogglePermission={(applicationId, code, granted) =>
+                  onTogglePermission={(applicationId, code, granted, reason) =>
                     void changePermission(
                       () =>
                         granted
@@ -405,11 +405,13 @@ export function OrganizationDetail({
                               applicationId,
                               code,
                               csrfToken,
+                              reason,
                             )
                           : grantApplicationPermission(
                               applicationId,
                               code,
                               csrfToken,
+                              reason,
                             ),
                       `${applicationId}:${code}`,
                       granted ? "Permissão revogada." : "Permissão concedida.",

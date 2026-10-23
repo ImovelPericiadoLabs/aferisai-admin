@@ -69,6 +69,7 @@ export function CredentialManagement({
   const [confirmRecovery, setConfirmRecovery] = useState(false);
   const [confirmIssue, setConfirmIssue] = useState(false);
   const [detailId, setDetailId] = useState<string | null>(null);
+  const [issueReason, setIssueReason] = useState("");
   const [copied, setCopied] = useState(false);
   const detailRef = useRef<HTMLElement>(null);
   const [confirmRevoke, setConfirmRevoke] = useState<string | null>(null);
@@ -182,10 +183,12 @@ export function CredentialManagement({
           scopes: selectedScopes,
         },
         channel,
+        issueReason,
       );
       setIssued(result);
       setConfirmIssue(false);
       setName("");
+      setIssueReason("");
       await refresh();
     } catch (cause) {
       if (cause instanceof ApiError && cause.status === 401) {
@@ -209,7 +212,7 @@ export function CredentialManagement({
     }
   }
 
-  async function revoke(credentialId: string) {
+  async function revoke(credentialId: string, reason: string) {
     setBusy(true);
     setError("");
     setNotice("");
@@ -219,6 +222,7 @@ export function CredentialManagement({
         credentialId,
         csrfToken,
         channel,
+        reason,
       );
       setConfirmRevoke(null);
       setDetailId(null);
@@ -715,6 +719,30 @@ export function CredentialManagement({
                       />
                     ))}
                   </fieldset>
+                  <fieldset className="form-section">
+                    <legend className="form-section-title">Motivo</legend>
+                    <div className="form-field">
+                      <label
+                        className="form-field-label"
+                        htmlFor="credential-reason"
+                      >
+                        Motivo da emissão (opcional)
+                      </label>
+                      <textarea
+                        id="credential-reason"
+                        className="input"
+                        rows={3}
+                        maxLength={500}
+                        value={issueReason}
+                        placeholder="Ex.: Sistema de produção do ERP"
+                        onChange={(event) => setIssueReason(event.target.value)}
+                      />
+                      <span className="form-hint">
+                        Fica na trilha de auditoria. Sem motivo, o registro usa
+                        a finalidade padrão.
+                      </span>
+                    </div>
+                  </fieldset>
                 </form>
                 <div className="detail-panel-footer">
                   <button
@@ -760,7 +788,14 @@ export function CredentialManagement({
         }
         confirmLabel="Revogar credencial"
         busy={busy}
-        onConfirm={() => confirmRevoke && void revoke(confirmRevoke)}
+        reason={{
+          label: "Motivo (fica na trilha de auditoria)",
+          min: 3,
+          max: 500,
+        }}
+        onConfirm={(reason) =>
+          confirmRevoke && void revoke(confirmRevoke, reason)
+        }
         onCancel={() => setConfirmRevoke(null)}
       />
       <ConfirmDialog

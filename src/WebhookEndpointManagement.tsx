@@ -172,7 +172,7 @@ export function WebhookEndpointManagement({
     }
   }
 
-  async function setStatus(status: "active" | "suspended") {
+  async function setStatus(status: "active" | "suspended", reason?: string) {
     setBusy(true);
     setError("");
     try {
@@ -182,6 +182,7 @@ export function WebhookEndpointManagement({
           status,
           csrfToken,
           channel,
+          reason,
         ),
       );
       setSecret(null);
@@ -206,11 +207,16 @@ export function WebhookEndpointManagement({
     }
   }
 
-  async function remove() {
+  async function remove(reason: string) {
     setBusy(true);
     setError("");
     try {
-      await deleteApplicationWebhookEndpoint(applicationId, csrfToken, channel);
+      await deleteApplicationWebhookEndpoint(
+        applicationId,
+        csrfToken,
+        channel,
+        reason,
+      );
       setEndpoint(null);
       setSecret(null);
       setTest(null);
@@ -613,7 +619,12 @@ export function WebhookEndpointManagement({
         details={endpoint ? [{ label: "Destino", value: endpoint.url }] : []}
         confirmLabel="Confirmar suspensão"
         busy={busy}
-        onConfirm={() => void setStatus("suspended")}
+        reason={{
+          label: "Motivo (fica na trilha de auditoria)",
+          min: 3,
+          max: 500,
+        }}
+        onConfirm={(reason) => void setStatus("suspended", reason)}
         onCancel={() => setConfirmSuspend(false)}
       />
       <ConfirmDialog
@@ -624,7 +635,12 @@ export function WebhookEndpointManagement({
         details={endpoint ? [{ label: "Destino", value: endpoint.url }] : []}
         confirmLabel="Remover destino"
         busy={busy}
-        onConfirm={() => void remove()}
+        reason={{
+          label: "Motivo (fica na trilha de auditoria)",
+          min: 3,
+          max: 500,
+        }}
+        onConfirm={(reason) => void remove(reason)}
         onCancel={() => setConfirmRemove(false)}
       />
       {secret && (

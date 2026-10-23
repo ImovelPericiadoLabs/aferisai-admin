@@ -1,0 +1,73 @@
+.audit-list {
+  position: relative;
+  display: grid;
+  margin: 0;
+  padding: 0;
+  gap: var(--space-4);
+  list-style: none;
+}
+
+.audit-list::before {
+  content: "";
+  position: absolute;
+  top: 10px;
+  bottom: 10px;
+  left: 6px;
+  width: 2px;
+  background: var(--border);
+}
+
+.audit-list li {
+  position: relative;
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: 14px minmax(0, 1fr);
+  align-items: start;
+}
+
+.audit-dot {
+  z-index: 1;
+  width: 14px;
+  height: 14px;
+  margin-top: 4px;
+  border: 3px solid var(--bg);
+  border-radius: 50%;
+  background: var(--success);
+}
+
+.audit-list li[data-tone="warning"] .audit-dot {
+  background: var(--warning);
+}
+
+.audit-body {
+  display: grid;
+  padding: var(--space-3) var(--space-4);
+  gap: 2px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+
+.audit-line {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  justify-content: space-between;
+}
+
+.audit-body small {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.audit-reason {
+  margin: var(--space-1) 0 0;
+  padding-left: var(--space-3);
+  border-left: 2px solid var(--border-strong);
+  font-size: var(--text-sm);
+}
+
+.audit-reason.is-empty {
+  color: var(--text-subtle);
+  font-style: italic;
+}

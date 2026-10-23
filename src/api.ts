@@ -1,3 +1,4 @@
+import { changeReasonHeaders } from "./reason";
 export type LoginBody = { email: string; password: string; otp: string };
 export type SessionResult = { csrf_token: string; expires_in: number };
 export type CsrfResult = { csrf_token: string };
@@ -1036,6 +1037,33 @@ export const invitePartnerMember = (
       body: JSON.stringify({ email }),
     },
   );
+export type ApplicationAuditItem = {
+  id: string;
+  source: "permission" | "credential" | "webhook";
+  action: string;
+  subject_id: string | null;
+  subject_code: string | null;
+  actor_team_member_id: string | null;
+  actor_partner_member_id: string | null;
+  previous_status: string | null;
+  new_status: string | null;
+  reason: string | null;
+  created_at: string;
+};
+export type ApplicationAuditPage = {
+  items: ApplicationAuditItem[];
+  next_cursor: string | null;
+};
+
+export const listApplicationAuditEvents = (
+  applicationId: string,
+  cursor?: string,
+) =>
+  request<ApplicationAuditPage>(
+    `/v1/team/applications/${encodeURIComponent(applicationId)}/audit-events?limit=20${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`,
+    { method: "GET" },
+  );
+
 export type PartnerInvitationStatus =
   | "delivery_unconfirmed"
   | "smtp_accepted"
@@ -1226,20 +1254,28 @@ export const grantApplicationPermission = (
   applicationId: string,
   code: string,
   csrfToken: string,
+  reason?: string,
 ) =>
   request<{ application_id: string; code: string; granted: boolean }>(
     `/v1/team/applications/${encodeURIComponent(applicationId)}/permissions/${encodeURIComponent(code)}`,
-    { method: "PUT", headers: { "X-CSRF-Token": csrfToken } },
+    {
+      method: "PUT",
+      headers: { "X-CSRF-Token": csrfToken, ...changeReasonHeaders(reason) },
+    },
   );
 
 export const revokeApplicationPermission = (
   applicationId: string,
   code: string,
   csrfToken: string,
+  reason?: string,
 ) =>
   request<void>(
     `/v1/team/applications/${encodeURIComponent(applicationId)}/permissions/${encodeURIComponent(code)}`,
-    { method: "DELETE", headers: { "X-CSRF-Token": csrfToken } },
+    {
+      method: "DELETE",
+      headers: { "X-CSRF-Token": csrfToken, ...changeReasonHeaders(reason) },
+    },
   );
 
 export type RedirectUriRegistry = {
@@ -1294,6 +1330,7 @@ export const issuePartnerCredential = (
   csrfToken: string,
   options: { name: string; expires_in_days: number; scopes: string[] },
   channel: "team" | "partner" = "team",
+  reason?: string,
 ) =>
   request<IssuedPartnerCredential>(
     `/v1/${channel}/applications/${encodeURIComponent(applicationId)}/credentials`,
@@ -1302,6 +1339,7 @@ export const issuePartnerCredential = (
       headers: {
         "X-CSRF-Token": csrfToken,
         "Idempotency-Key": issueRequestId,
+        ...changeReasonHeaders(reason),
       },
       body: JSON.stringify(options),
     },
@@ -1312,10 +1350,14 @@ export const revokePartnerCredential = (
   credentialId: string,
   csrfToken: string,
   channel: "team" | "partner" = "team",
+  reason?: string,
 ) =>
   request<void>(
     `/v1/${channel}/applications/${encodeURIComponent(applicationId)}/credentials/${encodeURIComponent(credentialId)}`,
-    { method: "DELETE", headers: { "X-CSRF-Token": csrfToken } },
+    {
+      method: "DELETE",
+      headers: { "X-CSRF-Token": csrfToken, ...changeReasonHeaders(reason) },
+    },
   );
 
 export const putOrganizationLogo = (
@@ -1801,12 +1843,13 @@ export const updateApplicationWebhookEndpointStatus = (
   status: "active" | "suspended",
   csrfToken: string,
   channel: "team" | "partner" = "team",
+  reason?: string,
 ) =>
   request<WebhookEndpoint>(
     `/v1/${channel}/applications/${encodeURIComponent(applicationId)}/webhook-endpoint/status`,
     {
       method: "PUT",
-      headers: { "X-CSRF-Token": csrfToken },
+      headers: { "X-CSRF-Token": csrfToken, ...changeReasonHeaders(reason) },
       body: JSON.stringify({ status }),
     },
   );
@@ -1815,12 +1858,13 @@ export const deleteApplicationWebhookEndpoint = (
   applicationId: string,
   csrfToken: string,
   channel: "team" | "partner" = "team",
+  reason?: string,
 ) =>
   request<void>(
     `/v1/${channel}/applications/${encodeURIComponent(applicationId)}/webhook-endpoint`,
     {
       method: "DELETE",
-      headers: { "X-CSRF-Token": csrfToken },
+      headers: { "X-CSRF-Token": csrfToken, ...changeReasonHeaders(reason) },
     },
   );
 
