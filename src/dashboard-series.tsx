@@ -220,7 +220,7 @@ export function CombinedSeriesChart({
   const [hidden, setHidden] = useState<DashboardGroupKey[]>([]);
   const [selected, setSelected] = useState<number | null>(null);
   const available = groups.filter(
-    (group) => response?.series[group.key]?.current.length,
+    (group) => response?.series?.[group.key]?.current?.length,
   );
   const visible = available.filter((group) => !hidden.includes(group.key));
   const length = available[0]
