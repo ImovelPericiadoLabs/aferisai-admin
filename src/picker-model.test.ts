@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
-  collectPages,
   filterOptions,
   mergeOptions,
   nextIndex,
+  pagedResult,
   pickerKeyAction,
+  shortId,
   type PickerOption,
 } from "./picker-model";
 
@@ -113,26 +114,60 @@ describe("pickerKeyAction", () => {
   });
 });
 
-describe("collectPages", () => {
-  const pages = [
-    { items: [1, 2], next_cursor: "a" },
-    { items: [3, 4], next_cursor: "b" },
-    { items: [5], next_cursor: null },
-  ];
-  const fetcher = (cursor?: string) =>
-    Promise.resolve(pages[cursor === undefined ? 0 : cursor === "a" ? 1 : 2]);
-
-  it("follows cursors until the end", async () => {
-    expect(await collectPages(fetcher, 5)).toEqual({
-      items: [1, 2, 3, 4, 5],
-      truncated: false,
-    });
+describe("pagedResult", () => {
+  type Row = { id: string; name: string };
+  const pages: Record<string, { items: Row[]; next_cursor: string | null }> = {
+    first: {
+      items: [
+        { id: "1", name: "Alfa" },
+        { id: "2", name: "Beta" },
+      ],
+      next_cursor: "p2",
+    },
+    p2: { items: [{ id: "3", name: "Gama" }], next_cursor: null },
+  };
+  const fetchPage = (cursor?: string) =>
+    Promise.resolve(pages[cursor ?? "first"]);
+  const toOption = (row: Row): PickerOption => ({
+    id: row.id,
+    label: row.name,
   });
 
-  it("stops at the page cap and reports truncation", async () => {
-    expect(await collectPages(fetcher, 2)).toEqual({
-      items: [1, 2, 3, 4],
-      truncated: true,
-    });
+  it("returns the first page and a next loader while a cursor exists", async () => {
+    const result = await pagedResult(fetchPage, toOption, "", false);
+    expect(result.options.map((o) => o.id)).toEqual(["1", "2"]);
+    expect(result.next).toBeTypeOf("function");
+  });
+
+  it("loads the following page through next and stops at the last one", async () => {
+    const first = await pagedResult(fetchPage, toOption, "", false);
+    const second = await first.next!();
+    expect(second.options.map((o) => o.id)).toEqual(["3"]);
+    expect(second.next).toBeUndefined();
+  });
+
+  it("filters each page on the client when asked, keeping the loader", async () => {
+    const result = await pagedResult(fetchPage, toOption, "gama", true);
+    expect(result.options).toEqual([]);
+    expect(result.next).toBeTypeOf("function");
+    const second = await result.next!();
+    expect(second.options.map((o) => o.id)).toEqual(["3"]);
+  });
+
+  it("drops rows the mapper rejects", async () => {
+    const result = await pagedResult(
+      fetchPage,
+      (row) => (row.id === "2" ? null : toOption(row)),
+      "",
+      false,
+    );
+    expect(result.options.map((o) => o.id)).toEqual(["1"]);
+  });
+});
+
+describe("shortId", () => {
+  it("shortens long ids and keeps short ones", () => {
+    expect(shortId("0198a1b2-aaaa-bbbb-cccc")).toBe("0198a1b2…");
+    expect(shortId("abc")).toBe("abc");
   });
 });

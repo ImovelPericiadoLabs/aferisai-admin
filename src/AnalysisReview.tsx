@@ -1135,27 +1135,30 @@ export function AnalysisReview({
                   </button>
                 )}
               </section>
-              <form className="review-card review-lookup" onSubmit={load}>
-                <label htmlFor="review-work-id">ID do trabalho</label>
-                <div>
-                  <input
-                    id="review-work-id"
-                    type="text"
-                    required
-                    value={workId}
-                    onChange={(event) => setWorkId(event.target.value)}
-                    placeholder="UUIDv7 do trabalho concluído"
-                  />
-                  <button
-                    className="button primary"
-                    disabled={busy}
-                    type="submit"
-                  >
-                    Consultar
-                  </button>
-                </div>
-                <small>Também é possível abrir um trabalho pelo ID.</small>
-              </form>
+              <details className="advanced-lookup">
+                <summary>Abrir por ID (para casos fora da fila)</summary>
+                <form className="review-card review-lookup" onSubmit={load}>
+                  <label htmlFor="review-work-id">ID do trabalho</label>
+                  <div>
+                    <input
+                      id="review-work-id"
+                      type="text"
+                      required
+                      value={workId}
+                      onChange={(event) => setWorkId(event.target.value)}
+                      placeholder="UUIDv7 do trabalho concluído"
+                    />
+                    <button
+                      className="button primary"
+                      disabled={busy}
+                      type="submit"
+                    >
+                      Consultar
+                    </button>
+                  </div>
+                  <small>Também é possível abrir um trabalho pelo ID.</small>
+                </form>
+              </details>
               {error && (
                 <p className="review-alert" role="alert">
                   {error}

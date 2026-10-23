@@ -1,6 +1,9 @@
 export type PickerOption = { id: string; label: string; hint?: string };
 
-export type PickerResult = { options: PickerOption[]; truncated?: boolean };
+export type PickerResult = {
+  options: PickerOption[];
+  next?: () => Promise<PickerResult>;
+};
 
 export type PickerSearch = (query: string) => Promise<PickerResult>;
 
@@ -72,19 +75,29 @@ export function pickerKeyAction(
   return "none";
 }
 
-export async function collectPages<T>(
+export async function pagedResult<T>(
   fetchPage: (
     cursor?: string,
   ) => Promise<{ items: T[]; next_cursor: string | null }>,
-  maxPages: number,
-): Promise<{ items: T[]; truncated: boolean }> {
-  const items: T[] = [];
-  let cursor: string | undefined;
-  for (let page = 0; page < maxPages; page += 1) {
-    const result = await fetchPage(cursor);
-    items.push(...result.items);
-    if (result.next_cursor === null) return { items, truncated: false };
-    cursor = result.next_cursor;
-  }
-  return { items, truncated: true };
+  toOption: (item: T) => PickerOption | null,
+  query: string,
+  filterOnClient: boolean,
+  cursor?: string,
+): Promise<PickerResult> {
+  const page = await fetchPage(cursor);
+  const mapped = page.items
+    .map(toOption)
+    .filter((option): option is PickerOption => option !== null);
+  const nextCursor = page.next_cursor;
+  return {
+    options: filterOnClient ? filterOptions(mapped, query) : mapped,
+    next: nextCursor
+      ? () =>
+          pagedResult(fetchPage, toOption, query, filterOnClient, nextCursor)
+      : undefined,
+  };
+}
+
+export function shortId(id: string): string {
+  return id.length > 12 ? `${id.slice(0, 8)}…` : id;
 }

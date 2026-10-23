@@ -703,3 +703,20 @@ textarea.input {
 .form-alert {
   margin-bottom: var(--space-4);
 }
+
+.advanced-lookup {
+  margin: var(--space-3) 0;
+}
+
+.advanced-lookup > summary {
+  width: fit-content;
+  padding: var(--space-1) 0;
+  color: var(--primary);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+}
+
+.advanced-lookup[open] > summary {
+  margin-bottom: var(--space-2);
+}

@@ -1,4 +1,5 @@
 import type { CommercialPolicy, CommercialPolicyDraft } from "./api";
+import { shortId } from "./picker-model";
 
 export type PolicyStatus = CommercialPolicy["status"];
 export type PolicyChannel = CommercialPolicy["channel"];
@@ -151,7 +152,8 @@ export function scopeSummary(
   if (policy.channel === "site")
     return { primary: "Site direto", secondary: "Todos os clientes" };
   const org = policy.organization_id
-    ? (orgNames[policy.organization_id] ?? "Organização não listada")
+    ? (orgNames[policy.organization_id] ??
+      `Organização ${shortId(policy.organization_id)}`)
     : null;
   if (policy.channel === "integration")
     return {

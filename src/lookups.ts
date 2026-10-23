@@ -6,8 +6,8 @@ import {
 } from "./api";
 import { itemLabel, promotionKindLabel } from "./display-labels";
 import {
-  collectPages,
   filterOptions,
+  pagedResult,
   type PickerOption,
   type PickerSearch,
 } from "./picker-model";
@@ -17,24 +17,18 @@ const dateShort = new Intl.DateTimeFormat("pt-BR", {
   timeZone: "America/Sao_Paulo",
 });
 
-const PAGE_CAP = 5;
-
 const money = (cents: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(
     cents / 100,
   );
 
-export const searchOrganizations: PickerSearch = async (query) => {
-  const page = await listOrganizations(query.trim());
-  return {
-    options: page.items.map((org) => ({
-      id: org.id,
-      label: org.name,
-      hint: org.slug,
-    })),
-    truncated: page.next_cursor !== null,
-  };
-};
+export const searchOrganizations: PickerSearch = (query) =>
+  pagedResult(
+    (cursor) => listOrganizations(query.trim(), cursor),
+    (org) => ({ id: org.id, label: org.name, hint: org.slug }),
+    query,
+    false,
+  );
 
 export const resolveOrganization = async (
   id: string,
@@ -67,53 +61,43 @@ export const resolveApplication =
       (app) => app.id === id,
     ) ?? null;
 
-export const searchPromotionPolicies: PickerSearch = async (query) => {
-  const page = await collectPages(
+export const searchPromotionPolicies: PickerSearch = (query) =>
+  pagedResult(
     (cursor) => listCommercialPolicies(cursor),
-    PAGE_CAP,
+    (policy) =>
+      policy.channel === "promotion" && policy.status === "published"
+        ? {
+            id: policy.id,
+            label: `${itemLabel(policy.item_code)} · ${promotionKindLabel(policy.attribution)}`,
+            hint: `Vigência ${dateShort.format(new Date(policy.valid_from))} a ${dateShort.format(new Date(policy.valid_until))}`,
+          }
+        : null,
+    query,
+    true,
   );
-  const options = page.items
-    .filter(
-      (policy) =>
-        policy.channel === "promotion" && policy.status === "published",
-    )
-    .map((policy) => ({
-      id: policy.id,
-      label: `${itemLabel(policy.item_code)} · ${promotionKindLabel(policy.attribution)}`,
-      hint: `Vigência ${dateShort.format(new Date(policy.valid_from))} a ${dateShort.format(new Date(policy.valid_until))}`,
-    }));
-  return {
-    options: filterOptions(options, query),
-    truncated: page.truncated,
-  };
-};
 
 export const searchCommissionEntries =
   (organizationId: string, status: string): PickerSearch =>
-  async (query) => {
-    const page = await collectPages(
+  (query) =>
+    pagedResult(
       (cursor) =>
         listCommissionEntries(
           cursor,
           organizationId || undefined,
           status || undefined,
         ),
-      PAGE_CAP,
+      (entry) => ({
+        id: entry.id,
+        label: `${money(entry.amount_cents)} · ${itemLabel(entry.item_kind)}`,
+        hint: `Gerada em ${dateShort.format(new Date(entry.created_at))}`,
+      }),
+      query,
+      true,
     );
-    const options = page.items.map((entry) => ({
-      id: entry.id,
-      label: `${money(entry.amount_cents)} · ${itemLabel(entry.item_kind)}`,
-      hint: `Gerada em ${dateShort.format(new Date(entry.created_at))}`,
-    }));
-    return {
-      options: filterOptions(options, query),
-      truncated: page.truncated,
-    };
-  };
 
 export const LIMIT_NOTES = {
   policies:
-    "A API de regras ainda não filtra por canal/estado nem busca por texto: só as 100 versões mais recentes são consideradas.",
+    "A API de regras ainda não filtra por canal/estado: a busca vale só para as páginas já carregadas. Use “Carregar mais resultados”.",
   entries:
-    "A API de comissões não busca por texto: só as 100 obrigações mais recentes do filtro são listadas.",
+    "A API de comissões não busca por texto: a busca vale só para as páginas já carregadas. Use “Carregar mais resultados”.",
 } as const;

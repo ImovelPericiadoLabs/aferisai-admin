@@ -23,6 +23,7 @@ type Props = {
   organizations: OrganizationOption[];
   onSubmit: () => void;
   onClose: () => void;
+  onUnauthorized: () => void;
 };
 
 const channels: { value: PolicyChannel; title: string; hint: string }[] = [
@@ -40,6 +41,7 @@ export function CommercialPolicyForm({
   organizations,
   onSubmit,
   onClose,
+  onUnauthorized,
 }: Props) {
   const needsOrganization = form.channel !== "site";
   const needsApplication = form.channel === "integration";
@@ -131,6 +133,7 @@ export function CommercialPolicyForm({
           </div>
           {needsOrganization && (
             <EntityPicker
+              onUnauthorized={onUnauthorized}
               id="policy-organization"
               label="Organização"
               placeholder="Buscar organização pelo nome"
@@ -149,6 +152,7 @@ export function CommercialPolicyForm({
           )}
           {needsApplication && (
             <EntityPicker
+              onUnauthorized={onUnauthorized}
               id="policy-application"
               label="Aplicação"
               placeholder={

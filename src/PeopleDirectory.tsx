@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useDialogFocus } from "./useDialogFocus";
 import { teamRoleLabel } from "./display-labels";
@@ -6,6 +6,8 @@ import {
   accountAge,
   filterPeople,
   formatPersonDate,
+  SEARCH_LOAD_CAP,
+  shouldLoadMoreForSearch,
   type PeopleTab,
   type Person,
 } from "./people-model";
@@ -74,6 +76,21 @@ export function PeopleDirectory({
   const activeCount = people.filter((p) => p.status === "active").length;
   const suspendedCount = people.length - activeCount;
   const filtering = Boolean(query || status || role);
+
+  const searchWantsMore = shouldLoadMoreForSearch({
+    query,
+    hasMore,
+    loading,
+    loaded: people.length,
+    cap: SEARCH_LOAD_CAP,
+  });
+  const loadMoreRef = useRef(onLoadMore);
+  useEffect(() => {
+    loadMoreRef.current = onLoadMore;
+  });
+  useEffect(() => {
+    if (searchWantsMore) loadMoreRef.current();
+  }, [searchWantsMore, people.length]);
 
   useDialogFocus(selectedId !== null, panelRef, () => setSelectedId(null), {
     returnFocus: () =>

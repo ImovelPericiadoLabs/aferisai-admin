@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { accountAge, filterPeople, type Person } from "./people-model";
+import {
+  accountAge,
+  filterPeople,
+  shouldLoadMoreForSearch,
+  type Person,
+} from "./people-model";
 
 const people: Person[] = [
   {
@@ -74,5 +79,29 @@ describe("accountAge", () => {
   it("returns a dash for future or invalid dates", () => {
     expect(accountAge("2027-01-01T00:00:00Z", now)).toBe("—");
     expect(accountAge("not-a-date", now)).toBe("—");
+  });
+});
+
+describe("shouldLoadMoreForSearch", () => {
+  const base = {
+    query: "ana",
+    hasMore: true,
+    loading: false,
+    loaded: 20,
+    cap: 200,
+  };
+
+  it("keeps loading pages while a search is active and more pages exist", () => {
+    expect(shouldLoadMoreForSearch(base)).toBe(true);
+  });
+
+  it("does nothing without a query, without more pages, or while loading", () => {
+    expect(shouldLoadMoreForSearch({ ...base, query: "  " })).toBe(false);
+    expect(shouldLoadMoreForSearch({ ...base, hasMore: false })).toBe(false);
+    expect(shouldLoadMoreForSearch({ ...base, loading: true })).toBe(false);
+  });
+
+  it("stops at the cap so a search never downloads the whole table", () => {
+    expect(shouldLoadMoreForSearch({ ...base, loaded: 200 })).toBe(false);
   });
 });

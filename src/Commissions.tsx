@@ -171,6 +171,7 @@ function EntriesTab({
           }}
         >
           <EntityPicker
+            onUnauthorized={onUnauthorized}
             id="entry-org"
             label="Organização (opcional)"
             placeholder="Todas as organizações"
@@ -489,6 +490,7 @@ function SettlementsTab({
         )}
         <form className="form commercial-form" onSubmit={requestSubmit}>
           <EntityPicker
+            onUnauthorized={onUnauthorized}
             id="set-org"
             label="Organização beneficiária"
             placeholder="Buscar organização pelo nome"
@@ -546,6 +548,7 @@ function SettlementsTab({
             required
           />
           <EntityPicker
+            onUnauthorized={onUnauthorized}
             multiple
             id="set-entries"
             label="Obrigações incluídas no repasse"
@@ -602,6 +605,7 @@ function SettlementsTab({
             }}
           >
             <EntityPicker
+              onUnauthorized={onUnauthorized}
               id="set-org-filter"
               label="Filtrar por organização"
               placeholder="Todas as organizações"

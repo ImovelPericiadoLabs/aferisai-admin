@@ -313,29 +313,34 @@ export function SourceClassification({
           </button>
         )}
       </section>
-      <form className="review-card review-lookup" onSubmit={load}>
-        <label htmlFor="source-request-id">ID da solicitação</label>
-        <div>
-          <input
-            id="source-request-id"
-            type="text"
-            required
-            value={requestId}
-            onChange={(event) => {
-              setRequestId(event.target.value);
-              setActiveId("");
-              setPreviewUrl("");
-              setHasRead(false);
-              setVisualConfirmed(false);
-            }}
-            placeholder="UUIDv7 da solicitação de arquivo"
-          />
-          <button className="button primary" type="submit" disabled={busy}>
-            {busy ? "Aguarde…" : "Consultar"}
-          </button>
-        </div>
-        <small>Use o ID da solicitação, não o ID do trabalho de análise.</small>
-      </form>
+      <details className="advanced-lookup">
+        <summary>Abrir por ID (para casos fora da fila)</summary>
+        <form className="review-card review-lookup" onSubmit={load}>
+          <label htmlFor="source-request-id">ID da solicitação</label>
+          <div>
+            <input
+              id="source-request-id"
+              type="text"
+              required
+              value={requestId}
+              onChange={(event) => {
+                setRequestId(event.target.value);
+                setActiveId("");
+                setPreviewUrl("");
+                setHasRead(false);
+                setVisualConfirmed(false);
+              }}
+              placeholder="UUIDv7 da solicitação de arquivo"
+            />
+            <button className="button primary" type="submit" disabled={busy}>
+              {busy ? "Aguarde…" : "Consultar"}
+            </button>
+          </div>
+          <small>
+            Use o ID da solicitação, não o ID do trabalho de análise.
+          </small>
+        </form>
+      </details>
       {error && (
         <p className="review-alert" role="alert">
           {error}

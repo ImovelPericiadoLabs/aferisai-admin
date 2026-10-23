@@ -43,3 +43,20 @@ export function filterPeople(
       (!role || person.role === role),
   );
 }
+
+export const SEARCH_LOAD_CAP = 200;
+
+export function shouldLoadMoreForSearch(state: {
+  query: string;
+  hasMore: boolean;
+  loading: boolean;
+  loaded: number;
+  cap: number;
+}): boolean {
+  return (
+    state.query.trim() !== "" &&
+    state.hasMore &&
+    !state.loading &&
+    state.loaded < state.cap
+  );
+}

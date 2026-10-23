@@ -192,6 +192,7 @@ export function Connections({
       >
         <div style={{ flex: "1 1 240px", maxWidth: "320px" }}>
           <EntityPicker
+            onUnauthorized={onUnauthorized}
             id="org-filter"
             label="Organização"
             hint="Escolha a organização para listar as aplicações dela."
@@ -207,6 +208,7 @@ export function Connections({
         </div>
         <div style={{ flex: "1 1 240px", maxWidth: "320px" }}>
           <EntityPicker
+            onUnauthorized={onUnauthorized}
             id="app-filter"
             label="Aplicação"
             placeholder={

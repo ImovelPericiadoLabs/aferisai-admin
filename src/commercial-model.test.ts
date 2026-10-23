@@ -117,7 +117,7 @@ describe("scopeSummary", () => {
     });
   });
 
-  it("uses the organization name when known and a fallback when not", () => {
+  it("uses the organization name when known and the short id when not", () => {
     const integration = policy({
       channel: "integration",
       organization_id: "org-1",
@@ -127,9 +127,7 @@ describe("scopeSummary", () => {
       primary: "Cartório Alfa",
       secondary: "Integração · aplicação específica",
     });
-    expect(scopeSummary(integration, {}).primary).toBe(
-      "Organização não listada",
-    );
+    expect(scopeSummary(integration, {}).primary).toBe("Organização org-1");
   });
 
   it("labels coupon and link promotions", () => {

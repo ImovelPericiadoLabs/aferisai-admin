@@ -1,9 +1,12 @@
 import { useEffect, useId, useRef, useState } from "react";
+import { ApiError } from "./api";
 import {
   mergeOptions,
   nextIndex,
   pickerKeyAction,
+  shortId,
   type PickerOption,
+  type PickerResult,
   type PickerSearch,
 } from "./picker-model";
 import "./entity-picker.css";
@@ -19,6 +22,7 @@ type Shared = {
   limitNote?: string;
   knownOptions?: PickerOption[];
   cacheKey?: string;
+  onUnauthorized?: () => void;
   resolve?: (id: string) => Promise<PickerOption | null>;
 };
 
@@ -40,7 +44,7 @@ type Loaded = {
   key: string | undefined;
   query: string;
   options: PickerOption[];
-  truncated: boolean;
+  next?: () => Promise<PickerResult>;
   failed: boolean;
 };
 
@@ -56,6 +60,7 @@ export function EntityPicker(props: Props) {
     limitNote,
     knownOptions,
     cacheKey,
+    onUnauthorized,
     resolve,
   } = props;
   const listId = useId();
@@ -65,13 +70,21 @@ export function EntityPicker(props: Props) {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
   const [loaded, setLoaded] = useState<Loaded | null>(null);
+  const [moreBusy, setMoreBusy] = useState(false);
   const [labels, setLabels] = useState<PickerOption[]>(knownOptions ?? []);
   const searchRef = useRef(search);
   const resolveRef = useRef(resolve);
+  const unauthorizedRef = useRef(onUnauthorized);
   useEffect(() => {
     searchRef.current = search;
     resolveRef.current = resolve;
+    unauthorizedRef.current = onUnauthorized;
   });
+
+  function handleFailure(cause: unknown) {
+    if (cause instanceof ApiError && cause.status === 401)
+      unauthorizedRef.current?.();
+  }
 
   const selectedIds = props.multiple
     ? props.value
@@ -93,9 +106,12 @@ export function EntityPicker(props: Props) {
     if (!resolver || !missingKey) return;
     let live = true;
     void Promise.all(
-      missingKey
-        .split(",")
-        .map((missing) => resolver(missing).catch(() => null)),
+      missingKey.split(",").map((missing) =>
+        resolver(missing).catch((cause: unknown) => {
+          handleFailure(cause);
+          return null;
+        }),
+      ),
     ).then((found) => {
       if (live)
         setLabels((current) =>
@@ -123,19 +139,19 @@ export function EntityPicker(props: Props) {
               key: cacheKey,
               query,
               options: result.options,
-              truncated: Boolean(result.truncated),
+              next: result.next,
               failed: false,
             });
             setLabels((current) => mergeOptions(current, result.options));
             setActive(result.options.length ? 0 : -1);
           })
-          .catch(() => {
+          .catch((cause: unknown) => {
+            handleFailure(cause);
             if (live)
               setLoaded({
                 key: cacheKey,
                 query,
                 options: [],
-                truncated: false,
                 failed: true,
               });
           });
@@ -195,6 +211,30 @@ export function EntityPicker(props: Props) {
     else props.onChange("");
   }
 
+  async function loadMore() {
+    const next = current?.next;
+    if (!next || moreBusy) return;
+    setMoreBusy(true);
+    try {
+      const result = await next();
+      setLoaded((state) =>
+        state && state.query === query && state.key === cacheKey
+          ? {
+              ...state,
+              options: mergeOptions(state.options, result.options),
+              next: result.next,
+            }
+          : state,
+      );
+      setLabels((known) => mergeOptions(known, result.options));
+    } catch (cause) {
+      handleFailure(cause);
+      setLoaded((state) => (state ? { ...state, failed: true } : state));
+    } finally {
+      setMoreBusy(false);
+    }
+  }
+
   function onKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
     const action = pickerKeyAction(event.key, {
       open,
@@ -218,11 +258,11 @@ export function EntityPicker(props: Props) {
   }
 
   const single = !props.multiple && props.value ? labelFor(props.value) : null;
-  const inputValue = open || props.multiple ? query : (single?.label ?? "");
-  const placeholderText =
-    !props.multiple && props.value && !single
-      ? "Selecionado"
-      : (placeholder ?? "Buscar…");
+  const inputValue =
+    open || props.multiple
+      ? query
+      : (single?.label ?? (props.value ? shortId(props.value) : ""));
+  const placeholderText = placeholder ?? "Buscar…";
 
   return (
     <div
@@ -243,10 +283,10 @@ export function EntityPicker(props: Props) {
         {props.multiple &&
           props.value.map((optionId) => (
             <span className="picker-chip" key={optionId}>
-              {labelFor(optionId)?.label ?? optionId}
+              {labelFor(optionId)?.label ?? shortId(optionId)}
               <button
                 type="button"
-                aria-label={`Remover ${labelFor(optionId)?.label ?? optionId}`}
+                aria-label={`Remover ${labelFor(optionId)?.label ?? shortId(optionId)}`}
                 disabled={disabled}
                 onClick={(event) => {
                   event.stopPropagation();
@@ -337,12 +377,18 @@ export function EntityPicker(props: Props) {
           {!loading && !loaded?.failed && options.length === 0 && (
             <p className="picker-status">Nenhum resultado.</p>
           )}
-          {(loaded?.truncated || limitNote) && !loading && (
-            <p className="picker-note">
-              {limitNote ??
-                "Mostrando só os primeiros resultados. Digite para refinar a busca."}
-            </p>
+          {current?.next && (
+            <button
+              className="picker-more"
+              type="button"
+              disabled={moreBusy}
+              onPointerDown={(event) => event.preventDefault()}
+              onClick={() => void loadMore()}
+            >
+              {moreBusy ? "Carregando…" : "Carregar mais resultados"}
+            </button>
           )}
+          {limitNote && !loading && <p className="picker-note">{limitNote}</p>}
         </div>
       )}
       {hint && <span className="form-hint">{hint}</span>}

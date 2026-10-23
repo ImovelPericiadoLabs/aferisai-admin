@@ -225,6 +225,7 @@ export function Promotions({
             onSubmit={(event) => void submit(event)}
           >
             <EntityPicker
+              onUnauthorized={onUnauthorized}
               id="promo-policy"
               label="Versão de regra publicada"
               placeholder="Buscar regra de promoção publicada"
@@ -235,6 +236,7 @@ export function Promotions({
               onChange={(id) => set("policyVersionId", id)}
             />
             <EntityPicker
+              onUnauthorized={onUnauthorized}
               id="promo-org"
               label="Organização"
               placeholder="Buscar organização pelo nome"
