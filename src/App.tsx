@@ -49,6 +49,7 @@ import { ShellIcon } from "./ShellIcon";
 import { DashboardOverview, DashboardReports } from "./DashboardOverview";
 import { teamRoleLabel } from "./display-labels";
 import { PartnerPortal } from "./PartnerPortal";
+import { TeamInvitation } from "./TeamInvitation";
 import "./App.css";
 import "./brand.css";
 import "./directory.css";
@@ -1576,7 +1577,8 @@ function ToastStack({
   );
 }
 
-function portalMode(): "team" | "partner" | "invitation" {
+function portalMode(): "team" | "partner" | "invitation" | "team-invitation" {
+  if (window.location.hash.startsWith("#equipe-convite")) return "team-invitation";
   if (window.location.hash.startsWith("#convite")) return "invitation";
   if (window.location.hash.startsWith("#parceiro")) return "partner";
   return "team";
@@ -1589,6 +1591,7 @@ function App() {
     window.addEventListener("hashchange", update);
     return () => window.removeEventListener("hashchange", update);
   }, []);
+  if (portal === "team-invitation") return <TeamInvitation />;
   return portal === "team" ? <TeamApp /> : <PartnerPortal key={portal} />;
 }
 

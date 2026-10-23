@@ -38,6 +38,7 @@ export type PartnerInvitationIssued = {
   expires_in: number;
 };
 export type PartnerEnrollment = { totp_secret: string; otpauth_uri: string };
+export type TeamInvitationEnrollment = { totp_secret: string; otpauth_uri: string };
 export type OnboardingBody = {
   organization_slug: string;
   organization_name: string;
@@ -988,6 +989,16 @@ export const enrollPartnerInvitation = (token: string, password: string) =>
   request<PartnerEnrollment>("/v1/partner/invitations/enroll", {
     method: "POST",
     body: JSON.stringify({ token, password }),
+  });
+export const enrollTeamInvitation = (token: string, password: string) =>
+  request<TeamInvitationEnrollment>("/v1/team/members/invitations/enroll", {
+    method: "POST",
+    body: JSON.stringify({ token, password }),
+  });
+export const confirmTeamInvitation = (token: string, otp: string) =>
+  request<void>("/v1/team/members/invitations/confirm", {
+    method: "POST",
+    body: JSON.stringify({ token, otp }),
   });
 export const confirmPartnerInvitation = (token: string, otp: string) =>
   request<void>("/v1/partner/invitations/confirm", {
