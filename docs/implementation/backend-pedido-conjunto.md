@@ -26,7 +26,12 @@ Busca e filtros em listas (usuários, membros, regras, comissões, aplicações,
 - Suspender e reativar aplicação isolada e organização; renomear aplicação.
 - Trocar URL e rotacionar chave de webhook; reenviar entrega; filtrar entregas por data.
 - Pessoas e convites do parceiro (listar, reenviar, revogar).
-- **Gestão de convidados por aplicação:** vincular pessoa do parceiro a aplicação, listar quem tem acesso, revogar o acesso de uma pessoa (hoje só se revoga a credencial da aplicação) e **trilha de auditoria** (quem concedeu/revogou, quando, motivo) para permissões, credenciais, webhooks e convites. Sem isso o admin não pode mostrar convidados nem histórico, e não os inventa.
+- **Gestão de pessoas e convites do parceiro (prioridade alta, pedido do dono do produto).** Verificado em `app/partner/models.py` e `app/partner/routes.py`: os dados existem (`PartnerInvitation` com `expires_at`, `smtp_accepted_at`, `consumed_at`, `revoked_at`, `failed_confirmations`, `confirmation_blocked_at`; `PartnerMembership` com `status` invited/active/suspended), mas a única rota é `POST /v1/team/organizations/{id}/partner-invitations`. Faltam:
+  - `GET /v1/team/organizations/{id}/partner-people` — pessoas e convites da organização: e-mail, estado do convite (enviado/aceito/expirado/revogado/bloqueado), quem convidou, datas (enviado, aceito), vínculo (`invited`/`active`/`suspended`), último acesso.
+  - `POST .../partner-invitations/{id}/resend` e `.../revoke` (revogar convite pendente).
+  - `POST .../partner-people/{member_id}/suspend` e `.../reactivate` (revogar/restaurar o acesso de quem já aceitou), encerrando as sessões ativas dele (`partner_sessions`), com `reason`.
+  - **Escopo por aplicação:** hoje o acesso do parceiro é por organização (`partner_memberships`), não por aplicação. "Dar ou tirar acesso a uma aplicação específica" exige um modelo novo (vínculo pessoa × aplicação) ou a decisão de que o controle é só por organização. Definir com o produto.
+  - **Trilha de auditoria** (quem convidou, aceitou, suspendeu, revogou, quando e por quê) para convites, vínculos, permissões, credenciais e webhooks.
 - Métricas por aplicação além das últimas 20 entregas: série temporal de entregas por estado e latência (p50/p95) por período.
 
 **Upload e arquivos**
