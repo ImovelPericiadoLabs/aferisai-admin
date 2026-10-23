@@ -1,6 +1,6 @@
 .organization-context {
   position: relative;
-  margin-left: auto;
+  margin-left: var(--space-4);
   min-width: 0;
 }
 .organization-context-trigger {
@@ -36,7 +36,7 @@
   position: absolute;
   z-index: 50;
   top: calc(100% + 0.4rem);
-  right: 0;
+  left: 0;
   width: min(330px, calc(100vw - 2rem));
   padding: 0.45rem;
   border: 1px solid var(--line);

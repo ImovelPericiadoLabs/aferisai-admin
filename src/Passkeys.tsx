@@ -12,6 +12,7 @@ import {
   type PasskeyItem,
 } from "./api";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { FieldAction } from "./FieldAction";
 import {
   lastUsedLabel,
   passkeyErrorKind,
@@ -160,17 +161,31 @@ export function Passkeys({
       )}
 
       <form
-        className="card card-body passkeys-register"
+        className="card card-body"
         onSubmit={(event) => {
           event.preventDefault();
           if (label.trim() && !busy && !usage.full && supported)
             void register();
         }}
       >
-        <div className="form-field">
-          <label className="form-field-label" htmlFor="passkey-label">
-            Nome da nova chave
-          </label>
+        <FieldAction
+          id="passkey-label"
+          label="Nome da nova chave"
+          hint={
+            usage.full
+              ? "Você atingiu o limite de 5 chaves. Revogue uma para cadastrar outra."
+              : "Use um nome que identifique o dispositivo."
+          }
+          action={
+            <button
+              className="btn btn-primary btn-md"
+              type="submit"
+              disabled={busy || !supported || usage.full || !label.trim()}
+            >
+              {busy ? "Aguarde…" : "Criar chave de acesso"}
+            </button>
+          }
+        >
           <input
             id="passkey-label"
             className="input"
@@ -181,19 +196,7 @@ export function Passkeys({
             disabled={busy || !supported || usage.full}
             onChange={(event) => setLabel(event.target.value)}
           />
-          <span className="form-hint">
-            {usage.full
-              ? "Você atingiu o limite de 5 chaves. Revogue uma para cadastrar outra."
-              : "Use um nome que identifique o dispositivo."}
-          </span>
-        </div>
-        <button
-          className="btn btn-primary btn-md"
-          type="submit"
-          disabled={busy || !supported || usage.full || !label.trim()}
-        >
-          {busy ? "Aguarde…" : "Criar chave de acesso"}
-        </button>
+        </FieldAction>
       </form>
 
       {loading ? (

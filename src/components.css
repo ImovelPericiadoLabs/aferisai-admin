@@ -773,3 +773,32 @@ textarea.input {
   outline: 2px solid var(--primary);
   outline-offset: -2px;
 }
+
+/* ── Field with a side action (input + button share one row) ── */
+.field-action {
+  display: grid;
+  gap: var(--space-1);
+  max-width: 640px;
+}
+
+.field-action-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.field-action-row > .input {
+  flex: 1;
+  min-width: 0;
+}
+
+.field-action-row > .btn {
+  flex: none;
+}
+
+@media (max-width: 480px) {
+  .field-action-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
