@@ -32,22 +32,22 @@
   gap: 0.35rem;
   padding: 0.27rem 0.55rem;
   border-radius: 4px;
-  font-size: 0.67rem;
+  font-size: var(--text-label);
   font-weight: 700;
   white-space: nowrap;
   margin-left: auto;
 }
 .detail-status--active {
-  color: #116b50;
-  background: #e6f7ee;
+  color: var(--success);
+  background: var(--success-bg);
 }
 .detail-status--suspended {
-  color: #906118;
-  background: #fff2d8;
+  color: var(--warning);
+  background: var(--warning-bg);
 }
 .detail-status--unknown {
-  color: #536782;
-  background: #edf2f8;
+  color: var(--text-muted);
+  background: var(--bg);
 }
 .detail-status > span {
   display: inline-grid;
@@ -57,13 +57,13 @@
   border: 1px solid currentColor;
   border-radius: 50%;
   line-height: 1;
-  font-size: 0.61rem;
+  font-size: var(--text-label);
 }
 .detail-intro .eyebrow {
   margin-bottom: 0.3rem;
 }
 .detail-intro h1 {
-  font-size: 1.35rem;
+  font-size: var(--text-xl);
   margin: 0;
   overflow-wrap: anywhere;
 }
@@ -87,17 +87,17 @@
 }
 .detail-summary dt {
   color: var(--muted);
-  font-size: 0.7rem;
+  font-size: var(--text-label);
 }
 .detail-summary dd {
   margin: 0;
   color: var(--ink);
-  font-size: 0.79rem;
+  font-size: var(--text-sm);
   font-weight: 800;
   font-variant-numeric: tabular-nums;
 }
 .detail-slug {
-  font-size: 0.72rem;
+  font-size: var(--text-caption);
   color: var(--muted);
   margin: 0.3rem 0 0;
 }
@@ -105,12 +105,12 @@
   width: 3.4rem;
   height: 3.4rem;
   flex: 0 0 3.4rem;
-  background: #edf3ff;
+  background: var(--primary-faint);
   border-radius: 9px;
   display: grid;
   place-items: center;
   overflow: hidden;
-  color: #1d58b6;
+  color: var(--primary-hover);
   font:
     800 1.6rem Manrope,
     Arial,
@@ -143,11 +143,11 @@
   margin-bottom: 1rem;
 }
 .detail-card-head h3 {
-  font-size: 1.04rem;
+  font-size: var(--text-md);
   margin: 0;
 }
 .detail-card-head > span {
-  font-size: 0.66rem;
+  font-size: var(--text-label);
   color: var(--muted);
   font-weight: 800;
 }
@@ -160,7 +160,7 @@
   gap: 0.7rem;
   padding: 0.8rem 0;
   border-top: 1px solid var(--line);
-  font-size: 0.74rem;
+  font-size: var(--text-caption);
 }
 .detail-card dt {
   color: var(--muted);
@@ -174,7 +174,7 @@
   padding-top: 0.8rem;
   border-top: 1px solid var(--line);
   color: var(--muted);
-  font-size: 0.69rem;
+  font-size: var(--text-label);
 }
 .detail-technical summary {
   width: fit-content;
@@ -194,7 +194,7 @@
   margin: 0.35rem 0 0;
 }
 .detail-card > p {
-  font-size: 0.73rem;
+  font-size: var(--text-caption);
   color: var(--muted);
 }
 .profile-form textarea {
@@ -207,30 +207,30 @@
   font: inherit;
 }
 .profile-form textarea:focus-visible {
-  outline: 2px solid #1d58b6;
+  outline: 2px solid var(--primary-hover);
   outline-offset: 2px;
 }
 .profile-saved {
-  color: #28724f !important;
+  color: var(--text-muted) !important;
   font-weight: 700;
 }
 .logo-card label {
   display: block;
-  font-size: 0.72rem;
+  font-size: var(--text-caption);
   font-weight: 700;
   margin: 0.8rem 0 0.4rem;
 }
 .logo-card input[type="file"] {
   display: block;
   max-width: 100%;
-  font-size: 0.72rem;
+  font-size: var(--text-caption);
 }
 .logo-card .button-row {
   margin-top: 0.85rem;
 }
 .detail-empty {
   color: var(--muted);
-  font-size: 0.74rem;
+  font-size: var(--text-caption);
 }
 .application-list {
   display: grid;
@@ -248,7 +248,7 @@
   gap: 0.6rem;
 }
 .application-heading h4 {
-  font-size: 0.83rem;
+  font-size: var(--text-sm);
   margin: 0;
 }
 .application-heading small {
@@ -259,7 +259,7 @@
   overflow-wrap: anywhere;
 }
 .application-item p {
-  font-size: 0.68rem;
+  font-size: var(--text-label);
   color: var(--muted);
   margin: 0.8rem 0 0.4rem;
 }
@@ -273,8 +273,8 @@
 }
 .permission-chips li {
   border-radius: 5px;
-  background: #edf3ff;
-  color: #275799;
+  background: var(--primary-faint);
+  color: var(--text-muted);
   padding: 0.27rem 0.45rem;
   font:
     700 0.67rem ui-monospace,
@@ -293,14 +293,14 @@
 }
 .redirect-uris h5 {
   margin: 0;
-  font-size: 0.78rem;
+  font-size: var(--text-caption);
 }
 .redirect-uris form {
   display: grid;
   gap: 0.45rem;
 }
 .redirect-uris label {
-  font-size: 0.7rem;
+  font-size: var(--text-label);
   font-weight: 700;
 }
 .redirect-uris textarea {
@@ -327,7 +327,7 @@
   margin: 0;
 }
 .credential-panel h5 {
-  font-size: 0.78rem;
+  font-size: var(--text-caption);
   margin: 0;
 }
 .credential-panel > p,
@@ -335,12 +335,12 @@
 .credential-panel .credential-recovery p,
 .credential-panel .credential-issued p {
   margin: 0;
-  font-size: 0.72rem;
+  font-size: var(--text-caption);
   line-height: 1.5;
   color: var(--muted);
 }
 .credential-panel .error {
-  color: #9b2532;
+  color: var(--danger);
 }
 .credential-list {
   padding: 0;
@@ -361,12 +361,12 @@
   min-width: 0;
 }
 .credential-recovery {
-  border-color: #c77a32;
-  background: #fff8ed;
+  border-color: var(--warning);
+  background: var(--warning-bg);
 }
 .credential-issued {
-  border-color: #44876a;
-  background: #f2faf5;
+  border-color: var(--text-muted);
+  background: var(--success-bg);
 }
 .credential-row {
   display: flex;
@@ -380,10 +380,10 @@
   overflow-wrap: anywhere;
 }
 .credential-row strong {
-  font-size: 0.72rem;
+  font-size: var(--text-caption);
 }
 .credential-row small {
-  font-size: 0.66rem;
+  font-size: var(--text-label);
   color: var(--muted);
   margin-top: 0.2rem;
 }
@@ -400,7 +400,7 @@
   margin-top: 0.6rem;
 }
 .permission-description-form label {
-  font-size: 0.7rem;
+  font-size: var(--text-label);
   color: var(--muted);
 }
 .permission-description-form input {
@@ -412,7 +412,7 @@
   font: inherit;
 }
 .permission-description-form input:focus-visible {
-  outline: 2px solid #1d58b6;
+  outline: 2px solid var(--primary-hover);
   outline-offset: 2px;
 }
 .catalog-list {
@@ -436,9 +436,9 @@
   height: 1.7rem;
   flex: 0 0 1.7rem;
   border-radius: 5px;
-  color: #1452a6;
-  background: #eaf2ff;
-  font-size: 0.9rem;
+  color: var(--info);
+  background: var(--primary-faint);
+  font-size: var(--text-base);
   font-weight: 700;
 }
 .catalog-content {
@@ -451,18 +451,18 @@
 }
 .catalog-list strong {
   color: var(--ink);
-  font-size: 0.72rem;
+  font-size: var(--text-caption);
   font-weight: 700;
 }
 .catalog-content > span {
-  font-size: 0.7rem;
+  font-size: var(--text-label);
   color: var(--muted);
   margin-top: 0.18rem;
   line-height: 1.4;
 }
 .catalog-content > .back-link {
   margin-top: 0.3rem;
-  font-size: 0.67rem;
+  font-size: var(--text-label);
 }
 .detail-error {
   display: flex;
@@ -491,10 +491,10 @@
     height: 2rem;
     flex-basis: 2rem;
     border-radius: 5px;
-    font-size: 1rem;
+    font-size: var(--text-md);
   }
   .detail:has(.app-wizard) .detail-intro h1 {
-    font-size: 1rem;
+    font-size: var(--text-md);
   }
   .detail:has(.app-wizard) .detail-intro-name {
     flex: 1 1 auto;

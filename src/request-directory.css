@@ -1,5 +1,5 @@
 .request-directory {
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 11px;
   overflow: hidden;

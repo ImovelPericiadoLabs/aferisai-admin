@@ -1,5 +1,5 @@
 .directory {
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 11px;
   overflow: hidden;
@@ -20,7 +20,7 @@
 }
 .directory-head label {
   display: block;
-  font-size: 0.7rem;
+  font-size: var(--text-label);
   font-weight: 800;
   margin-bottom: 0.4rem;
 }
@@ -32,14 +32,14 @@
   min-width: 0;
   flex: 1;
   height: 44px;
-  border: 1px solid #cbd6e5;
+  border: 1px solid var(--border-strong);
   border-radius: 7px;
   padding: 0 0.75rem;
   color: var(--ink);
 }
 .directory-state {
   color: var(--muted);
-  font-size: 0.8rem;
+  font-size: var(--text-sm);
   padding: 2rem;
 }
 .directory > .error {
@@ -52,7 +52,7 @@
   align-items: center;
   padding: 1rem 1.7rem;
   border-bottom: 1px solid var(--line);
-  font-size: 0.76rem;
+  font-size: var(--text-caption);
 }
 .directory-row:last-child {
   border-bottom: 0;
@@ -62,14 +62,14 @@
   display: block;
 }
 .directory-row strong {
-  font-size: 0.81rem;
+  font-size: var(--text-sm);
 }
 .directory-name {
   border: 0;
   background: transparent;
   padding: 0;
   text-align: left;
-  color: #074db9;
+  color: var(--primary-hover);
   font: inherit;
 }
 .directory-name:hover {
@@ -84,9 +84,9 @@
   margin-top: 0.2rem;
 }
 .directory-labels {
-  background: #f8fafd;
-  color: #7889a0;
-  font-size: 0.67rem;
+  background: var(--info-bg);
+  color: var(--text-subtle);
+  font-size: var(--text-label);
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -99,8 +99,8 @@
 .back-link {
   border: 0;
   background: transparent;
-  color: #45658e;
-  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-size: var(--text-caption);
   font-weight: 800;
   padding: 0;
   margin: 0 0 1.5rem;

@@ -12,10 +12,10 @@
   padding: 0.35rem 0.6rem;
   border: 1px solid var(--line);
   border-radius: 5px;
-  background: #fff;
+  background: var(--surface);
   color: var(--ink);
   font: inherit;
-  font-size: 0.72rem;
+  font-size: var(--text-caption);
   cursor: pointer;
 }
 .organization-context-trigger:hover,
@@ -24,7 +24,7 @@
 }
 .organization-context-mark {
   color: var(--blue);
-  font-size: 1rem;
+  font-size: var(--text-md);
 }
 .organization-context-name {
   overflow: hidden;
@@ -42,13 +42,13 @@
   border: 1px solid var(--line);
   border-radius: 6px;
   background: white;
-  box-shadow: 0 12px 35px #1228491f;
+  box-shadow: 0 12px 35px rgba(15, 23, 42, 0.12);
 }
 .organization-context-heading {
   display: block;
   padding: 0.45rem 0.55rem 0.55rem;
   color: var(--muted);
-  font-size: 0.68rem;
+  font-size: var(--text-label);
   font-weight: 700;
 }
 .organization-context-options {
@@ -64,33 +64,33 @@
   min-height: 38px;
   padding: 0.4rem 0.5rem;
   border: 0;
-  border-bottom: 1px solid #eef2f7;
+  border-bottom: 1px solid var(--bg);
   background: white;
   color: var(--ink);
   text-align: left;
   font: inherit;
-  font-size: 0.72rem;
+  font-size: var(--text-caption);
   cursor: pointer;
 }
 .organization-context-options button:hover,
 .organization-context-options button[aria-pressed="true"] {
-  background: #eaf2ff;
+  background: var(--primary-faint);
 }
 .organization-context-options button:focus-visible {
-  outline: 2px solid #1765e9;
+  outline: 2px solid var(--primary-hover);
   outline-offset: -2px;
 }
 .organization-context-options
   button[aria-pressed="true"]
   span:last-child:not(:first-child) {
-  color: #1765e9;
-  font-size: 0.88rem;
+  color: var(--primary-hover);
+  font-size: var(--text-base);
   font-weight: 800;
 }
 .organization-context-menu p {
   margin: 0.6rem 0.2rem 0;
   color: var(--muted);
-  font-size: 0.72rem;
+  font-size: var(--text-caption);
 }
 @media (max-width: 600px) {
   .organization-context-trigger {

@@ -4,16 +4,16 @@
 .commercial-page select,
 .commercial-page textarea {
   width: 100%;
-  border: 1px solid #c7d2e2;
+  border: 1px solid var(--border-strong);
   border-radius: 8px;
-  background: #fff;
+  background: var(--surface);
   padding: 0.8rem;
   color: var(--ink);
   font: inherit;
 }
 .commercial-page select:focus-visible,
 .commercial-page textarea:focus-visible {
-  outline: 3px solid #8fb4ff;
+  outline: 3px solid var(--primary-ring);
   outline-offset: 2px;
 }
 .commercial-page textarea {
@@ -43,13 +43,13 @@
 }
 .commercial-list li {
   border: 1px solid var(--line);
-  background: #fff;
+  background: var(--surface);
   border-radius: 10px;
   padding: 1rem;
   overflow-wrap: anywhere;
 }
 .commercial-list li p {
-  font-size: 0.8rem;
+  font-size: var(--text-sm);
   line-height: 1.4;
   margin: 0.7rem 0;
 }
@@ -91,7 +91,7 @@
   display: grid;
   grid-template-columns: auto 1fr;
   gap: 0.3rem 0.8rem;
-  font-size: 0.85rem;
+  font-size: var(--text-base);
   margin: 0.5rem 0 0;
 }
 .commercial-preview-result dt {
