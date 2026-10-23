@@ -1,8 +1,10 @@
-import { readdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const SRC = join(__dirname);
+const stylesheets = import.meta.glob("./*.css", {
+  query: "?raw",
+  import: "default",
+  eager: true,
+}) as Record<string, string>;
 
 // Bottom alignment is intentional for titles beside actions and for charts.
 // Controls that share a row with a labelled field must use `.field-action`
@@ -41,15 +43,10 @@ function bottomAlignedSelectors(css: string): string[] {
 describe("css layout guard", () => {
   it("does not bottom-align flex rows outside the allowlist", () => {
     const offenders: string[] = [];
-    for (const file of readdirSync(SRC).filter((name) =>
-      name.endsWith(".css"),
-    )) {
-      for (const selector of bottomAlignedSelectors(
-        readFileSync(join(SRC, file), "utf8"),
-      ))
+    for (const [file, css] of Object.entries(stylesheets))
+      for (const selector of bottomAlignedSelectors(css))
         if (!ALLOWED_BOTTOM_ALIGNED.has(selector))
           offenders.push(`${file}: ${selector}`);
-    }
     expect(
       offenders,
       "Use .field-action (FieldAction) para campo + botão na mesma linha; veja docs/design-system/layout-rules.md",
