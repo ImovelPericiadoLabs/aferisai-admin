@@ -9,6 +9,7 @@ import {
 } from "./api";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { Checkbox } from "./controls";
+import { IntegrationIcon } from "./IntegrationIcon";
 import { SecretReveal } from "./SecretReveal";
 import { uuidv7 } from "./uuidv7";
 import {
@@ -312,9 +313,32 @@ export function CredentialManagement({
         </div>
       )}
       {loaded && items.length === 0 && !error && (
-        <div className="empty-state" role="status">
-          <strong>Nenhuma credencial registrada</strong>
-          <span>Emita a primeira credencial para integrar seus sistemas.</span>
+        <div className="onb card" role="status">
+          <span className="onb-badge" aria-hidden="true">
+            <IntegrationIcon name="key" size={28} />
+          </span>
+          <h4>Emita sua primeira credencial</h4>
+          <p className="onb-lead">
+            A credencial identifica seus sistemas nas chamadas à API. O segredo
+            aparece uma única vez, então prepare um cofre antes de começar.
+          </p>
+          {canIssue && !uncertain && !listError && !confirmIssue && (
+            <button
+              className="btn btn-primary btn-lg onb-cta"
+              type="button"
+              disabled={busy}
+              onClick={() => {
+                setSelectedScopes(
+                  availableScopes.includes("application:read")
+                    ? ["application:read"]
+                    : availableScopes.slice(0, 1),
+                );
+                setConfirmIssue(true);
+              }}
+            >
+              Emitir credencial
+            </button>
+          )}
         </div>
       )}
       {items.length > 0 && (
@@ -496,21 +520,23 @@ export function CredentialManagement({
             </div>
           </section>
         ) : (
-          <button
-            className="btn btn-primary btn-md cred-more"
-            type="button"
-            disabled={busy}
-            onClick={() => {
-              setSelectedScopes(
-                availableScopes.includes("application:read")
-                  ? ["application:read"]
-                  : availableScopes.slice(0, 1),
-              );
-              setConfirmIssue(true);
-            }}
-          >
-            Emitir nova credencial
-          </button>
+          items.length > 0 && (
+            <button
+              className="btn btn-primary btn-md cred-more"
+              type="button"
+              disabled={busy}
+              onClick={() => {
+                setSelectedScopes(
+                  availableScopes.includes("application:read")
+                    ? ["application:read"]
+                    : availableScopes.slice(0, 1),
+                );
+                setConfirmIssue(true);
+              }}
+            >
+              Emitir nova credencial
+            </button>
+          )
         ))}
       {loaded && activeCount >= 2 && (
         <div className="alert" role="note">

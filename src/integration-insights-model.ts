@@ -218,3 +218,38 @@ export function validateRedirectUris(list: string[]): {
     tooMany,
   };
 }
+
+export type PermissionAction = "read" | "create" | "write" | "upload" | "other";
+
+export function permissionAction(code: string): PermissionAction {
+  if (code.endsWith(":upload")) return "upload";
+  const last = code.split(":").pop();
+  return last === "read" || last === "create" || last === "write"
+    ? last
+    : "other";
+}
+
+const fold = (value: string) =>
+  value.normalize("NFD").replace(/[̀-ͯ]/g, "").toLocaleLowerCase("pt-BR");
+
+export function filterPermissionGroups(
+  groups: PermissionGroup[],
+  query: string,
+  mode: "all" | "granted" | "missing",
+  titleOf: (code: string) => string,
+): PermissionGroup[] {
+  const needle = fold(query.trim());
+  return groups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => {
+        if (mode === "granted" && !item.granted) return false;
+        if (mode === "missing" && item.granted) return false;
+        if (!needle) return true;
+        return fold(
+          `${titleOf(item.code)} ${item.description} ${item.code}`,
+        ).includes(needle);
+      }),
+    }))
+    .filter((group) => group.items.length > 0);
+}

@@ -13,6 +13,7 @@ import { ConfirmDialog } from "./ConfirmDialog";
 import { Checkbox } from "./controls";
 import { SecretReveal } from "./SecretReveal";
 import { webhookStep } from "./webhook-setup-model";
+import { IntegrationIcon } from "./IntegrationIcon";
 import { WebhookFlow } from "./WebhookFlow";
 import "./partner-onboarding.css";
 
@@ -287,26 +288,40 @@ export function WebhookEndpointManagement({
 
       {!endpoint && !error && (
         <form
-          className="card cred-form"
+          className="onb card"
           noValidate
           onSubmit={(event) => void register(event)}
         >
-          <h4>Onde sua aplicação recebe eventos?</h4>
-          <p className="form-hint">
-            Informe um endereço público HTTPS sob controle da sua equipe. Um
-            destino por aplicação. O cadastro prepara a chave, sem ativar
-            entregas reais.
+          <span className="onb-badge" aria-hidden="true">
+            <IntegrationIcon name="webhook" size={28} />
+          </span>
+          <h4>Conecte sua aplicação em 4 passos</h4>
+          <p className="onb-lead">
+            Receba um aviso assinado no seu servidor sempre que uma análise for
+            concluída.
           </p>
-          <div className="form-field">
+          <ul className="onb-perks">
+            <li>
+              <IntegrationIcon name="shield" size={16} /> Eventos assinados
+            </li>
+            <li>
+              <IntegrationIcon name="check" size={16} /> Teste antes de ativar
+            </li>
+            <li>
+              <IntegrationIcon name="lock" size={16} /> Nenhuma análise ou
+              cobrança no teste
+            </li>
+          </ul>
+          <div className="form-field onb-field">
             <label
               className="form-field-label"
               htmlFor={`webhook-url-${applicationId}`}
             >
-              URL do webhook
+              Onde sua aplicação recebe eventos?
             </label>
             <input
               id={`webhook-url-${applicationId}`}
-              className="input"
+              className="input onb-input"
               type="url"
               inputMode="url"
               autoComplete="url"
@@ -317,30 +332,29 @@ export function WebhookEndpointManagement({
                 setUrlError("");
               }}
               aria-invalid={Boolean(urlError)}
-              aria-describedby={
-                urlError ? `webhook-url-error-${applicationId}` : undefined
-              }
+              aria-describedby={`webhook-url-hint-${applicationId}`}
               disabled={busy || !canEdit}
               required
             />
-            {urlError && (
-              <span
-                id={`webhook-url-error-${applicationId}`}
-                className="form-hint onboarding-error"
-                role="alert"
-              >
-                {urlError}
-              </span>
-            )}
-          </div>
-          <div className="appdir-actions">
-            <button
-              className="btn btn-primary btn-md"
-              disabled={!canManage || !canEdit || busy || !url.trim()}
+            <span
+              id={`webhook-url-hint-${applicationId}`}
+              className={`form-hint${urlError ? " onboarding-error" : ""}`}
+              role={urlError ? "alert" : undefined}
             >
-              {busy ? "Preparando…" : "Continuar"}
-            </button>
+              {urlError ||
+                "Endereço público HTTPS sob controle da sua equipe. Um destino por aplicação."}
+            </span>
           </div>
+          <button
+            className="btn btn-primary btn-lg onb-cta"
+            disabled={!canManage || !canEdit || busy || !url.trim()}
+          >
+            {busy ? "Preparando…" : "Começar configuração"}
+          </button>
+          <small className="onb-foot">
+            O cadastro só prepara a chave de assinatura. Nenhuma entrega real é
+            ativada ainda.
+          </small>
         </form>
       )}
 
