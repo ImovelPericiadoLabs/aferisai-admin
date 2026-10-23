@@ -474,6 +474,37 @@
   margin: 0;
 }
 @media (max-width: 760px) {
+  .detail:has(.app-wizard) > .back-link,
+  .detail:has(.app-wizard) > .integration-section-nav,
+  .detail:has(.app-wizard) .detail-summary {
+    display: none;
+  }
+  .detail:has(.app-wizard) .detail-intro {
+    padding: 0.55rem 0.75rem;
+  }
+  .detail:has(.app-wizard) .detail-intro-main {
+    flex-wrap: nowrap;
+    gap: 0.55rem;
+  }
+  .detail:has(.app-wizard) .detail-logo {
+    width: 2rem;
+    height: 2rem;
+    flex-basis: 2rem;
+    border-radius: 5px;
+    font-size: 1rem;
+  }
+  .detail:has(.app-wizard) .detail-intro h1 {
+    font-size: 1rem;
+  }
+  .detail:has(.app-wizard) .detail-intro-name {
+    flex: 1 1 auto;
+  }
+  .detail:has(.app-wizard) .detail-intro .eyebrow {
+    margin-bottom: 0.1rem;
+  }
+  .detail:has(.app-wizard) .detail-status {
+    margin-left: auto;
+  }
   .detail-grid {
     grid-template-columns: 1fr;
   }

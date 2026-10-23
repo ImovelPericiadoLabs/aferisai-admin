@@ -29,4 +29,25 @@ describe("abas da integração", () => {
     expect(markup).toContain("Ver permissões");
     expect(markup).not.toContain("integration-mobile-nav");
   });
+
+  it("orienta o parceiro sem aplicação sem sugerir uma ação que ele não pode executar", () => {
+    const markup = renderToStaticMarkup(
+      <ApplicationWorkspace
+        applications={[]}
+        permissions={[]}
+        selectedApplicationId={null}
+        onSelectApplication={() => undefined}
+        csrfToken=""
+        canManage={false}
+        canEdit={false}
+        onUnauthorized={() => undefined}
+        permissionBusy={false}
+        onTogglePermission={() => undefined}
+        channel="partner"
+        additionalApplication={null}
+      />,
+    );
+    expect(markup).toContain("Peça ao administrador");
+    expect(markup).not.toContain("Crie uma aplicação");
+  });
 });

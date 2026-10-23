@@ -481,9 +481,74 @@ function Organizations({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
+  const [createStep, setCreateStep] = useState<0 | 1 | 2>(0);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [customSlug, setCustomSlug] = useState(false);
+  const [showIdentifier, setShowIdentifier] = useState(false);
+
+  function suggestedSlug(value: string): string {
+    return value
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "")
+      .slice(0, 120)
+      .replace(/-$/g, "");
+  }
+
+  function validateStep(step: 0 | 1): boolean {
+    const next: Record<string, string> = {};
+    if (step === 0) {
+      if (!name.trim() || name.trim().length > 255)
+        next.name = "Informe o nome da empresa (até 255 caracteres).";
+      if (
+        !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug) ||
+        slug.length < 2 ||
+        slug.length > 120
+      )
+        next.slug =
+          "Use de 2 a 120 letras minúsculas, números ou hífens entre palavras.";
+      if (next.slug) setShowIdentifier(true);
+    }
+    if (step === 1 && (!application.trim() || application.trim().length > 255))
+      next.application =
+        "Informe o nome da primeira aplicação (até 255 caracteres).";
+    setFieldErrors(next);
+    return Object.keys(next).length === 0;
+  }
+
+  function advanceCreation() {
+    if (createStep < 2 && validateStep(createStep as 0 | 1))
+      setCreateStep((createStep + 1) as 0 | 1 | 2);
+  }
+
+  function cancelCreation() {
+    setView("directory");
+    setCreateStep(0);
+    setName("");
+    setSlug("");
+    setApplication("");
+    setFieldErrors({});
+    setError("");
+    setCustomSlug(false);
+    setShowIdentifier(false);
+  }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (createStep !== 2) {
+      advanceCreation();
+      return;
+    }
+    if (!validateStep(0)) {
+      setCreateStep(0);
+      return;
+    }
+    if (!validateStep(1)) {
+      setCreateStep(1);
+      return;
+    }
     setBusy(true);
     setError("");
     try {
@@ -499,9 +564,21 @@ function Organizations({
       setSlug("");
       setName("");
       setApplication("");
+      setCreateStep(0);
+      setCustomSlug(false);
+      setShowIdentifier(false);
     } catch (cause) {
       if (cause instanceof ApiError && cause.status === 401) unauthorize();
-      else setError(message(cause));
+      else if (
+        cause instanceof ApiError &&
+        cause.code === "organization.slug_taken"
+      ) {
+        setFieldErrors({
+          slug: "Este identificador já está em uso. Escolha outro.",
+        });
+        setShowIdentifier(true);
+        setCreateStep(0);
+      } else setError(message(cause));
     } finally {
       setBusy(false);
     }
@@ -521,17 +598,6 @@ function Organizations({
 
   return (
     <div className="content">
-      {view === "create" && (
-        <header className="page-head">
-          <div>
-            <p className="eyebrow">Parcerias</p>
-            <h1>Parceiros</h1>
-            <p className="muted">
-              Consulte as organizações parceiras ou cadastre uma nova.
-            </p>
-          </div>
-        </header>
-      )}
       {view === "directory" || !canManage ? (
         selectedId ? (
           <OrganizationDetail
@@ -590,7 +656,7 @@ function Organizations({
               onClick={() => {
                 setCreated(null);
                 setCopied(false);
-                setView("directory");
+                cancelCreation();
               }}
             >
               Limpar e voltar à lista
@@ -598,102 +664,281 @@ function Organizations({
           </div>
         </section>
       ) : (
-        <div className="workspace">
-          <section className="form-panel" aria-labelledby="form-title">
-            <button className="back-link" onClick={() => setView("directory")}>
-              ← Voltar à lista
-            </button>
-            <div className="panel-heading">
-              <span>01</span>
-              <div>
-                <h2 id="form-title">Nova organização</h2>
-                <p>Dados que identificam a parceria.</p>
-              </div>
+        <section className="partner-onboarding" aria-labelledby="form-title">
+          <button className="back-link" type="button" onClick={cancelCreation}>
+            ← Voltar aos parceiros
+          </button>
+          <header className="partner-onboarding-head">
+            <div>
+              <p className="eyebrow">Cadastro de parceria</p>
+              <h2 id="form-title">Novo parceiro</h2>
+              <p>Crie a empresa e sua primeira aplicação em três passos.</p>
             </div>
-            <form className="form" onSubmit={submit}>
-              <label htmlFor="org-name">Nome da organização</label>
-              <input
-                id="org-name"
-                required
-                maxLength={255}
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-                placeholder="Ex.: Cartório Central"
-              />
-              <label htmlFor="org-slug">Identificador</label>
-              <input
-                id="org-slug"
-                required
-                minLength={2}
-                maxLength={120}
-                pattern="[a-z0-9]+(-[a-z0-9]+)*"
-                value={slug}
-                onChange={(event) =>
-                  setSlug(
-                    event.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""),
-                  )
-                }
-                placeholder="cartorio-central"
-                aria-describedby="slug-help"
-              />
-              <small id="slug-help">
-                Letras minúsculas, números e hífens. Deve ser único.
-              </small>
-              <hr />
-              <div className="panel-heading">
-                <span>02</span>
-                <div>
-                  <h3>Primeira aplicação</h3>
-                  <p>Receberá uma credencial e a permissão inicial.</p>
+          </header>
+          <nav
+            className="partner-onboarding-steps"
+            aria-label="Etapas do cadastro"
+          >
+            {(["Empresa", "Aplicação", "Revisão"] as const).map(
+              (label, index) => (
+                <button
+                  key={label}
+                  type="button"
+                  disabled={busy || index > createStep}
+                  aria-current={createStep === index ? "step" : undefined}
+                  onClick={() => {
+                    setCreateStep(index as 0 | 1 | 2);
+                    setFieldErrors({});
+                  }}
+                >
+                  <span aria-hidden="true">{index + 1}</span>
+                  {label}
+                </button>
+              ),
+            )}
+          </nav>
+          <form
+            className="partner-onboarding-layout"
+            onSubmit={(event) => void submit(event)}
+            noValidate
+          >
+            <div className="partner-onboarding-main">
+              {createStep === 0 && (
+                <div className="partner-onboarding-fields">
+                  <h3>Dados da empresa</h3>
+                  <p>Como essa parceria será identificada no painel.</p>
+                  <label htmlFor="org-name">
+                    Nome da empresa <span aria-hidden="true">*</span>
+                  </label>
+                  <input
+                    id="org-name"
+                    autoFocus
+                    maxLength={255}
+                    value={name}
+                    aria-invalid={Boolean(fieldErrors.name)}
+                    aria-describedby={
+                      fieldErrors.name ? "org-name-error" : undefined
+                    }
+                    onChange={(event) => {
+                      setName(event.target.value);
+                      if (!customSlug)
+                        setSlug(suggestedSlug(event.target.value));
+                      setFieldErrors((current) => ({
+                        ...current,
+                        name: "",
+                        slug: customSlug ? current.slug : "",
+                      }));
+                    }}
+                    placeholder="Ex.: Cartório Central"
+                  />
+                  {fieldErrors.name && (
+                    <small
+                      className="partner-onboarding-error"
+                      id="org-name-error"
+                      role="alert"
+                    >
+                      {fieldErrors.name}
+                    </small>
+                  )}
+                  <div className="partner-onboarding-identifier">
+                    <span>
+                      Identificador sugerido:{" "}
+                      <strong>{slug || "será gerado a partir do nome"}</strong>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowIdentifier((visible) => !visible)}
+                      aria-expanded={showIdentifier}
+                      aria-controls="org-identifier-edit"
+                    >
+                      {showIdentifier ? "Ocultar edição" : "Editar"}
+                    </button>
+                  </div>
+                  {showIdentifier && (
+                    <div
+                      id="org-identifier-edit"
+                      className="partner-onboarding-identifier-edit"
+                    >
+                      <label htmlFor="org-slug">Identificador</label>
+                      <input
+                        id="org-slug"
+                        maxLength={120}
+                        value={slug}
+                        aria-invalid={Boolean(fieldErrors.slug)}
+                        aria-describedby={
+                          fieldErrors.slug ? "org-slug-error" : "slug-help"
+                        }
+                        onChange={(event) => {
+                          setCustomSlug(true);
+                          setSlug(
+                            event.target.value
+                              .toLowerCase()
+                              .replace(/[^a-z0-9-]/g, ""),
+                          );
+                          setFieldErrors((current) => ({
+                            ...current,
+                            slug: "",
+                          }));
+                        }}
+                        placeholder="cartorio-central"
+                      />
+                      {fieldErrors.slug ? (
+                        <small
+                          className="partner-onboarding-error"
+                          id="org-slug-error"
+                          role="alert"
+                        >
+                          {fieldErrors.slug}
+                        </small>
+                      ) : (
+                        <small id="slug-help">
+                          Letras minúsculas, números e hífens. Deve ser único.
+                        </small>
+                      )}
+                    </div>
+                  )}
                 </div>
-              </div>
-              <label htmlFor="app-name">Nome da aplicação</label>
-              <input
-                id="app-name"
-                required
-                maxLength={255}
-                value={application}
-                onChange={(event) => setApplication(event.target.value)}
-                placeholder="Ex.: Integração principal"
-              />
-              {error && (
-                <p className="error" role="alert">
-                  {error}
-                </p>
               )}
-              <button className="button primary" disabled={busy}>
-                {busy ? "Cadastrando…" : "Cadastrar parceria"}{" "}
-                <span aria-hidden="true">→</span>
-              </button>
-            </form>
-          </section>
-          <aside className="side-panel">
-            <p className="eyebrow">Antes de confirmar</p>
-            <h2>O que será criado</h2>
-            <ol className="steps">
-              <li>
-                <strong>Organização</strong>
-                <span>Vínculo principal da parceria.</span>
-              </li>
-              <li>
-                <strong>Aplicação</strong>
-                <span>Identidade técnica associada.</span>
-              </li>
-              <li>
-                <strong>Credencial</strong>
-                <span>Segredo entregue uma vez.</span>
-              </li>
-              <li>
-                <strong>Permissão inicial</strong>
-                <span>Consulta dos próprios dados da aplicação.</span>
-              </li>
-            </ol>
-            <div className="side-note">
-              Essa ação não cria conta de usuário e não libera dados pessoais ao
-              parceiro.
+              {createStep === 1 && (
+                <div className="partner-onboarding-fields">
+                  <h3>Primeira aplicação</h3>
+                  <p>Identifique a integração inicial de {name.trim()}.</p>
+                  <label htmlFor="app-name">
+                    Nome da aplicação <span aria-hidden="true">*</span>
+                  </label>
+                  <input
+                    id="app-name"
+                    autoFocus
+                    maxLength={255}
+                    value={application}
+                    aria-invalid={Boolean(fieldErrors.application)}
+                    aria-describedby={
+                      fieldErrors.application
+                        ? "app-name-error"
+                        : "app-name-help"
+                    }
+                    onChange={(event) => {
+                      setApplication(event.target.value);
+                      setFieldErrors((current) => ({
+                        ...current,
+                        application: "",
+                      }));
+                    }}
+                    placeholder="Ex.: Integração principal"
+                  />
+                  {fieldErrors.application ? (
+                    <small
+                      className="partner-onboarding-error"
+                      id="app-name-error"
+                      role="alert"
+                    >
+                      {fieldErrors.application}
+                    </small>
+                  ) : (
+                    <small id="app-name-help">
+                      Use um nome que a equipe reconheça. A credencial inicial é
+                      mostrada uma única vez ao concluir.
+                    </small>
+                  )}
+                  <div className="partner-onboarding-permission">
+                    <span aria-hidden="true">✓</span>
+                    <div>
+                      <strong>Consulta da própria aplicação</strong>
+                      <small>
+                        Permissão inicial obrigatória. Outros acessos podem ser
+                        configurados depois.
+                      </small>
+                    </div>
+                  </div>
+                </div>
+              )}
+              {createStep === 2 && (
+                <div className="partner-onboarding-fields">
+                  <h3>Revisar cadastro</h3>
+                  <p>
+                    Confira os dados antes de criar. A credencial inicial será
+                    gerada ao confirmar.
+                  </p>
+                  <dl className="partner-onboarding-review">
+                    <div>
+                      <dt>Empresa</dt>
+                      <dd>{name.trim()}</dd>
+                    </div>
+                    <div>
+                      <dt>Identificador</dt>
+                      <dd>{slug}</dd>
+                    </div>
+                    <div>
+                      <dt>Aplicação</dt>
+                      <dd>{application.trim()}</dd>
+                    </div>
+                    <div>
+                      <dt>Acesso inicial</dt>
+                      <dd>Consulta da própria aplicação</dd>
+                    </div>
+                  </dl>
+                  <p className="partner-onboarding-note">
+                    O cadastro não cria uma conta de usuário. Convites e
+                    configurações adicionais ficam disponíveis no detalhe da
+                    parceria.
+                  </p>
+                  {error && (
+                    <p className="error" role="alert">
+                      {error}
+                    </p>
+                  )}
+                </div>
+              )}
+              <footer className="partner-onboarding-actions">
+                <button
+                  type="button"
+                  className="button secondary"
+                  disabled={busy}
+                  onClick={() =>
+                    createStep === 0
+                      ? cancelCreation()
+                      : setCreateStep((createStep - 1) as 0 | 1 | 2)
+                  }
+                >
+                  {createStep === 0 ? "Cancelar" : "Voltar"}
+                </button>
+                {createStep < 2 ? (
+                  <button type="submit" className="button primary">
+                    Próximo <span aria-hidden="true">→</span>
+                  </button>
+                ) : (
+                  <button
+                    type="submit"
+                    className="button primary"
+                    disabled={busy}
+                  >
+                    {busy ? "Cadastrando…" : "Cadastrar parceiro"}
+                  </button>
+                )}
+              </footer>
             </div>
-          </aside>
-        </div>
+            <aside
+              className="partner-onboarding-preview"
+              aria-label="Resumo em tempo real"
+            >
+              <p className="eyebrow">Prévia do cadastro</p>
+              <h3>{name.trim() || "Nome da empresa"}</h3>
+              <p>{slug || "identificador"}</p>
+              <div>
+                <span>Aplicação inicial</span>
+                <strong>{application.trim() || "A definir"}</strong>
+              </div>
+              <div>
+                <span>Credencial</span>
+                <strong>Gerada ao concluir</strong>
+              </div>
+              <div>
+                <span>Permissão inicial</span>
+                <strong>Consultar aplicação</strong>
+              </div>
+            </aside>
+          </form>
+        </section>
       )}
     </div>
   );
@@ -1113,6 +1358,7 @@ function TeamApp() {
                 <button
                   ref={accountActionRef}
                   type="button"
+                  aria-current={currentPage === "passkeys" ? "page" : undefined}
                   onClick={() => {
                     navigate("passkeys");
                     closeMenu();
@@ -1135,6 +1381,9 @@ function TeamApp() {
                     <button
                       key={item.page}
                       type="button"
+                      aria-current={
+                        currentPage === item.page ? "page" : undefined
+                      }
                       onClick={() => {
                         navigate(item.page);
                         closeMenu();
@@ -1185,7 +1434,7 @@ function TeamApp() {
               </button>
               <button
                 type="button"
-                className="account-settings"
+                className={`account-settings${["team-members", "analysis-providers", "access"].includes(currentPage) ? " active" : ""}`}
                 aria-label="Abrir configurações"
                 aria-expanded={accountMenuOpen}
                 title="Configurações"

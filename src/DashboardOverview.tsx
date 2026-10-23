@@ -1,11 +1,4 @@
-import {
-  lazy,
-  Suspense,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { getDashboardMetrics, type DashboardMetrics } from "./api";
 import { CombinedSeriesChart, SeriesChart } from "./dashboard-series";
 import {
@@ -22,12 +15,6 @@ import {
   type DashboardRole,
 } from "./dashboard-model";
 import "./dashboard.css";
-
-const DashboardMapPreview = lazy(() =>
-  import("./DashboardMapPreview").then((module) => ({
-    default: module.DashboardMapPreview,
-  })),
-);
 
 export type DashboardPageProps = {
   role: DashboardRole;
@@ -293,11 +280,20 @@ function StatusPill({
 function GroupCard({
   group,
   navigate,
+  series,
+  seriesLoading,
+  seriesError,
 }: {
   group: DashboardGroup;
   navigate: DashboardPageProps["navigate"];
+  series?: import("./api").DashboardDailySeries;
+  seriesLoading: boolean;
+  seriesError: boolean;
 }) {
   const sum = groupSum(group);
+  const days = series?.current ?? [];
+  const maxDay = Math.max(1, ...days.map((day) => day.count));
+  const hasActivity = days.some((day) => day.count > 0);
   return (
     <article className="dash-group-card">
       <div className="dash-card-head">
@@ -308,10 +304,52 @@ function GroupCard({
           <h2>{group.title}</h2>
           <p>{group.description}</p>
         </div>
+        <details className="dash-card-definition">
+          <summary
+            aria-label={`Como ler ${group.title}`}
+            title="Como ler esta métrica"
+          >
+            <Icon name="info" />
+          </summary>
+          <p>{group.definition}</p>
+        </details>
       </div>
-      <div className="dash-card-total">
-        <strong>{sum.toLocaleString("pt-BR")}</strong>
-        <span>registros</span>
+      <div className="dash-card-trend">
+        <div className="dash-card-trend-heading">
+          <span>Criações por dia</span>
+          <small>Últimos 30 dias · UTC</small>
+        </div>
+        {seriesLoading ? (
+          <div className="dash-card-trend-empty" role="status">
+            Carregando série diária…
+          </div>
+        ) : seriesError ? (
+          <p className="dash-card-trend-empty">
+            Não foi possível carregar a série
+          </p>
+        ) : hasActivity ? (
+          <div
+            className="dash-card-trend-bars"
+            role="img"
+            aria-label={`${group.title}: ${days.map((day) => `${day.date}, ${day.count} registros criados`).join("; ")}`}
+          >
+            {days.map((day) => (
+              <span
+                key={day.date}
+                style={{
+                  height: `${Math.max(4, (day.count / maxDay) * 100)}%`,
+                }}
+                title={`${day.date}: ${day.count.toLocaleString("pt-BR")}`}
+              />
+            ))}
+          </div>
+        ) : (
+          <p className="dash-card-trend-empty">
+            {days.length
+              ? "Sem criações no período"
+              : "Série diária indisponível"}
+          </p>
+        )}
       </div>
       {sum > 0 && (
         <div
@@ -344,6 +382,26 @@ function GroupCard({
         </button>
       )}
     </article>
+  );
+}
+
+function OverviewMetrics({ groups }: { groups: DashboardGroup[] }) {
+  return (
+    <section
+      className="dash-metric-strip"
+      aria-label="Contagens atuais por módulo"
+    >
+      {groups.map((group) => (
+        <div className="dash-metric" key={group.key}>
+          <span className={`dash-metric-icon dash-card-icon-${group.icon}`}>
+            <Icon name={group.icon} />
+          </span>
+          <span className="dash-metric-label">{group.title}</span>
+          <strong>{groupSum(group).toLocaleString("pt-BR")}</strong>
+          <small>registros nos estados exibidos</small>
+        </div>
+      ))}
+    </section>
   );
 }
 
@@ -396,6 +454,7 @@ function Attention({
     });
   if (!items.length) return null;
   const active = items.filter((item) => item.value > 0);
+  const pendingCount = active.reduce((total, item) => total + item.value, 0);
   return (
     <section className="dash-attention" aria-labelledby="dash-attention-title">
       <div className="dash-attention-heading">
@@ -404,10 +463,8 @@ function Attention({
           <h2 id="dash-attention-title">Pendências da equipe</h2>
         </div>
         <span className="dash-attention-count">
-          {active.length}{" "}
-          {active.length === 1
-            ? "estado com registros"
-            : "estados com registros"}
+          {pendingCount.toLocaleString("pt-BR")}{" "}
+          {pendingCount === 1 ? "pendência" : "pendências"}
         </span>
       </div>
       {active.length ? (
@@ -637,6 +694,26 @@ export function DashboardOverview({ role, navigate }: DashboardPageProps) {
       ) : (
         <>
           <Attention data={data!} role={role} navigate={navigate} />
+          <OverviewMetrics groups={groups} />
+          <div className="dash-section-heading">
+            <div>
+              <p className="dash-eyebrow">COMPARAÇÃO POR ÁREA</p>
+              <h2>Situação dos módulos</h2>
+            </div>
+            <span>Estados atuais e criações nos últimos 30 dias</span>
+          </div>
+          <div className="dash-groups">
+            {groups.map((group) => (
+              <GroupCard
+                key={group.key}
+                group={group}
+                navigate={navigate}
+                series={trend.data?.series[group.key]}
+                seriesLoading={trend.loading}
+                seriesError={trend.error}
+              />
+            ))}
+          </div>
           <section
             className="dash-overview-trend"
             aria-labelledby="dash-overview-trend-title"
@@ -672,18 +749,6 @@ export function DashboardOverview({ role, navigate }: DashboardPageProps) {
               />
             )}
           </section>
-          <div className="dash-section-heading">
-            <div>
-              <p className="dash-eyebrow">ESTADO ATUAL</p>
-              <h2>Resumo por módulo</h2>
-            </div>
-            <span>Contagens por estado, sem filtro de período</span>
-          </div>
-          <div className="dash-groups">
-            {groups.map((group) => (
-              <GroupCard key={group.key} group={group} navigate={navigate} />
-            ))}
-          </div>
           <button
             className="dash-reports-link"
             type="button"
@@ -882,17 +947,6 @@ export function DashboardReports({ role, navigate }: DashboardPageProps) {
           </section>
           <div className="dash-analytics-grid">
             <DashboardVolumeChart groups={groups} />
-            <Suspense
-              fallback={
-                <div
-                  className="dash-series-loading"
-                  role="status"
-                  aria-label="Carregando mapa demonstrativo"
-                />
-              }
-            >
-              <DashboardMapPreview />
-            </Suspense>
           </div>
           <div className="dash-section-heading">
             <div>

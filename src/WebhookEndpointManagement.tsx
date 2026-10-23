@@ -52,6 +52,7 @@ export function WebhookEndpointManagement({
   const [configured, setConfigured] = useState(false);
   const [test, setTest] = useState<WebhookTestResult | null>(null);
   const [confirmRemove, setConfirmRemove] = useState(false);
+  const [confirmSuspend, setConfirmSuspend] = useState(false);
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -151,6 +152,7 @@ export function WebhookEndpointManagement({
         ),
       );
       setSecret(null);
+      setConfirmSuspend(false);
     } catch (cause) {
       if (cause instanceof ApiError && cause.status === 401) onUnauthorized();
       else
@@ -220,14 +222,24 @@ export function WebhookEndpointManagement({
           <p>Receba um aviso assinado quando a análise for concluída.</p>
         </div>
         {endpoint?.status === "active" && canManage && canEdit && (
-          <button
-            type="button"
-            className="button secondary"
-            disabled={busy}
-            onClick={() => void setStatus("suspended")}
-          >
-            Suspender
-          </button>
+          <div className="webhook-toolbar-actions">
+            <button
+              type="button"
+              className="button secondary"
+              disabled={busy}
+              onClick={() => void sendTest()}
+            >
+              {busy ? "Enviando…" : "Enviar teste assinado"}
+            </button>
+            <button
+              type="button"
+              className="button secondary"
+              disabled={busy}
+              onClick={() => setConfirmSuspend(true)}
+            >
+              Suspender
+            </button>
+          </div>
         )}
       </div>
       {error && (
@@ -235,9 +247,40 @@ export function WebhookEndpointManagement({
           {error}
         </p>
       )}
+      {confirmSuspend && endpoint?.status === "active" && (
+        <div
+          className="webhook-suspend-review"
+          role="group"
+          aria-label="Revisar suspensão do webhook"
+        >
+          <div>
+            <strong>Suspender este destino?</strong>
+            <p>
+              Eventos futuros não serão enviados até você reativar o webhook.
+            </p>
+          </div>
+          <button
+            type="button"
+            className="button secondary"
+            disabled={busy}
+            onClick={() => setConfirmSuspend(false)}
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            className="button primary"
+            disabled={busy}
+            onClick={() => void setStatus("suspended")}
+          >
+            Confirmar suspensão
+          </button>
+        </div>
+      )}
       {!endpoint && !error && (
         <form
           className="webhook-setup"
+          noValidate
           onSubmit={(event) => void register(event)}
         >
           <div className="webhook-steps" aria-label="Etapas de configuração">
@@ -315,6 +358,24 @@ export function WebhookEndpointManagement({
                   : "Suspenso"}
             </span>
           </div>
+          {endpoint.status === "active" && test && (
+            <div
+              className={`webhook-test-result ${test.status === "delivered" ? "is-success" : ""}`}
+              role="status"
+            >
+              <strong>
+                {test.status === "delivered"
+                  ? "Teste recebido pelo destino"
+                  : "Teste sem confirmação de entrega"}
+              </strong>
+              <span>
+                {test.http_status
+                  ? `HTTP ${test.http_status}`
+                  : "Sem resposta HTTP confirmada"}
+                {test.duration_ms != null ? ` · ${test.duration_ms} ms` : ""}
+              </span>
+            </div>
+          )}
           {endpoint.status !== "active" && canManage && canEdit && (
             <div className="webhook-setup">
               <div

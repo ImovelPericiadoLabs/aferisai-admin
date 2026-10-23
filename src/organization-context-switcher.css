@@ -7,24 +7,23 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  max-width: 260px;
-  min-height: 34px;
-  padding: 0.4rem 0.65rem;
-  border: 1px solid #dbe4ef;
+  max-width: 248px;
+  min-height: 32px;
+  padding: 0.35rem 0.6rem;
+  border: 1px solid var(--line);
   border-radius: 5px;
   background: #fff;
-  color: #173659;
+  color: var(--ink);
   font: inherit;
-  font-size: 0.74rem;
+  font-size: 0.72rem;
   cursor: pointer;
 }
 .organization-context-trigger:hover,
 .organization-context-trigger:focus-visible {
-  border-color: #1765e9;
-  outline: none;
+  border-color: var(--blue);
 }
 .organization-context-mark {
-  color: #1765e9;
+  color: var(--blue);
   font-size: 1rem;
 }
 .organization-context-name {
@@ -39,17 +38,17 @@
   top: calc(100% + 0.4rem);
   right: 0;
   width: min(330px, calc(100vw - 2rem));
-  padding: 0.75rem;
-  border: 1px solid #dbe4ef;
-  border-radius: 7px;
+  padding: 0.45rem;
+  border: 1px solid var(--line);
+  border-radius: 6px;
   background: white;
   box-shadow: 0 12px 35px #1228491f;
 }
 .organization-context-heading {
   display: block;
-  padding: 0.15rem 0.5rem 0.45rem;
-  color: #647b96;
-  font-size: 0.72rem;
+  padding: 0.45rem 0.55rem 0.55rem;
+  color: var(--muted);
+  font-size: 0.68rem;
   font-weight: 700;
 }
 .organization-context-options {
@@ -62,12 +61,12 @@
   justify-content: space-between;
   gap: 0.6rem;
   width: 100%;
-  min-height: 39px;
+  min-height: 38px;
   padding: 0.4rem 0.5rem;
   border: 0;
   border-bottom: 1px solid #eef2f7;
   background: white;
-  color: #16375b;
+  color: var(--ink);
   text-align: left;
   font: inherit;
   font-size: 0.72rem;
@@ -90,12 +89,12 @@
 }
 .organization-context-menu p {
   margin: 0.6rem 0.2rem 0;
-  color: #647b96;
+  color: var(--muted);
   font-size: 0.72rem;
 }
 @media (max-width: 600px) {
   .organization-context-trigger {
-    max-width: 152px;
+    max-width: min(180px, calc(100vw - 190px));
   }
   .organization-context-menu {
     right: -0.4rem;

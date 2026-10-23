@@ -82,6 +82,7 @@ export function ApplicationWorkspace({
     : tabs.filter((item) => item.id === "overview" || item.id === "access");
   const setTab = (next: Tab) => {
     setTabState(next);
+    if (next !== "access") setPermissionToReview(null);
     onTabChange?.(next);
   };
   const handleTabKeyDown = (
@@ -108,6 +109,10 @@ export function ApplicationWorkspace({
   };
   const [showApplicationPicker, setShowApplicationPicker] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
+  const [permissionToReview, setPermissionToReview] = useState<{
+    code: string;
+    granted: boolean;
+  } | null>(null);
   const application =
     applications.find((item) => item.id === selectedApplicationId) ??
     (applications.length === 1 ? applications[0] : undefined);
@@ -176,7 +181,11 @@ export function ApplicationWorkspace({
         aria-labelledby="integration-empty-title"
       >
         <h3 id="integration-empty-title">Nenhuma aplicação cadastrada</h3>
-        <p>Crie uma aplicação para configurar credenciais e receber eventos.</p>
+        <p>
+          {channel === "partner"
+            ? "Nenhuma aplicação está disponível para sua empresa. Peça ao administrador para liberar uma integração."
+            : "Crie uma aplicação para configurar credenciais e receber eventos."}
+        </p>
         {additionalApplication}
       </section>
     );
@@ -230,6 +239,7 @@ export function ApplicationWorkspace({
                   aria-current={item.id === application.id ? "true" : undefined}
                   onClick={() => {
                     onSelectApplication(item.id);
+                    setPermissionToReview(null);
                     setTab("overview");
                     setShowApplicationPicker(false);
                   }}
@@ -277,6 +287,19 @@ export function ApplicationWorkspace({
           </button>
         ))}
       </div>
+      <label className="integration-tab-select">
+        <span>Área da aplicação</span>
+        <select
+          value={activeTab}
+          onChange={(event) => setTab(event.target.value as Tab)}
+        >
+          {visibleTabs.map((item) => (
+            <option key={item.id} value={item.id}>
+              {item.label}
+            </option>
+          ))}
+        </select>
+      </label>
 
       <div
         id={`${tabBaseId}-panel`}
@@ -401,11 +424,10 @@ export function ApplicationWorkspace({
                             className="back-link"
                             disabled={permissionBusy || !editable}
                             onClick={() =>
-                              onTogglePermission(
-                                application.id,
-                                permission.code,
+                              setPermissionToReview({
+                                code: permission.code,
                                 granted,
-                              )
+                              })
                             }
                           >
                             {granted ? "Revogar" : "Conceder"}
@@ -417,6 +439,55 @@ export function ApplicationWorkspace({
                 </ul>
               ) : (
                 <p>Nenhuma permissão disponível.</p>
+              )}
+              {permissionToReview && (
+                <div
+                  className="integration-permission-review"
+                  role="group"
+                  aria-label="Revisar alteração de acesso"
+                >
+                  <div>
+                    <strong>Revisar acesso</strong>
+                    <p>
+                      {permissionToReview.granted ? "Revogar" : "Conceder"}{" "}
+                      <b>
+                        {applicationPermissionLabel(permissionToReview.code)}
+                      </b>{" "}
+                      para <b>{application.name}</b>?
+                    </p>
+                    <small>
+                      {permissionToReview.granted
+                        ? "Credenciais desta aplicação perderão esta permissão imediatamente."
+                        : "Credenciais desta aplicação poderão usar esta permissão após a alteração."}
+                    </small>
+                  </div>
+                  <div className="integration-permission-review-actions">
+                    <button
+                      type="button"
+                      className="button secondary"
+                      onClick={() => setPermissionToReview(null)}
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      className="button primary"
+                      disabled={permissionBusy || !editable}
+                      onClick={() => {
+                        onTogglePermission(
+                          application.id,
+                          permissionToReview.code,
+                          permissionToReview.granted,
+                        );
+                        setPermissionToReview(null);
+                      }}
+                    >
+                      {permissionToReview.granted
+                        ? "Confirmar revogação"
+                        : "Confirmar concessão"}
+                    </button>
+                  </div>
+                </div>
               )}
             </section>
             {canManage && channel === "team" && (
