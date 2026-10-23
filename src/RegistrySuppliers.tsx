@@ -17,6 +17,7 @@ import {
   type RegistrySupplierKind,
 } from "./api";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { OnrEndpointSettings } from "./OnrEndpointSettings";
 import {
   activationBlock,
   shortDigest,
@@ -244,6 +245,12 @@ export function RegistrySuppliers({
           <span aria-hidden="true">＋</span> Nova conta
         </button>
       </header>
+
+      <OnrEndpointSettings
+        csrf={csrf}
+        onUnauthorized={onUnauthorized}
+        onToast={onToast}
+      />
 
       <div className="alert" role="note">
         O login, a senha e o token são cifrados ao salvar e nunca aparecem de
