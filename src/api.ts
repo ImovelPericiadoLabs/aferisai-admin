@@ -2446,3 +2446,24 @@ export const listTeamMemberEvents = (memberId: string, cursor?: string) =>
     `/v1/team/members/${encodeURIComponent(memberId)}/events?${eventsQuery(cursor)}`,
     { method: "GET" },
   );
+
+export type ApplicationDeletion = {
+  application_id: string;
+  status: "deleted";
+  audit_event_id: string;
+};
+
+/** Administrator only. Terminal: the application is deactivated and its history is kept. */
+export const deleteTeamApplication = (
+  applicationId: string,
+  reason: string,
+  csrfToken: string,
+) =>
+  request<ApplicationDeletion>(
+    `/v1/team/applications/${encodeURIComponent(applicationId)}`,
+    {
+      method: "DELETE",
+      headers: { "X-CSRF-Token": csrfToken },
+      body: JSON.stringify({ reason }),
+    },
+  );

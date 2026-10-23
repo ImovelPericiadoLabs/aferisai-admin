@@ -425,6 +425,18 @@ export function OrganizationDetail({
                     )
                   }
                   additionalApplication={null}
+                  onDeleteApplication={
+                    isAdmin
+                      ? () => {
+                          setSelectedApplicationId(null);
+                          setRevision((value) => value + 1);
+                          onToast(
+                            "Aplicação excluída. O histórico foi mantido.",
+                            "success",
+                          );
+                        }
+                      : undefined
+                  }
                 />
               </>
             )}

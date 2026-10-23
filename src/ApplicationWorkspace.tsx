@@ -6,6 +6,7 @@ import { ApplicationHero } from "./ApplicationHero";
 import { tabBadges } from "./application-overview-model";
 import { ApplicationOverview } from "./ApplicationOverview";
 import { useApplicationSnapshot } from "./useApplicationSnapshot";
+import { ApplicationDeletion } from "./ApplicationDeletion";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { FieldAction } from "./FieldAction";
 import { CredentialManagement } from "./CredentialManagement";
@@ -50,6 +51,8 @@ type Props = {
   onLoadMoreApplications?: () => void;
   hasMoreApplications?: boolean;
   loadingMoreApplications?: boolean;
+  /** Administrator-only terminal deletion of the open application (team channel). */
+  onDeleteApplication?: (applicationId: string) => void;
 };
 
 const tabIcons: Record<Tab, string> = {
@@ -88,6 +91,7 @@ export function ApplicationWorkspace({
   onLoadMoreApplications,
   hasMoreApplications = false,
   loadingMoreApplications = false,
+  onDeleteApplication,
 }: Props) {
   const [tabState, setTabState] = useState<Tab>("overview");
   const tabBaseId = useId().replaceAll(":", "");
@@ -447,6 +451,16 @@ export function ApplicationWorkspace({
           </button>
           {showCreate && additionalApplication}
         </div>
+      )}
+      {onDeleteApplication && channel === "team" && (
+        <ApplicationDeletion
+          key={application.id}
+          applicationId={application.id}
+          applicationName={application.name}
+          csrfToken={csrfToken}
+          onDeleted={onDeleteApplication}
+          onUnauthorized={onUnauthorized}
+        />
       )}
       <ConfirmDialog
         open={permissionToReview !== null}
