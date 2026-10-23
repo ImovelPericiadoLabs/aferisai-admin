@@ -40,12 +40,22 @@ describe("validateSupplierForm", () => {
   it("accepts a complete RI Digital account without a token", () => {
     expect(validateSupplierForm(form())).toEqual({ ok: true, errors: {} });
   });
-  it("requires a token only for InfoSimples", () => {
+  it("requires a token and RI Digital account binding for InfoSimples", () => {
     const missing = validateSupplierForm(form({ provider: "infosimples" }));
     expect(missing.ok).toBe(false);
     expect(missing.errors.token).toMatch(/token/i);
+    expect(missing.errors.portalDigest).toMatch(/RI Digital/i);
     expect(
       validateSupplierForm(form({ provider: "infosimples", token: "tk-1" })).ok,
+    ).toBe(false);
+    expect(
+      validateSupplierForm(
+        form({
+          provider: "infosimples",
+          token: "tk-1",
+          portalDigest: "a".repeat(64),
+        }),
+      ).ok,
     ).toBe(true);
   });
   it("checks every field against the backend limits", () => {
@@ -69,7 +79,7 @@ describe("validateSupplierForm", () => {
         .password,
     ).toBeTruthy();
   });
-  it("accepts an optional portal digest only as 64 lowercase hex characters", () => {
+  it("accepts a required portal digest only as 64 hex characters", () => {
     const base = { provider: "infosimples" as const, token: "tk" };
     expect(
       validateSupplierForm(form({ ...base, portalDigest: "A".repeat(64) })).ok,

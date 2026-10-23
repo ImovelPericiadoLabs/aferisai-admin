@@ -139,6 +139,9 @@ export function RegistrySuppliers({
     [items],
   );
   const visible = items.filter((item) => !filter || item.status === filter);
+  const portalAccounts = items.filter(
+    (item) => item.provider === "onr" && item.status !== "suspended",
+  );
   const check = validateSupplierForm(form);
   const set = <K extends keyof SupplierForm>(key: K, value: SupplierForm[K]) =>
     setForm((current) => ({ ...current, [key]: value }));
@@ -595,23 +598,38 @@ export function RegistrySuppliers({
                       </Field>
                       <Field
                         id="sup-digest"
-                        label="Digest da conta do portal (opcional)"
-                        hint="64 caracteres hexadecimais. Liga a conta InfoSimples à conta do portal."
+                        label="Conta RI Digital vinculada"
+                        hint={
+                          portalAccounts.length
+                            ? "Selecione a conta RI Digital usada com esta credencial. O vínculo identifica os pedidos e custos registrais."
+                            : "Cadastre primeiro a conta RI Digital. Se ela não aparecer aqui, carregue mais resultados na lista de fornecedores."
+                        }
                         error={
                           submitted ? check.errors.portalDigest : undefined
                         }
                       >
-                        <input
+                        <select
                           id="sup-digest"
                           className="input"
-                          autoComplete="off"
-                          spellCheck={false}
                           value={form.portalDigest}
                           disabled={busy}
                           onChange={(event) =>
                             set("portalDigest", event.target.value)
                           }
-                        />
+                        >
+                          <option value="">
+                            Selecione uma conta RI Digital
+                          </option>
+                          {portalAccounts.map((account) => (
+                            <option
+                              key={account.id}
+                              value={account.account_binding_sha256}
+                            >
+                              {account.label} ·{" "}
+                              {shortDigest(account.account_binding_sha256)}
+                            </option>
+                          ))}
+                        </select>
                       </Field>
                     </>
                   )}
