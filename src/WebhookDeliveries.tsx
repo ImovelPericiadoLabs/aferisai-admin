@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { summarizeDeliveries } from "./application-overview-model";
+import { useDialogFocus } from "./useDialogFocus";
 import {
   ApiError,
   getApplicationWebhookDelivery,
@@ -38,6 +40,15 @@ function eventLabel(value: string): string {
       ? "Análise concluída"
       : "Evento não identificado";
 }
+function deliveryTone(value: string): string {
+  return value === "delivered"
+    ? "badge-success"
+    : value === "attempted" || value === "unknown"
+      ? "badge-warning"
+      : value === "pending"
+        ? "badge-info"
+        : "badge-neutral";
+}
 function deliveryLabel(value: string): string {
   return (
     (
@@ -68,41 +79,15 @@ export function WebhookDeliveries({
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState("");
   const detailRequestRef = useRef(0);
-  const detailTriggerRef = useRef<HTMLButtonElement | null>(null);
-  const detailCloseRef = useRef<HTMLButtonElement>(null);
-  const detailDrawerRef = useRef<HTMLElement>(null);
+  const detailPanelRef = useRef<HTMLElement>(null);
+  const lastOpenedId = useRef<string | null>(null);
 
-  useEffect(() => {
-    if (!detailOpen) return;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    detailCloseRef.current?.focus();
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        closeDetail();
-      }
-      if (event.key !== "Tab") return;
-      const controls = detailDrawerRef.current?.querySelectorAll<HTMLElement>(
-        'button:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])',
-      );
-      if (!controls?.length) return;
-      const first = controls[0];
-      const last = controls[controls.length - 1];
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
-      }
-    }
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [detailOpen]);
+  useDialogFocus(detailOpen, detailPanelRef, closeDetail, {
+    returnFocus: () =>
+      document.querySelector<HTMLElement>(
+        `[data-row-id="${lastOpenedId.current}"]`,
+      ),
+  });
 
   function closeDetail() {
     detailRequestRef.current += 1;
@@ -110,7 +95,6 @@ export function WebhookDeliveries({
     setSelected(null);
     setDetailLoading(false);
     setDetailError("");
-    queueMicrotask(() => detailTriggerRef.current?.focus());
   }
 
   useEffect(() => {
@@ -181,7 +165,7 @@ export function WebhookDeliveries({
 
   async function openDetail(id: string) {
     const request = ++detailRequestRef.current;
-    detailTriggerRef.current = document.activeElement as HTMLButtonElement;
+    lastOpenedId.current = id;
     setDetailOpen(true);
     setDetailLoading(true);
     setDetailError("");
@@ -202,34 +186,35 @@ export function WebhookDeliveries({
     }
   }
 
+  const metrics = summarizeDeliveries(items);
+
   return (
-    <section className="delivery-page" aria-labelledby="delivery-title">
-      <div className="integration-toolbar">
+    <section className="deliv" aria-labelledby="delivery-title">
+      <header className="cred-head">
         <div>
-          <h4 id="delivery-title">Entregas</h4>
-          <p>
+          <h3 className="appws-section-title" id="delivery-title">
+            Entregas
+          </h3>
+          <p className="form-hint">
             Eventos enviados para esta aplicação, com resposta e tempo de
             entrega.
           </p>
         </div>
         <button
-          className="button secondary"
+          className="btn btn-secondary btn-sm"
           type="button"
           disabled={busy || loading}
           onClick={() => void refresh()}
         >
           Atualizar
         </button>
-      </div>
-      <div
-        className="delivery-filters"
-        role="group"
-        aria-label="Filtrar entregas"
-      >
+      </header>
+      <div className="rules-tabs" role="group" aria-label="Filtrar entregas">
         {filters.map((item) => (
           <button
             key={item.value}
             type="button"
+            className="rules-tab"
             aria-pressed={filter === item.value}
             onClick={() => {
               if (item.value === filter) return;
@@ -245,77 +230,107 @@ export function WebhookDeliveries({
           </button>
         ))}
       </div>
+      {!loading && !error && items.length > 0 && (
+        <p className="form-hint" role="status">
+          {metrics.total} entregas carregadas · {metrics.delivered} entregues ·{" "}
+          {metrics.problems} com problema
+          {metrics.averageMs !== null
+            ? ` · ${metrics.averageMs} ms de média`
+            : ""}
+        </p>
+      )}
       {loading ? (
         <div
-          className="integration-skeleton"
+          className="rules-skeleton"
           role="status"
           aria-label="Carregando entregas"
         >
-          <i />
-          <i />
-          <i />
+          <span className="skeleton" />
+          <span className="skeleton" />
+          <span className="skeleton" />
         </div>
       ) : error ? (
-        <p className="error" role="alert">
+        <div className="alert alert-danger" role="alert">
           {error}
-        </p>
+        </div>
       ) : items.length === 0 ? (
-        <div className="delivery-empty">
+        <div className="empty-state" role="status">
           <strong>Nenhuma entrega encontrada</strong>
-          <p>
+          <span>
             {filter === "all"
               ? "Os eventos enviados aparecerão aqui quando houver atividade."
               : "Não há entregas com este estado."}
-          </p>
+          </span>
         </div>
       ) : (
         <>
-          <div className="delivery-list" aria-label="Lista de entregas">
-            <div className="delivery-row delivery-header" aria-hidden="true">
-              <span>Evento</span>
-              <span>Estado</span>
-              <span>Resposta</span>
-              <span>Horário</span>
-              <span />
-            </div>
-            {items.map((delivery) => (
-              <button
-                className="delivery-row"
-                type="button"
-                key={delivery.id}
-                onClick={() => void openDetail(delivery.id)}
-              >
-                <span>
-                  <strong>{eventLabel(delivery.event_type)}</strong>
-                  <small>
-                    {delivery.is_test ? "Teste assinado" : "Evento real"}
-                  </small>
-                </span>
-                <span className={`delivery-badge state-${delivery.status}`}>
-                  {delivery.status === "delivered"
-                    ? "✓"
-                    : delivery.status === "attempted"
-                      ? "!"
-                      : delivery.status === "skipped"
-                        ? "–"
-                        : "◷"}{" "}
-                  {deliveryLabel(delivery.status)}
-                </span>
-                <span>
-                  {delivery.http_status
-                    ? `HTTP ${delivery.http_status}`
-                    : "Sem resposta"}
-                </span>
-                <span>
-                  {dateLabel(delivery.attempted_at || delivery.created_at)}
-                </span>
-                <span aria-hidden="true">›</span>
-              </button>
-            ))}
+          <div className="data-table-wrap">
+            <table className="data-table" aria-label="Lista de entregas">
+              <thead>
+                <tr>
+                  <th scope="col">Evento</th>
+                  <th scope="col">Estado</th>
+                  <th scope="col">Resposta</th>
+                  <th scope="col">Horário</th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((delivery) => (
+                  <tr
+                    key={delivery.id}
+                    data-clickable
+                    className={
+                      delivery.id === lastOpenedId.current && detailOpen
+                        ? "selected"
+                        : undefined
+                    }
+                    onClick={() => void openDetail(delivery.id)}
+                  >
+                    <td data-label="Evento">
+                      <button
+                        className="rules-cell-button"
+                        data-row-id={delivery.id}
+                        type="button"
+                        aria-haspopup="dialog"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          void openDetail(delivery.id);
+                        }}
+                      >
+                        <strong>{eventLabel(delivery.event_type)}</strong>
+                        <small>
+                          {delivery.is_test ? "Teste assinado" : "Evento real"}
+                        </small>
+                      </button>
+                    </td>
+                    <td data-label="Estado">
+                      <span
+                        className={`badge ${deliveryTone(delivery.status)}`}
+                      >
+                        {deliveryLabel(delivery.status)}
+                      </span>
+                    </td>
+                    <td data-label="Resposta">
+                      {delivery.http_status
+                        ? `HTTP ${delivery.http_status}`
+                        : "Sem resposta"}
+                      {delivery.duration_ms != null && (
+                        <small className="rules-cell-sub">
+                          {delivery.duration_ms} ms
+                        </small>
+                      )}
+                    </td>
+                    <td data-label="Horário">
+                      {dateLabel(delivery.attempted_at || delivery.created_at)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
           {cursor && (
             <button
-              className="button secondary"
+              className="btn btn-secondary btn-md cred-more"
               type="button"
               disabled={busy}
               onClick={() => void loadMore()}
@@ -325,99 +340,118 @@ export function WebhookDeliveries({
           )}
         </>
       )}
-      {detailOpen &&
-        createPortal(
-          <div className="delivery-scrim" onClick={closeDetail}>
-            <aside
-              ref={detailDrawerRef}
-              className="delivery-drawer"
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="delivery-detail-title"
-              onClick={(event) => event.stopPropagation()}
-            >
-              <div className="delivery-drawer-head">
-                <div>
-                  <small>Entrega</small>
-                  <h4 id="delivery-detail-title">
-                    {selected
-                      ? eventLabel(selected.event_type)
-                      : "Detalhe da entrega"}
-                  </h4>
+      {createPortal(
+        <>
+          {detailOpen && (
+            <div className="detail-panel-overlay" onClick={closeDetail} />
+          )}
+          <aside
+            ref={detailPanelRef}
+            className={`detail-panel${detailOpen ? " open" : ""}`}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delivery-detail-title"
+            aria-hidden={!detailOpen}
+          >
+            {detailOpen && (
+              <>
+                <div className="detail-panel-header">
+                  <div>
+                    <h2
+                      className="rules-panel-title"
+                      id="delivery-detail-title"
+                    >
+                      {selected
+                        ? eventLabel(selected.event_type)
+                        : "Detalhe da entrega"}
+                    </h2>
+                    {selected && (
+                      <div className="rules-panel-badges">
+                        <span
+                          className={`badge ${deliveryTone(selected.status)}`}
+                        >
+                          {deliveryLabel(selected.status)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    className="btn btn-ghost btn-sm"
+                    type="button"
+                    aria-label="Fechar detalhe"
+                    onClick={closeDetail}
+                  >
+                    ✕
+                  </button>
                 </div>
-                <button
-                  ref={detailCloseRef}
-                  type="button"
-                  aria-label="Fechar detalhe"
-                  onClick={closeDetail}
-                >
-                  ×
-                </button>
-              </div>
-              {detailLoading ? (
-                <div
-                  className="integration-skeleton"
-                  role="status"
-                  aria-label="Carregando detalhe"
-                >
-                  <i />
-                  <i />
+                <div className="detail-panel-body">
+                  {detailLoading ? (
+                    <div
+                      className="rules-skeleton"
+                      role="status"
+                      aria-label="Carregando detalhe"
+                    >
+                      <span className="skeleton" />
+                      <span className="skeleton" />
+                    </div>
+                  ) : detailError ? (
+                    <div className="alert alert-danger" role="alert">
+                      {detailError}
+                    </div>
+                  ) : (
+                    selected && (
+                      <>
+                        <section className="detail-panel-section">
+                          <h3 className="detail-panel-section-title">
+                            Resultado
+                          </h3>
+                          <dl className="detail-panel-field">
+                            <dt>Destino</dt>
+                            <dd>{selected.endpoint_url}</dd>
+                            <dt>Resposta</dt>
+                            <dd>
+                              {selected.http_status
+                                ? `HTTP ${selected.http_status}`
+                                : "Sem resposta confirmada"}
+                            </dd>
+                            <dt>Duração</dt>
+                            <dd>
+                              {selected.duration_ms == null
+                                ? "Não medida"
+                                : `${selected.duration_ms} ms`}
+                            </dd>
+                            <dt>Horário</dt>
+                            <dd>
+                              {dateLabel(
+                                selected.attempted_at || selected.created_at,
+                              )}
+                            </dd>
+                            <dt>Tipo</dt>
+                            <dd>
+                              {selected.is_test
+                                ? "Teste assinado"
+                                : "Evento real"}
+                            </dd>
+                            <dt>Identificador</dt>
+                            <dd>
+                              <code>{selected.id}</code>
+                            </dd>
+                          </dl>
+                        </section>
+                        <p className="form-hint">
+                          O detalhe técnico não expõe a chave de assinatura nem
+                          dados pessoais do evento.
+                        </p>
+                      </>
+                    )
+                  )}
                 </div>
-              ) : detailError ? (
-                <p className="error" role="alert">
-                  {detailError}
-                </p>
-              ) : (
-                selected && (
-                  <>
-                    <span className={`delivery-badge state-${selected.status}`}>
-                      {deliveryLabel(selected.status)}
-                    </span>
-                    <dl className="delivery-detail-list">
-                      <div>
-                        <dt>Destino</dt>
-                        <dd>{selected.endpoint_url}</dd>
-                      </div>
-                      <div>
-                        <dt>Resposta</dt>
-                        <dd>
-                          {selected.http_status
-                            ? `HTTP ${selected.http_status}`
-                            : "Sem resposta confirmada"}
-                        </dd>
-                      </div>
-                      <div>
-                        <dt>Duração</dt>
-                        <dd>
-                          {selected.duration_ms == null
-                            ? "Não medida"
-                            : `${selected.duration_ms} ms`}
-                        </dd>
-                      </div>
-                      <div>
-                        <dt>Horário</dt>
-                        <dd>
-                          {dateLabel(
-                            selected.attempted_at || selected.created_at,
-                          )}
-                        </dd>
-                      </div>
-                      <div>
-                        <dt>Identificador</dt>
-                        <dd>{selected.id}</dd>
-                      </div>
-                    </dl>
-                    <p className="delivery-safe-note">
-                      O detalhe técnico não expõe a chave de assinatura nem
-                      dados pessoais do evento.
-                    </p>
-                  </>
-                )
-              )}
-            </aside>
-          </div>,
-          document.body,
-        )}
+              </>
+            )}
+          </aside>
+        </>,
+        document.body,
+      )}
     </section>
   );
 }

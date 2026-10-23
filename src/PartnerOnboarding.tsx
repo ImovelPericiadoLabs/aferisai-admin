@@ -6,6 +6,7 @@ import {
   validateCompany,
   type OnboardingErrors,
 } from "./partner-onboarding-model";
+import { Breadcrumbs } from "./Breadcrumbs";
 import { SecretReveal } from "./SecretReveal";
 import "./partner-onboarding.css";
 
@@ -87,13 +88,12 @@ export function PartnerOnboarding({
 
   return (
     <section className="page onboarding" aria-labelledby="onboarding-title">
-      <button
-        className="btn btn-ghost btn-sm onboarding-back"
-        type="button"
-        onClick={onCancel}
-      >
-        ← Parceiros
-      </button>
+      <Breadcrumbs
+        items={[
+          { label: "Parceiros", onSelect: onCancel },
+          { label: "Novo parceiro" },
+        ]}
+      />
       <header className="page-header">
         <div>
           <h1 className="page-title" id="onboarding-title">

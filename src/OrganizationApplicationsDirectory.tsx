@@ -335,7 +335,7 @@ export function OrganizationApplicationsDirectory({
           className="btn btn-ghost btn-sm"
           onClick={() => setMode("list")}
         >
-          ← Aplicações
+          Cancelar cadastro
         </button>
         {createForm}
       </section>
@@ -549,7 +549,7 @@ export function OrganizationApplicationsDirectory({
             className="btn btn-ghost btn-sm"
             onClick={backToList}
           >
-            ← Aplicações
+            Cancelar edição em massa
           </button>
           <div className="appdir-bulk-head">
             <h3>Edição em massa</h3>

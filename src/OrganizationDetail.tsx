@@ -15,6 +15,7 @@ import {
 } from "./api";
 import "./partner-detail.css";
 import "./commercial-rules.css";
+import { Breadcrumbs } from "./Breadcrumbs";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { Disclosure } from "./controls";
 import { FieldAction } from "./FieldAction";
@@ -336,9 +337,22 @@ export function OrganizationDetail({
 
   return (
     <section className="page partner-detail" aria-labelledby="detail-title">
-      <button className="btn btn-ghost btn-sm" type="button" onClick={onBack}>
-        ← Parceiros
-      </button>
+      <Breadcrumbs
+        items={[
+          { label: "Parceiros", onSelect: onBack },
+          ...(detail
+            ? [
+                {
+                  label: detail.name,
+                  onSelect: openApplication
+                    ? () => setSelectedApplicationId(null)
+                    : undefined,
+                },
+                ...(openApplication ? [{ label: openApplication.name }] : []),
+              ]
+            : []),
+        ]}
+      />
       {loading && (
         <div
           className="rules-skeleton"
@@ -381,15 +395,7 @@ export function OrganizationDetail({
               <h1 className="page-title" id="detail-title">
                 {detail.name}
               </h1>
-              <p className="page-subtitle">
-                {openApplication ? (
-                  <span className="partner-crumb">
-                    {detail.slug} › {openApplication.name}
-                  </span>
-                ) : (
-                  detail.slug
-                )}
-              </p>
+              <p className="page-subtitle">{detail.slug}</p>
             </div>
             <span
               className={`badge ${detail.status === "active" ? "badge-success" : detail.status === "suspended" ? "badge-warning" : "badge-neutral"}`}
@@ -457,13 +463,6 @@ export function OrganizationDetail({
           >
             {section === "application" && selectedApplicationId && (
               <>
-                <button
-                  type="button"
-                  className="btn btn-ghost btn-sm"
-                  onClick={() => setSelectedApplicationId(null)}
-                >
-                  ← Aplicações
-                </button>
                 <ApplicationWorkspace
                   key={selectedApplicationId ?? organizationId}
                   applications={detail.applications}
