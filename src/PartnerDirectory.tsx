@@ -8,6 +8,7 @@ import {
   type OrganizationDetail,
   type OrganizationListItem,
 } from "./api";
+import { OrganizationAvatar } from "./OrganizationAvatar";
 import "./partner-directory.css";
 
 type Props = {
@@ -323,9 +324,11 @@ export function PartnerDirectory({
                         openSummary(item.id);
                       }}
                     >
-                      <span className="partner-dir-avatar" aria-hidden="true">
-                        {item.name.slice(0, 1).toLocaleUpperCase("pt-BR")}
-                      </span>
+                      <OrganizationAvatar
+                        id={item.id}
+                        name={item.name}
+                        logoUrl={item.logo_url}
+                      />
                       <span className="partner-dir-name-text">
                         <strong>{item.name}</strong>
                         <small>{item.slug}</small>
@@ -387,11 +390,12 @@ export function PartnerDirectory({
           >
             <div className="detail-panel-header">
               <div className="partner-dir-summary-head">
-                <span className="partner-dir-avatar" aria-hidden="true">
-                  {(selectedItem?.name ?? "?")
-                    .slice(0, 1)
-                    .toLocaleUpperCase("pt-BR")}
-                </span>
+                <OrganizationAvatar
+                  key={selectedItem?.id ?? "none"}
+                  id={selectedItem?.id ?? ""}
+                  name={selectedItem?.name ?? "?"}
+                  logoUrl={selectedItem?.logo_url}
+                />
                 <div>
                   <h2
                     className="partner-dir-summary-title"

@@ -101,6 +101,8 @@ export type OrganizationListItem = {
   name: string;
   status: string;
   applications_count: number;
+  /** Not returned by the list yet; the avatar falls back to the detail. */
+  logo_url?: string | null;
 };
 export type OrganizationList = {
   items: OrganizationListItem[];

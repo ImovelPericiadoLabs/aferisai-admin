@@ -89,6 +89,13 @@
   color: var(--primary);
   font-size: var(--text-sm);
   font-weight: var(--weight-bold);
+  overflow: hidden;
+}
+
+.partner-dir-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .partner-dir-name-text {

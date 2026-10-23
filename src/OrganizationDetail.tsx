@@ -16,6 +16,7 @@ import type { ToastKind } from "./useToast";
 import "./partner-detail.css";
 import "./commercial-rules.css";
 import { Breadcrumbs } from "./Breadcrumbs";
+import { organizationLogos } from "./organization-logos";
 import { TabBar } from "./TabBar";
 import { PartnerPeople } from "./PartnerPeople";
 import { Disclosure } from "./controls";
@@ -209,6 +210,7 @@ export function OrganizationDetail({
   }
 
   async function refreshLogo(notice: string) {
+    organizationLogos.invalidate(organizationId);
     try {
       const next = await getOrganization(organizationId);
       setLogoBlobUrl(null);
