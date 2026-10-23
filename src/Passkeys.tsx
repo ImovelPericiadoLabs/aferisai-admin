@@ -11,38 +11,65 @@ import {
   revokePasskey,
   type PasskeyItem,
 } from "./api";
+import { ConfirmDialog } from "./ConfirmDialog";
+import {
+  lastUsedLabel,
+  passkeyErrorKind,
+  passkeyUsage,
+  revokeWarning,
+} from "./passkey-model";
+import "./passkeys.css";
 
-export function Passkeys({ csrf }: { csrf: string }) {
+const createdFormat = new Intl.DateTimeFormat("pt-BR", {
+  dateStyle: "short",
+  timeZone: "America/Sao_Paulo",
+});
+
+export function Passkeys({
+  csrf,
+  onUnauthorized,
+}: {
+  csrf: string;
+  onUnauthorized: () => void;
+}) {
   const [items, setItems] = useState<PasskeyItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [revision, setRevision] = useState(0);
   const [label, setLabel] = useState("");
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  const [notice, setNotice] = useState<{
+    tone: "info" | "success" | "danger";
+    text: string;
+  } | null>(null);
+  const [revokeTarget, setRevokeTarget] = useState<PasskeyItem | null>(null);
   const supported = browserSupportsWebAuthn();
+  const usage = passkeyUsage(items.length);
 
   useEffect(() => {
     let active = true;
     listPasskeys()
       .then((result) => {
-        if (active) setItems(result.items);
+        if (!active) return;
+        setItems(result.items);
+        setLoadError(false);
       })
-      .catch(() => {
-        if (active)
-          setError("Não foi possível consultar suas chaves de acesso.");
+      .catch((cause: unknown) => {
+        if (!active) return;
+        if (passkeyErrorKind(cause) === "unauthorized") onUnauthorized();
+        else setLoadError(true);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
       });
     return () => {
       active = false;
     };
-  }, []);
+  }, [revision, onUnauthorized]);
 
   async function register() {
-    if (!label.trim()) {
-      setError("Dê um nome para identificar esta chave.");
-      return;
-    }
     setBusy(true);
-    setError("");
-    setSuccess("");
+    setNotice(null);
     try {
       const options = await beginPasskeyRegistration(csrf);
       const credential = await startRegistration({
@@ -57,103 +84,209 @@ export function Passkeys({ csrf }: { csrf: string }) {
       );
       setItems((current) => [created, ...current]);
       setLabel("");
-      setSuccess(
-        "Chave de acesso cadastrada. Na próxima entrada, use a opção com chave.",
-      );
-    } catch {
-      setError(
-        "A chave não foi cadastrada. Confira o aviso do dispositivo e tente novamente.",
-      );
+      setNotice({
+        tone: "success",
+        text: "Chave de acesso cadastrada. Na próxima entrada, use a opção com chave.",
+      });
+    } catch (cause) {
+      const kind = passkeyErrorKind(cause);
+      if (kind === "unauthorized") onUnauthorized();
+      else if (kind === "cancelled")
+        setNotice({
+          tone: "info",
+          text: "Cadastro cancelado no dispositivo. Nenhuma chave foi criada.",
+        });
+      else
+        setNotice({
+          tone: "danger",
+          text: "A chave não foi cadastrada. Confira o aviso do dispositivo e tente novamente.",
+        });
     } finally {
       setBusy(false);
     }
   }
 
-  async function revoke(id: string) {
-    if (
-      !window.confirm(
-        "Revogar esta chave de acesso? Ela deixará de funcionar imediatamente.",
-      )
-    )
-      return;
+  async function revoke(item: PasskeyItem) {
     setBusy(true);
-    setError("");
-    setSuccess("");
+    setNotice(null);
     try {
-      await revokePasskey(id, csrf);
-      setItems((current) => current.filter((item) => item.id !== id));
-      setSuccess("Chave revogada.");
-    } catch {
-      setError("Não foi possível revogar a chave. Tente novamente.");
+      await revokePasskey(item.id, csrf);
+      setItems((current) => current.filter((entry) => entry.id !== item.id));
+      setNotice({ tone: "success", text: "Chave revogada." });
+    } catch (cause) {
+      if (passkeyErrorKind(cause) === "unauthorized") onUnauthorized();
+      else
+        setNotice({
+          tone: "danger",
+          text: "Não foi possível revogar a chave. Tente novamente.",
+        });
     } finally {
       setBusy(false);
+      setRevokeTarget(null);
     }
   }
 
   return (
-    <section className="card passkeys-panel" aria-labelledby="passkeys-title">
-      <h2 id="passkeys-title">Minhas chaves de acesso</h2>
-      <p className="muted">
-        Cadastre uma passkey deste dispositivo ou gerenciador de senhas. Depois,
-        entre com a confirmação do dispositivo sem digitar senha e código TOTP.
-      </p>
+    <section className="page passkeys" aria-labelledby="passkeys-title">
+      <header className="page-header">
+        <div>
+          <h1 className="page-title" id="passkeys-title">
+            Minhas chaves de acesso
+          </h1>
+          <p className="page-subtitle">
+            Cadastre uma chave deste dispositivo ou do seu gerenciador de
+            senhas. Depois, entre confirmando no dispositivo, sem digitar senha
+            e código do autenticador.
+          </p>
+        </div>
+        {!loading && !loadError && (
+          <span className="badge badge-neutral">{usage.label}</span>
+        )}
+      </header>
+
       {!supported && (
-        <p className="error" role="alert">
+        <div className="alert alert-danger passkeys-alert" role="alert">
           Este navegador não oferece chaves de acesso. Use senha e código do
           autenticador.
-        </p>
+        </div>
       )}
-      <div className="passkeys-register">
-        <label htmlFor="passkey-label">Nome da chave</label>
-        <input
-          id="passkey-label"
-          value={label}
-          maxLength={80}
-          placeholder="Ex.: notebook de trabalho"
-          onChange={(event) => setLabel(event.target.value)}
-          disabled={busy || !supported}
-        />
+      {notice && (
+        <div
+          className={`alert passkeys-alert${notice.tone === "success" ? " alert-success" : notice.tone === "danger" ? " alert-danger" : ""}`}
+          role={notice.tone === "danger" ? "alert" : "status"}
+        >
+          {notice.text}
+        </div>
+      )}
+
+      <form
+        className="card card-body passkeys-register"
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (label.trim() && !busy && !usage.full && supported)
+            void register();
+        }}
+      >
+        <div className="form-field">
+          <label className="form-field-label" htmlFor="passkey-label">
+            Nome da nova chave
+          </label>
+          <input
+            id="passkey-label"
+            className="input"
+            value={label}
+            maxLength={80}
+            required
+            placeholder="Ex.: notebook de trabalho"
+            disabled={busy || !supported || usage.full}
+            onChange={(event) => setLabel(event.target.value)}
+          />
+          <span className="form-hint">
+            {usage.full
+              ? "Você atingiu o limite de 5 chaves. Revogue uma para cadastrar outra."
+              : "Use um nome que identifique o dispositivo."}
+          </span>
+        </div>
         <button
-          className="button primary"
-          type="button"
-          disabled={busy || !supported}
-          onClick={() => void register()}
+          className="btn btn-primary btn-md"
+          type="submit"
+          disabled={busy || !supported || usage.full || !label.trim()}
         >
           {busy ? "Aguarde…" : "Criar chave de acesso"}
         </button>
-      </div>
-      {error && (
-        <p className="error" role="alert">
-          {error}
-        </p>
-      )}
-      {success && <p role="status">{success}</p>}
-      <h3>Chaves cadastradas</h3>
-      {items.length === 0 ? (
-        <p className="muted">Nenhuma chave cadastrada nesta conta.</p>
-      ) : (
-        <ul className="passkeys-list">
-          {items.map((item) => (
-            <li key={item.id}>
-              <span>
-                <strong>{item.label}</strong>
-                <small>
-                  Criada em{" "}
-                  {new Date(item.created_at).toLocaleDateString("pt-BR")}
-                </small>
-              </span>
-              <button
-                className="button secondary"
-                type="button"
-                disabled={busy}
-                onClick={() => void revoke(item.id)}
-              >
-                Revogar
-              </button>
-            </li>
+      </form>
+
+      {loading ? (
+        <div
+          className="passkeys-skeleton"
+          role="status"
+          aria-label="Carregando"
+        >
+          {[0, 1].map((index) => (
+            <span className="skeleton" key={index} />
           ))}
-        </ul>
+        </div>
+      ) : loadError ? (
+        <div className="error-state" role="alert">
+          <strong>Não foi possível consultar suas chaves</strong>
+          <button
+            className="btn btn-secondary btn-sm"
+            type="button"
+            onClick={() => {
+              setLoading(true);
+              setRevision((value) => value + 1);
+            }}
+          >
+            Tentar novamente
+          </button>
+        </div>
+      ) : items.length === 0 ? (
+        <div className="empty-state" role="status">
+          <strong>Nenhuma chave cadastrada</strong>
+          <span>Crie uma chave para entrar sem digitar senha e código.</span>
+        </div>
+      ) : (
+        <div className="data-table-wrap">
+          <table
+            className="data-table keys-table"
+            aria-label="Chaves cadastradas"
+          >
+            <thead>
+              <tr>
+                <th scope="col">Nome</th>
+                <th scope="col">Criada em</th>
+                <th scope="col">Último uso</th>
+                <th scope="col">
+                  <span className="sr-only">Ações</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((item) => (
+                <tr key={item.id}>
+                  <td data-label="Nome">
+                    <strong>{item.label}</strong>
+                  </td>
+                  <td data-label="Criada em">
+                    {createdFormat.format(new Date(item.created_at))}
+                  </td>
+                  <td data-label="Último uso">
+                    {lastUsedLabel(item.last_used_at)}
+                  </td>
+                  <td className="passkeys-actions">
+                    <button
+                      className="btn btn-ghost btn-sm btn-ghost-danger"
+                      type="button"
+                      disabled={busy}
+                      onClick={() => setRevokeTarget(item)}
+                    >
+                      Revogar
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
+
+      <ConfirmDialog
+        open={revokeTarget !== null}
+        tone="danger"
+        title="Revogar esta chave de acesso?"
+        description={revokeWarning(items.length)}
+        details={[
+          { label: "Chave", value: revokeTarget?.label ?? "" },
+          {
+            label: "Último uso",
+            value: lastUsedLabel(revokeTarget?.last_used_at ?? null),
+          },
+        ]}
+        confirmLabel="Revogar chave"
+        busy={busy}
+        onConfirm={() => revokeTarget && void revoke(revokeTarget)}
+        onCancel={() => setRevokeTarget(null)}
+      />
     </section>
   );
 }

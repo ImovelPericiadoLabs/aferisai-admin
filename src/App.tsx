@@ -1538,7 +1538,7 @@ function TeamApp() {
               onUnauthorized={unauthorize}
             />
           ) : currentPage === "passkeys" ? (
-            <Passkeys csrf={session.csrf} />
+            <Passkeys csrf={session.csrf} onUnauthorized={unauthorize} />
           ) : (
             <Access />
           )}
