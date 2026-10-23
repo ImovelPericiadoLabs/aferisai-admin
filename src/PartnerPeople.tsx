@@ -556,8 +556,8 @@ export function PartnerPeople({
                           </small>
                           {(event.previous_value || event.new_value) && (
                             <small>
-                              {event.previous_value ?? "—"} →{" "}
-                              {event.new_value ?? "—"}
+                              {statusValueLabel(event.previous_value)} →{" "}
+                              {statusValueLabel(event.new_value)}
                             </small>
                           )}
                           <p>{event.reason}</p>
