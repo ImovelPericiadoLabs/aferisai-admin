@@ -336,14 +336,15 @@ export const gaps: GapEntry[] = [
   {
     id: "connected-never-applied",
     title: "Política integration/connected nunca é aplicada",
-    effect: "Regras de integração podem ser publicadas sem efeito algum.",
+    effect:
+      "Regras de integração podem ser publicadas sem efeito algum. O PR #35 (rascunho, sem deploy) passa a aplicá-las na cotação de arquivo.",
     source: "app/pricing/repo/registry.py:283",
   },
   {
     id: "coupon-count",
     title: "Uso do cupom conta na cotação, não no pagamento",
     effect:
-      "Cotação abandonada consome o limite; cotação de registro não aceita código.",
+      "Cotação abandonada consome o limite; cotação de registro não aceita código. O PR #35 (rascunho, sem deploy) move a contagem para o pagamento na cotação de arquivo.",
     source: "app/pricing/repo/commercial.py:518",
   },
   {
