@@ -1,11 +1,15 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   ApiError,
+  beginPasskeyLogin,
+  beginPasskeyRegistration,
   classifyAnalysisOriginal,
   createAdditionalApplication,
   createOrganization,
   currentMember,
   deleteSession,
+  finishPasskeyLogin,
+  finishPasskeyRegistration,
   describeOrganizationPermission,
   getOrganization,
   getApplicationRedirectUris,
@@ -27,6 +31,70 @@ import { uuidv7 } from "./uuidv7";
 afterEach(() => vi.unstubAllGlobals());
 
 describe("cliente da API interna", () => {
+  it("mantém cookie e CSRF nas cerimônias de chave de acesso", async () => {
+    const options = {
+      challenge_id: uuidv7(),
+      public_key: { challenge: "challenge" },
+    };
+    const credential = {
+      id: "credential",
+      response: { clientDataJSON: "payload" },
+    };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify(options), { status: 200 }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ id: uuidv7(), label: "Notebook" }), {
+          status: 201,
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify(options), { status: 200 }),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({ csrf_token: "csrf-new", expires_in: 28800 }),
+          { status: 200 },
+        ),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+    await beginPasskeyRegistration("csrf-current");
+    await finishPasskeyRegistration(
+      options.challenge_id,
+      credential,
+      "Notebook",
+      "csrf-current",
+    );
+    await beginPasskeyLogin("person@example.test");
+    await finishPasskeyLogin(
+      "person@example.test",
+      options.challenge_id,
+      credential,
+    );
+    const calls = fetchMock.mock.calls as [string, RequestInit][];
+    expect(calls.map(([url]) => new URL(url).pathname)).toEqual([
+      "/v1/team/passkeys/registration/options",
+      "/v1/team/passkeys/registration/confirm",
+      "/v1/team/passkeys/authentication/options",
+      "/v1/team/passkeys/authentication/confirm",
+    ]);
+    expect(
+      calls.every(
+        ([, init]) =>
+          init.credentials === "include" && init.cache === "no-store",
+      ),
+    ).toBe(true);
+    expect(calls[0][1].headers).toMatchObject({
+      "X-CSRF-Token": "csrf-current",
+    });
+    expect(calls[1][1].headers).toMatchObject({
+      "X-CSRF-Token": "csrf-current",
+    });
+    expect(calls[2][1].headers).not.toHaveProperty("X-CSRF-Token");
+    expect(calls[3][1].headers).not.toHaveProperty("X-CSRF-Token");
+  });
   it("consulta e substitui callbacks com versão e CSRF", async () => {
     const registry = { application_id: "app", redirect_uris: [], version: 0 };
     const fetchMock = vi

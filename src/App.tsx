@@ -1,11 +1,18 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
+import {
+  browserSupportsWebAuthn,
+  startAuthentication,
+  type PublicKeyCredentialRequestOptionsJSON,
+} from "@simplewebauthn/browser";
 import { useToast, type Toast, type ToastKind } from "./useToast";
 import {
   ApiError,
+  beginPasskeyLogin,
   createOrganization,
   createSession,
   currentMember,
   deleteSession,
+  finishPasskeyLogin,
   getDashboardMetrics,
   listOrganizations,
   renewCsrf,
@@ -29,6 +36,7 @@ import { Connections } from "./Connections";
 import { Users } from "./Users";
 import { TeamMembers } from "./TeamMembers";
 import { AnalysisProviders } from "./AnalysisProviders";
+import { Passkeys } from "./Passkeys";
 import "./App.css";
 import "./brand.css";
 import "./directory.css";
@@ -50,7 +58,8 @@ type Page =
   | "connections"
   | "users"
   | "team-members"
-  | "analysis-providers";
+  | "analysis-providers"
+  | "passkeys";
 type Session = { csrf: string; member: TeamMember };
 
 const nav: { page: Page; label: string; detail: string }[] = [
@@ -75,6 +84,7 @@ const nav: { page: Page; label: string; detail: string }[] = [
     label: "Provedores IA",
     detail: "Contas e limites",
   },
+  { page: "passkeys", label: "Minhas chaves", detail: "Acesso à conta" },
   { page: "access", label: "Acessos", detail: "Estrutura de autoridade" },
   {
     page: "reconciliation",
@@ -98,11 +108,18 @@ function Login({ onLogin }: { onLogin: (session: Session) => void }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [otp, setOtp] = useState("");
+  const [loginMode, setLoginMode] = useState<"passkey" | "password">(
+    browserSupportsWebAuthn() ? "passkey" : "password",
+  );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (loginMode === "passkey") {
+      await submitPasskey();
+      return;
+    }
     setBusy(true);
     setError("");
     try {
@@ -113,6 +130,37 @@ function Login({ onLogin }: { onLogin: (session: Session) => void }) {
       onLogin({ csrf: result.csrf_token, member });
     } catch (cause) {
       setError(message(cause));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function submitPasskey() {
+    if (!email.trim()) {
+      setError("Informe seu e-mail para entrar com a chave de acesso.");
+      return;
+    }
+    setBusy(true);
+    setError("");
+    try {
+      const options = await beginPasskeyLogin(email.trim());
+      const credential = await startAuthentication({
+        optionsJSON:
+          options.public_key as unknown as PublicKeyCredentialRequestOptionsJSON,
+      });
+      const result = await finishPasskeyLogin(
+        email.trim(),
+        options.challenge_id,
+        credential as unknown as Record<string, unknown>,
+      );
+      const member = await currentMember();
+      onLogin({ csrf: result.csrf_token, member });
+    } catch (cause) {
+      setError(
+        cause instanceof ApiError
+          ? message(cause)
+          : "A chave de acesso não foi confirmada pelo dispositivo.",
+      );
     } finally {
       setBusy(false);
     }
@@ -140,7 +188,9 @@ function Login({ onLogin }: { onLogin: (session: Session) => void }) {
           <p className="eyebrow">Bem-vindo de volta</p>
           <h2 id="login-title">Entrar na área da equipe</h2>
           <p className="muted">
-            Use sua conta interna e o código atual do aplicativo autenticador.
+            {loginMode === "passkey"
+              ? "Informe seu e-mail e confirme a chave de acesso no dispositivo."
+              : "Use sua senha e o código atual do aplicativo autenticador."}
           </p>
           <form onSubmit={submit} className="form">
             <label htmlFor="email">E-mail</label>
@@ -152,42 +202,77 @@ function Login({ onLogin }: { onLogin: (session: Session) => void }) {
               value={email}
               onChange={(event) => setEmail(event.target.value)}
             />
-            <label htmlFor="password">Senha</label>
-            <input
-              id="password"
-              type="password"
-              autoComplete="current-password"
-              required
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-            />
-            <label htmlFor="otp">Código do autenticador</label>
-            <input
-              id="otp"
-              type="text"
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              pattern="[0-9]{6}"
-              maxLength={6}
-              placeholder="000000"
-              required
-              value={otp}
-              onChange={(event) =>
-                setOtp(event.target.value.replace(/\D/g, ""))
-              }
-            />
+            {loginMode === "password" && (
+              <>
+                <label htmlFor="password">Senha</label>
+                <input
+                  id="password"
+                  type="password"
+                  autoComplete="current-password"
+                  required
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                />
+                <label htmlFor="otp">Código do autenticador</label>
+                <input
+                  id="otp"
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  pattern="[0-9]{6}"
+                  maxLength={6}
+                  placeholder="000000"
+                  required
+                  value={otp}
+                  onChange={(event) =>
+                    setOtp(event.target.value.replace(/\D/g, ""))
+                  }
+                />
+              </>
+            )}
             {error && (
               <p className="error" role="alert">
                 {error}
               </p>
             )}
             <button className="button primary full" disabled={busy}>
-              {busy ? "Verificando…" : "Entrar com segurança"}{" "}
+              {busy
+                ? "Verificando…"
+                : loginMode === "passkey"
+                  ? "Entrar com chave de acesso"
+                  : "Entrar com senha e código"}{" "}
               <span aria-hidden="true">→</span>
             </button>
           </form>
+          {(loginMode === "passkey" || browserSupportsWebAuthn()) && (
+            <div className="passkey-login-option">
+              <p>
+                {loginMode === "passkey"
+                  ? "Ainda não cadastrou uma chave?"
+                  : "Já tem uma chave de acesso?"}
+              </p>
+              <button
+                type="button"
+                className="button secondary full"
+                disabled={busy}
+                onClick={() => {
+                  setError("");
+                  setLoginMode(
+                    loginMode === "passkey" ? "password" : "passkey",
+                  );
+                }}
+              >
+                {loginMode === "passkey"
+                  ? "Usar senha e código"
+                  : "Usar chave de acesso"}{" "}
+                <span aria-hidden="true">↗</span>
+              </button>
+            </div>
+          )}
           <p className="fine-print">
-            Sua senha e o código do autenticador não são salvos neste navegador.
+            {loginMode === "passkey"
+              ? "A chave privada permanece no seu dispositivo ou gerenciador de senhas."
+              : "Sua senha e o código do autenticador não são salvos neste navegador."}
           </p>
         </div>
       </section>
@@ -955,7 +1040,8 @@ function pageFromHash(): Page {
     value === "connections" ||
     value === "users" ||
     value === "team-members" ||
-    value === "analysis-providers"
+    value === "analysis-providers" ||
+    value === "passkeys"
     ? value
     : "overview";
 }
@@ -1044,10 +1130,14 @@ function App() {
     session.member.role === "manager";
   const isFinancial = session.member.role === "financial";
   const currentPage =
-    isFinancial && page !== "commissions" ? "financial" : page;
+    isFinancial && page !== "commissions" && page !== "passkeys"
+      ? "financial"
+      : page;
   const visibleNav = nav.filter((item) =>
     isFinancial
-      ? item.page === "financial" || item.page === "commissions"
+      ? item.page === "financial" ||
+        item.page === "commissions" ||
+        item.page === "passkeys"
       : item.page !== "financial" &&
         item.page !== "commissions" &&
         (item.page !== "requests" || canReview) &&
@@ -1273,6 +1363,8 @@ function App() {
               csrf={session.csrf}
               onUnauthorized={unauthorize}
             />
+          ) : currentPage === "passkeys" ? (
+            <Passkeys csrf={session.csrf} />
           ) : (
             <Access />
           )}

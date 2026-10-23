@@ -794,6 +794,53 @@ input:focus-visible {
   font-size: 0.68rem;
   margin-top: 1.2rem;
 }
+.passkey-login-option {
+  margin-top: 1.25rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--line);
+}
+.passkey-login-option p {
+  color: var(--muted);
+  font-size: 0.78rem;
+  margin: 0 0 0.65rem;
+}
+.passkeys-panel {
+  max-width: 760px;
+}
+.passkeys-register {
+  display: grid;
+  gap: 0.6rem;
+  margin: 1.5rem 0;
+}
+.passkeys-register input {
+  min-height: 44px;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.passkeys-register .button {
+  width: fit-content;
+}
+.passkeys-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.passkeys-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.9rem 0;
+  border-top: 1px solid var(--line);
+}
+.passkeys-list li span {
+  display: grid;
+  gap: 0.3rem;
+}
+.passkeys-list small {
+  color: var(--muted);
+}
 .mobile-brand {
   display: none;
 }
