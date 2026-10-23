@@ -1,11 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import {
   ApiError,
   deleteApplicationWebhookEndpoint,
   getApplicationWebhookEndpoint,
   registerApplicationWebhookEndpoint,
+  testApplicationWebhookEndpoint,
   updateApplicationWebhookEndpointStatus,
   type WebhookEndpoint,
+  type WebhookTestResult,
 } from "./api";
 
 type Props = {
@@ -14,16 +16,22 @@ type Props = {
   canManage: boolean;
   canEdit: boolean;
   onUnauthorized: () => void;
+  channel?: "team" | "partner";
 };
 
-function dateLabel(value: string): string {
-  const d = new Date(value);
-  return Number.isNaN(d.getTime())
-    ? "Data indisponível"
-    : new Intl.DateTimeFormat("pt-BR", {
-        dateStyle: "short",
-        timeStyle: "short",
-      }).format(d);
+function validUrl(value: string): boolean {
+  try {
+    const parsed = new URL(value);
+    return (
+      parsed.protocol === "https:" &&
+      Boolean(parsed.hostname) &&
+      (!parsed.port || ["443", "8443"].includes(parsed.port)) &&
+      !parsed.username &&
+      !parsed.password
+    );
+  } catch {
+    return false;
+  }
 }
 
 export function WebhookEndpointManagement({
@@ -32,283 +40,423 @@ export function WebhookEndpointManagement({
   canManage,
   canEdit,
   onUnauthorized,
+  channel = "team",
 }: Props) {
   const [endpoint, setEndpoint] = useState<WebhookEndpoint | null>(null);
   const [loaded, setLoaded] = useState(false);
-  const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [urlInput, setUrlInput] = useState("");
-  const [plainSecret, setPlainSecret] = useState<string | null>(null);
-  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [url, setUrl] = useState("");
+  const [urlError, setUrlError] = useState("");
+  const [secret, setSecret] = useState<string | null>(null);
+  const [configured, setConfigured] = useState(false);
+  const [test, setTest] = useState<WebhookTestResult | null>(null);
+  const [confirmRemove, setConfirmRemove] = useState(false);
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     let live = true;
-    getApplicationWebhookEndpoint(applicationId)
-      .then((ep) => {
-        if (!live) return;
-        setEndpoint(ep);
-        setLoaded(true);
+    getApplicationWebhookEndpoint(applicationId, channel)
+      .then((result) => {
+        if (live) setEndpoint(result);
       })
       .catch((cause: unknown) => {
         if (!live) return;
-        if (cause instanceof ApiError && cause.status === 404) {
-          setEndpoint(null);
-        } else if (cause instanceof ApiError && cause.status === 401) {
+        if (cause instanceof ApiError && cause.status === 404) return;
+        if (cause instanceof ApiError && cause.status === 401) {
           onUnauthorized();
           return;
-        } else {
-          setError("Não foi possível consultar o endpoint de webhook.");
         }
-        setLoaded(true);
+        setError(
+          "Não foi possível consultar o webhook. Atualize a página para tentar novamente.",
+        );
+      })
+      .finally(() => {
+        if (live) setLoaded(true);
       });
     return () => {
       live = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [applicationId]);
+  }, [applicationId, onUnauthorized, channel]);
 
-  async function handleRegister(e: React.FormEvent) {
-    e.preventDefault();
+  async function register(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!validUrl(url.trim())) {
+      setUrlError("Informe uma URL HTTPS pública. Use a porta padrão ou 8443.");
+      return;
+    }
     setBusy(true);
     setError("");
+    setUrlError("");
     try {
-      const ep = await registerApplicationWebhookEndpoint(
+      const result = await registerApplicationWebhookEndpoint(
         applicationId,
-        urlInput,
+        url.trim(),
         csrfToken,
+        channel,
       );
-      setEndpoint(ep);
-      setPlainSecret(ep.plain_secret);
-      setUrlInput("");
+      setEndpoint(result);
+      setSecret(result.plain_secret);
+      setUrl("");
+      setConfigured(false);
+      setTest(null);
     } catch (cause) {
       if (cause instanceof ApiError && cause.status === 401) onUnauthorized();
       else if (cause instanceof ApiError && cause.status === 409)
         setError(
-          "Já existe um endpoint registrado. Remova o atual antes de registrar outro.",
+          "Esta aplicação já tem um webhook. Atualize a tela antes de registrar outro.",
         );
       else if (cause instanceof ApiError && cause.status === 422)
+        setUrlError(cause.detail);
+      else
         setError(
-          "URL inválida. Use HTTPS com nome DNS válido e porta 443 ou 8443.",
+          "Não foi possível confirmar o cadastro. Atualize a tela antes de tentar novamente.",
         );
-      else setError("Não foi possível registrar o endpoint.");
     } finally {
       setBusy(false);
     }
   }
 
-  async function handleStatus(status: "active" | "suspended") {
+  async function sendTest() {
     setBusy(true);
     setError("");
+    setTest(null);
     try {
-      const ep = await updateApplicationWebhookEndpointStatus(
-        applicationId,
-        status,
-        csrfToken,
+      setTest(
+        await testApplicationWebhookEndpoint(applicationId, csrfToken, channel),
       );
-      setEndpoint(ep);
     } catch (cause) {
       if (cause instanceof ApiError && cause.status === 401) onUnauthorized();
-      else setError("Não foi possível atualizar o estado do endpoint.");
+      else
+        setError(
+          cause instanceof ApiError
+            ? cause.detail
+            : "O resultado do teste não foi confirmado. Consulte as entregas antes de testar novamente.",
+        );
     } finally {
       setBusy(false);
     }
   }
 
-  async function handleDelete() {
+  async function setStatus(status: "active" | "suspended") {
     setBusy(true);
     setError("");
     try {
-      await deleteApplicationWebhookEndpoint(applicationId, csrfToken);
-      setEndpoint(null);
-      setConfirmDelete(false);
+      setEndpoint(
+        await updateApplicationWebhookEndpointStatus(
+          applicationId,
+          status,
+          csrfToken,
+          channel,
+        ),
+      );
+      setSecret(null);
     } catch (cause) {
       if (cause instanceof ApiError && cause.status === 401) onUnauthorized();
-      else setError("Não foi possível remover o endpoint.");
+      else
+        setError(
+          cause instanceof ApiError
+            ? cause.detail
+            : "Não foi possível alterar o estado do webhook.",
+        );
     } finally {
       setBusy(false);
     }
   }
 
-  function handleCopySecret() {
-    if (!plainSecret) return;
-    void navigator.clipboard.writeText(plainSecret).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
+  async function remove() {
+    setBusy(true);
+    setError("");
+    try {
+      await deleteApplicationWebhookEndpoint(applicationId, csrfToken, channel);
+      setEndpoint(null);
+      setSecret(null);
+      setTest(null);
+      setConfirmRemove(false);
+      setConfigured(false);
+    } catch (cause) {
+      if (cause instanceof ApiError && cause.status === 401) onUnauthorized();
+      else
+        setError(
+          "Não foi possível confirmar a remoção. Atualize antes de repetir.",
+        );
+    } finally {
+      setBusy(false);
+    }
   }
 
-  if (!loaded) return <p role="status">Carregando webhook…</p>;
+  function copySecret() {
+    if (!secret) return;
+    void navigator.clipboard
+      .writeText(secret)
+      .then(() => {
+        setCopied(true);
+        window.setTimeout(() => setCopied(false), 2000);
+      })
+      .catch(() =>
+        setError(
+          "Não foi possível copiar. Selecione a chave e copie manualmente.",
+        ),
+      );
+  }
+
+  if (!loaded)
+    return (
+      <div
+        className="integration-skeleton"
+        role="status"
+        aria-label="Carregando webhook"
+      >
+        <i />
+        <i />
+      </div>
+    );
 
   return (
-    <section className="credential-panel" aria-label="Webhook da aplicação">
-      <div className="detail-card-head">
-        <h5>Webhook</h5>
+    <section className="webhook-page" aria-labelledby="webhook-title">
+      <div className="integration-toolbar">
+        <div>
+          <h4 id="webhook-title">Webhook</h4>
+          <p>Receba um aviso assinado quando a análise for concluída.</p>
+        </div>
+        {endpoint?.status === "active" && canManage && canEdit && (
+          <button
+            type="button"
+            className="button secondary"
+            disabled={busy}
+            onClick={() => void setStatus("suspended")}
+          >
+            Suspender
+          </button>
+        )}
       </div>
-      <p>
-        Receba notificações de eventos <code>analysis.completed</code> no
-        endpoint registrado.
-      </p>
-
       {error && (
         <p className="error" role="alert">
           {error}
         </p>
       )}
-
-      {plainSecret && (
-        <div className="credential-issued" role="status">
-          <strong>Segredo do webhook: exibição única</strong>
-          <p>Guarde este segredo agora. Ele não será exibido novamente.</p>
-          <p className="muted">
-            Use como chave HMAC-SHA256 para verificar{" "}
-            <code>X-Aferis-Signature</code> nas entregas.
+      {!endpoint && !error && (
+        <form
+          className="webhook-setup"
+          onSubmit={(event) => void register(event)}
+        >
+          <div className="webhook-steps" aria-label="Etapas de configuração">
+            <span className="current">1 · Endereço</span>
+            <span>2 · Assinatura</span>
+            <span>3 · Teste</span>
+            <span>4 · Ativar</span>
+          </div>
+          <h5>Onde sua aplicação recebe eventos?</h5>
+          <p>
+            Informe um endereço público HTTPS sob controle da sua equipe. Um
+            destino por aplicação.
           </p>
-          <dl>
-            <div>
-              <dt>Segredo</dt>
-              <dd className="secret">{plainSecret}</dd>
-            </div>
-          </dl>
-          <div className="button-row">
+          <div className="field">
+            <label htmlFor={`webhook-url-${applicationId}`}>
+              URL do webhook
+            </label>
+            <input
+              id={`webhook-url-${applicationId}`}
+              type="url"
+              inputMode="url"
+              autoComplete="url"
+              placeholder="https://api.suaempresa.com/webhooks/aferis"
+              value={url}
+              onChange={(event) => {
+                setUrl(event.target.value);
+                setUrlError("");
+              }}
+              aria-invalid={Boolean(urlError)}
+              aria-describedby={
+                urlError ? `webhook-url-error-${applicationId}` : undefined
+              }
+              disabled={busy || !canEdit}
+              required
+            />
+            {urlError && (
+              <small
+                id={`webhook-url-error-${applicationId}`}
+                className="webhook-field-error"
+                role="alert"
+              >
+                {urlError}
+              </small>
+            )}
+          </div>
+          <div className="webhook-actions">
+            <span>O cadastro prepara a chave, sem ativar entregas reais.</span>
             <button
-              className="button secondary"
-              type="button"
-              onClick={handleCopySecret}
+              className="button primary"
+              disabled={!canManage || !canEdit || busy || !url.trim()}
             >
-              {copied ? "Copiado!" : "Copiar segredo"}
-            </button>
-            <button
-              className="button secondary"
-              type="button"
-              onClick={() => setPlainSecret(null)}
-            >
-              Entendi, ocultar segredo
+              {busy ? "Preparando…" : "Continuar"}
             </button>
           </div>
-        </div>
+        </form>
       )}
-
-      {!endpoint ? (
+      {endpoint && (
         <>
-          <p className="detail-empty">Nenhum endpoint de webhook registrado.</p>
-          {canManage && canEdit && (
-            <form
-              onSubmit={(e) => void handleRegister(e)}
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: "0.75rem",
-              }}
+          <div className="webhook-destination">
+            <div>
+              <small>DESTINO</small>
+              <strong>{endpoint.url}</strong>
+              <span>Evento: Análise concluída</span>
+            </div>
+            <span
+              className={`integration-status ${endpoint.status === "active" ? "is-active" : "is-paused"}`}
             >
-              <div className="field">
-                <label htmlFor="webhook-url">URL do endpoint</label>
-                <input
-                  id="webhook-url"
-                  className="input"
-                  type="url"
-                  placeholder="https://partner.example.com/webhooks"
-                  value={urlInput}
-                  onChange={(e) => setUrlInput(e.target.value)}
-                  required
-                  disabled={busy}
-                />
-              </div>
-              <button
-                className="button primary"
-                type="submit"
-                disabled={busy || !urlInput}
+              <span aria-hidden="true">
+                {endpoint.status === "active" ? "✓" : "Ⅱ"}
+              </span>
+              {endpoint.status === "active"
+                ? "Ativo"
+                : endpoint.status === "draft"
+                  ? "Em configuração"
+                  : "Suspenso"}
+            </span>
+          </div>
+          {endpoint.status !== "active" && canManage && canEdit && (
+            <div className="webhook-setup">
+              <div
+                className="webhook-steps"
+                aria-label="Etapas de configuração"
               >
-                {busy ? "Registrando…" : "Registrar endpoint"}
-              </button>
-            </form>
-          )}
-          {(!canManage || !canEdit) && (
-            <p>
-              A organização e a aplicação precisam estar ativas para registrar
-              um endpoint.
-            </p>
-          )}
-        </>
-      ) : (
-        <>
-          <dl>
-            <div>
-              <dt>URL</dt>
-              <dd>
-                <code>{endpoint.url}</code>
-              </dd>
-            </div>
-            <div>
-              <dt>Status</dt>
-              <dd>
-                <span
-                  className={`badge ${endpoint.status === "active" ? "badge-green" : "badge-yellow"}`}
-                >
-                  {endpoint.status === "active" ? "Ativo" : "Suspenso"}
+                <span className="done">✓ Endereço</span>
+                <span className={secret ? "current" : undefined}>
+                  2 · Assinatura
                 </span>
-              </dd>
-            </div>
-            <div>
-              <dt>Registrado em</dt>
-              <dd>{dateLabel(endpoint.created_at)}</dd>
-            </div>
-          </dl>
-          {canManage && canEdit && (
-            <div className="button-row" style={{ marginTop: "0.75rem" }}>
-              {endpoint.status === "active" ? (
-                <button
-                  className="button secondary"
-                  type="button"
-                  disabled={busy}
-                  onClick={() => void handleStatus("suspended")}
-                >
-                  {busy ? "Aguarde…" : "Suspender"}
-                </button>
-              ) : (
-                <button
-                  className="button secondary"
-                  type="button"
-                  disabled={busy}
-                  onClick={() => void handleStatus("active")}
-                >
-                  {busy ? "Aguarde…" : "Ativar"}
-                </button>
-              )}
-              {!confirmDelete ? (
-                <button
-                  className="back-link"
-                  type="button"
-                  disabled={busy}
-                  onClick={() => setConfirmDelete(true)}
-                  style={{ color: "var(--danger, #dc2626)" }}
-                >
-                  Remover endpoint
-                </button>
-              ) : (
-                <div className="credential-confirm">
+                <span>3 · Teste</span>
+                <span>4 · Ativar</span>
+              </div>
+              {secret && (
+                <div className="webhook-secret" role="status">
+                  <h5>Chave de assinatura · exibição única</h5>
                   <p>
-                    Remover o endpoint é permanente. Nenhum evento será entregue
-                    após a remoção.
+                    Salve esta chave no servidor que recebe o webhook. Verifique
+                    a assinatura HMAC de cada evento.
                   </p>
-                  <div className="button-row">
+                  <code>{secret}</code>
+                  <div className="webhook-actions">
                     <button
-                      className="button secondary"
                       type="button"
-                      disabled={busy}
-                      onClick={() => void handleDelete()}
+                      className="button secondary"
+                      onClick={copySecret}
                     >
-                      {busy ? "Removendo…" : "Confirmar remoção"}
+                      {copied ? "Copiada" : "Copiar chave"}
                     </button>
                     <button
-                      className="back-link"
                       type="button"
-                      disabled={busy}
-                      onClick={() => setConfirmDelete(false)}
+                      className="button secondary"
+                      onClick={() => setSecret(null)}
                     >
-                      Cancelar
+                      Já salvei, ocultar
                     </button>
                   </div>
+                </div>
+              )}
+              {!secret && (
+                <p className="webhook-note">
+                  A chave não aparece novamente. Use a cópia salva no seu
+                  servidor para verificar o teste.
+                </p>
+              )}
+              <label className="webhook-check">
+                <input
+                  type="checkbox"
+                  checked={configured}
+                  onChange={(event) => setConfigured(event.target.checked)}
+                />{" "}
+                Configurei a verificação da assinatura no meu servidor.
+              </label>
+              <div className="webhook-actions">
+                <span>
+                  O teste usa um evento fictício assinado. Não cria análise nem
+                  cobrança.
+                </span>
+                <button
+                  type="button"
+                  className="button secondary"
+                  disabled={busy || !configured}
+                  onClick={() => void sendTest()}
+                >
+                  {busy ? "Enviando…" : "Enviar teste assinado"}
+                </button>
+              </div>
+              {test && (
+                <div
+                  className={`webhook-test-result ${test.status === "delivered" ? "is-success" : ""}`}
+                  role="status"
+                >
+                  <strong>
+                    {test.status === "delivered"
+                      ? "Teste recebido pelo destino"
+                      : "Teste sem confirmação de entrega"}
+                  </strong>
+                  <span>
+                    {test.http_status
+                      ? `HTTP ${test.http_status}`
+                      : "Sem resposta HTTP confirmada"}
+                    {test.duration_ms != null
+                      ? ` · ${test.duration_ms} ms`
+                      : ""}
+                  </span>
+                </div>
+              )}
+              {test?.status === "delivered" && (
+                <div className="webhook-actions">
+                  <span>
+                    O destino confirmou o teste. Ative para receber eventos
+                    reais.
+                  </span>
+                  <button
+                    type="button"
+                    className="button primary"
+                    disabled={busy}
+                    onClick={() => void setStatus("active")}
+                  >
+                    Ativar webhook
+                  </button>
+                </div>
+              )}
+              {endpoint.status === "suspended" && !test && (
+                <p className="webhook-note">
+                  O webhook está suspenso. Envie um novo teste antes de
+                  ativá-lo.
+                </p>
+              )}
+            </div>
+          )}
+          {canManage && canEdit && (
+            <div className="webhook-danger">
+              {!confirmRemove ? (
+                <button
+                  type="button"
+                  className="back-link"
+                  onClick={() => setConfirmRemove(true)}
+                >
+                  Remover destino
+                </button>
+              ) : (
+                <div>
+                  <p>
+                    Remover o destino interrompe entregas futuras. A chave atual
+                    será descartada.
+                  </p>
+                  <button
+                    type="button"
+                    className="button secondary"
+                    disabled={busy}
+                    onClick={() => void remove()}
+                  >
+                    Confirmar remoção
+                  </button>
+                  <button
+                    type="button"
+                    className="back-link"
+                    onClick={() => setConfirmRemove(false)}
+                  >
+                    Cancelar
+                  </button>
                 </div>
               )}
             </div>

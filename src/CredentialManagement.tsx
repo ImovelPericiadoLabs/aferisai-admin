@@ -8,11 +8,19 @@ import {
   type PartnerCredential,
 } from "./api";
 import { uuidv7 } from "./uuidv7";
+import {
+  applicationPermissionDescription,
+  applicationPermissionGlyph,
+  applicationPermissionLabel,
+} from "./display-labels";
 
 type Props = {
   applicationId: string;
   csrfToken: string;
   canIssue: boolean;
+  availableScopes?: string[];
+  permissionDescriptions?: Record<string, string>;
+  channel?: "team" | "partner";
   onUnauthorized: () => void;
 };
 
@@ -26,10 +34,17 @@ function dateLabel(value: string): string {
       }).format(date);
 }
 
+function isExpired(value: string | null | undefined): boolean {
+  return Boolean(value && new Date(value).getTime() <= Date.now());
+}
+
 export function CredentialManagement({
   applicationId,
   csrfToken,
   canIssue,
+  availableScopes = ["application:read"],
+  permissionDescriptions = {},
+  channel = "team",
   onUnauthorized,
 }: Props) {
   const [items, setItems] = useState<PartnerCredential[]>([]);
@@ -45,10 +60,16 @@ export function CredentialManagement({
   const [confirmRecovery, setConfirmRecovery] = useState(false);
   const [confirmIssue, setConfirmIssue] = useState(false);
   const [confirmRevoke, setConfirmRevoke] = useState<string | null>(null);
+  const [name, setName] = useState("");
+  const [expiresInDays, setExpiresInDays] = useState(90);
+  const [selectedScopes, setSelectedScopes] = useState<string[]>([
+    "application:read",
+  ]);
+  const [formError, setFormError] = useState("");
 
   useEffect(() => {
     let live = true;
-    listPartnerCredentials(applicationId)
+    listPartnerCredentials(applicationId, undefined, channel)
       .then((result) => {
         if (!live) return;
         setItems(result.items);
@@ -69,13 +90,17 @@ export function CredentialManagement({
     return () => {
       live = false;
     };
-  }, [applicationId, onUnauthorized]);
+  }, [applicationId, onUnauthorized, channel]);
 
   async function refresh() {
     setBusy(true);
     setError("");
     try {
-      const result = await listPartnerCredentials(applicationId);
+      const result = await listPartnerCredentials(
+        applicationId,
+        undefined,
+        channel,
+      );
       setItems(result.items);
       setCursor(result.next_cursor);
       setLoaded(true);
@@ -97,7 +122,11 @@ export function CredentialManagement({
     setBusy(true);
     setError("");
     try {
-      const result = await listPartnerCredentials(applicationId, cursor);
+      const result = await listPartnerCredentials(
+        applicationId,
+        cursor,
+        channel,
+      );
       setItems((current) => [...current, ...result.items]);
       setCursor(result.next_cursor);
       if (uncertain) setReconciled(true);
@@ -110,6 +139,21 @@ export function CredentialManagement({
   }
 
   async function issue() {
+    if (!name.trim()) {
+      setFormError("Dê um nome para identificar o sistema.");
+      return;
+    }
+    if (
+      selectedScopes.length === 0 ||
+      selectedScopes.some((scope) => !availableScopes.includes(scope))
+    ) {
+      setFormError("Selecione pelo menos uma permissão disponível.");
+      return;
+    }
+    if (!Number.isInteger(expiresInDays) || expiresInDays < 1) {
+      setFormError("Escolha uma validade.");
+      return;
+    }
     const issueRequestId = uuidv7();
     setBusy(true);
     setError("");
@@ -120,8 +164,15 @@ export function CredentialManagement({
         applicationId,
         issueRequestId,
         csrfToken,
+        {
+          name: name.trim(),
+          expires_in_days: expiresInDays,
+          scopes: selectedScopes,
+        },
+        channel,
       );
       setIssued(result);
+      setName("");
       await refresh();
     } catch (cause) {
       if (cause instanceof ApiError && cause.status === 401) {
@@ -149,7 +200,12 @@ export function CredentialManagement({
     setError("");
     setNotice("");
     try {
-      await revokePartnerCredential(applicationId, credentialId, csrfToken);
+      await revokePartnerCredential(
+        applicationId,
+        credentialId,
+        csrfToken,
+        channel,
+      );
       setConfirmRevoke(null);
       if (
         items.find((item) => item.id === credentialId)?.issue_request_id ===
@@ -176,7 +232,9 @@ export function CredentialManagement({
   }
 
   const orphan = items.find((item) => item.issue_request_id === uncertain);
-  const activeCount = items.filter((item) => item.status === "active").length;
+  const activeCount = items.filter(
+    (item) => item.status === "active" && !isExpired(item.expires_at),
+  ).length;
 
   return (
     <section className="credential-panel" aria-label="Credenciais da aplicação">
@@ -264,18 +322,18 @@ export function CredentialManagement({
       )}
       {issued && (
         <div className="credential-issued" role="status">
-          <strong>Novo segredo: exibição única</strong>
+          <strong>Credencial emitida · segredo exibido uma vez</strong>
           <p>
             Guarde em um cofre seguro e teste a nova credencial antes de revogar
             a anterior.
           </p>
           <dl>
             <div>
-              <dt>Client ID</dt>
+              <dt>Identificador</dt>
               <dd>{issued.client_id}</dd>
             </div>
             <div>
-              <dt>Client secret</dt>
+              <dt>Segredo</dt>
               <dd className="secret">{issued.client_secret}</dd>
             </div>
           </dl>
@@ -297,10 +355,19 @@ export function CredentialManagement({
             <li key={credential.id}>
               <div className="credential-row">
                 <div>
-                  <strong>{credential.client_id}</strong>
-                  <small>Criada em {dateLabel(credential.created_at)}</small>
-                  {credential.issue_request_id && (
-                    <small>Emissão: {credential.issue_request_id}</small>
+                  <strong>{credential.name || "Credencial sem nome"}</strong>
+                  <small>
+                    Emitida em {dateLabel(credential.created_at)} ·{" "}
+                    {credential.expires_at
+                      ? `Vence em ${dateLabel(credential.expires_at)}`
+                      : "Sem prazo definido"}
+                  </small>
+                  {!!credential.scopes?.length && (
+                    <small>
+                      {credential.scopes
+                        .map(applicationPermissionLabel)
+                        .join(" · ")}
+                    </small>
                   )}
                   {credential.revoked_at && (
                     <small>
@@ -309,9 +376,28 @@ export function CredentialManagement({
                   )}
                 </div>
                 <span className="pill">
-                  {credential.status === "active" ? "Ativa" : "Revogada"}
+                  {credential.status === "revoked"
+                    ? "Revogada"
+                    : isExpired(credential.expires_at)
+                      ? "Expirada"
+                      : "Ativa"}
                 </span>
               </div>
+              <details className="credential-technical">
+                <summary>Detalhes técnicos</summary>
+                <dl>
+                  <div>
+                    <dt>Identificador público</dt>
+                    <dd>{credential.client_id}</dd>
+                  </div>
+                  {credential.issue_request_id && (
+                    <div>
+                      <dt>Emissão</dt>
+                      <dd>{credential.issue_request_id}</dd>
+                    </div>
+                  )}
+                </dl>
+              </details>
               {credential.status === "active" &&
                 (confirmRevoke === credential.id ? (
                   <div className="credential-confirm">
@@ -369,7 +455,76 @@ export function CredentialManagement({
         !issued &&
         activeCount < 2 &&
         (confirmIssue ? (
-          <div className="credential-confirm">
+          <div className="credential-issue-form">
+            <h6>Emitir credencial</h6>
+            <p>
+              Identifique o sistema e escolha o prazo. O segredo completo
+              aparecerá uma única vez.
+            </p>
+            <div className="field">
+              <label htmlFor="credential-name">Nome da credencial</label>
+              <input
+                id="credential-name"
+                value={name}
+                maxLength={80}
+                placeholder="Ex.: Sistema de produção"
+                onChange={(event) => {
+                  setName(event.target.value);
+                  setFormError("");
+                }}
+                required
+              />
+            </div>
+            <div className="field">
+              <label htmlFor="credential-expiry">Validade</label>
+              <select
+                id="credential-expiry"
+                value={expiresInDays}
+                onChange={(event) =>
+                  setExpiresInDays(Number(event.target.value))
+                }
+              >
+                <option value={30}>30 dias</option>
+                <option value={90}>90 dias</option>
+                <option value={180}>180 dias</option>
+              </select>
+            </div>
+            <fieldset className="credential-scope-options">
+              <legend>Permissões</legend>
+              {availableScopes.map((scope, index) => (
+                <label key={scope}>
+                  <input
+                    type="checkbox"
+                    checked={selectedScopes.includes(scope)}
+                    onChange={(event) => {
+                      setSelectedScopes((current) =>
+                        event.target.checked
+                          ? [...current, scope]
+                          : current.filter((item) => item !== scope),
+                      );
+                      setFormError("");
+                    }}
+                  />
+                  <span className="credential-scope-icon" aria-hidden="true">
+                    {applicationPermissionGlyph(scope, index)}
+                  </span>
+                  <span>
+                    <strong>{applicationPermissionLabel(scope)}</strong>
+                    <small>
+                      {applicationPermissionDescription(
+                        scope,
+                        permissionDescriptions[scope],
+                      )}
+                    </small>
+                  </span>
+                </label>
+              ))}
+            </fieldset>
+            {formError && (
+              <small className="webhook-field-error" role="alert">
+                {formError}
+              </small>
+            )}
             <p>
               O novo segredo aparecerá uma vez. Prepare um cofre seguro antes de
               continuar.
@@ -378,7 +533,7 @@ export function CredentialManagement({
               <button
                 className="button primary"
                 type="button"
-                disabled={busy}
+                disabled={busy || !name.trim() || selectedScopes.length === 0}
                 onClick={() => void issue()}
               >
                 Confirmar emissão
@@ -398,7 +553,14 @@ export function CredentialManagement({
             className="button primary"
             type="button"
             disabled={busy}
-            onClick={() => setConfirmIssue(true)}
+            onClick={() => {
+              setSelectedScopes(
+                availableScopes.includes("application:read")
+                  ? ["application:read"]
+                  : availableScopes.slice(0, 1),
+              );
+              setConfirmIssue(true);
+            }}
           >
             Emitir nova credencial
           </button>

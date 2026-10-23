@@ -478,7 +478,11 @@ describe("cliente da API interna", () => {
 
     const key = "0199f6d9-3e75-7c71-9e2a-f74fd4ef60a0";
     await listPartnerCredentials("app");
-    const issued = await issuePartnerCredential("app", key, "csrf-test");
+    const issued = await issuePartnerCredential("app", key, "csrf-test", {
+      name: "Sistema de produção",
+      expires_in_days: 90,
+      scopes: ["application:read"],
+    });
     await revokePartnerCredential("app", "credential", "csrf-test");
 
     const calls = fetchMock.mock.calls as [string, RequestInit][];
@@ -490,6 +494,11 @@ describe("cliente da API interna", () => {
       "X-CSRF-Token": "csrf-test",
     });
     expect(issued.client_secret).toBe("once");
+    expect(JSON.parse(String(calls[1][1].body))).toEqual({
+      name: "Sistema de produção",
+      expires_in_days: 90,
+      scopes: ["application:read"],
+    });
     expect(calls[2][0]).toContain("/applications/app/credentials/credential");
     expect(calls[2][1].method).toBe("DELETE");
     expect(calls[2][1].headers).toMatchObject({ "X-CSRF-Token": "csrf-test" });

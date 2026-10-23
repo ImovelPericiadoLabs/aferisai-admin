@@ -17,6 +17,22 @@ export type TeamMember = {
   email: string;
   role: "administrator" | "manager" | "viewer" | "financial";
 };
+export type PartnerMember = {
+  id: string;
+  email: string;
+  organization_id: string;
+  organization_name: string;
+};
+export type PartnerApplication = { id: string; name: string; status: string };
+export type PartnerApplicationList = {
+  items: PartnerApplication[];
+  next_cursor: string | null;
+};
+export type PartnerInvitationIssued = {
+  invitation_id: string;
+  expires_in: number;
+};
+export type PartnerEnrollment = { totp_secret: string; otpauth_uri: string };
 export type OnboardingBody = {
   organization_slug: string;
   organization_name: string;
@@ -66,6 +82,9 @@ export type PartnerCredential = {
   created_at: string;
   revoked_at: string | null;
   issue_request_id: string | null;
+  name?: string | null;
+  expires_at?: string | null;
+  scopes?: string[];
 };
 export type CredentialList = {
   items: PartnerCredential[];
@@ -812,6 +831,55 @@ export const deleteSession = (csrfToken: string) =>
     method: "DELETE",
     headers: { "X-CSRF-Token": csrfToken },
   });
+export const createPartnerSession = (body: LoginBody) =>
+  request<SessionResult>("/v1/partner/sessions", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+export const currentPartnerMember = () =>
+  request<PartnerMember>("/v1/partner/sessions/current", { method: "GET" });
+export const renewPartnerCsrf = () =>
+  request<CsrfResult>("/v1/partner/sessions/current/csrf", { method: "POST" });
+export const deletePartnerSession = (csrfToken: string) =>
+  request<void>("/v1/partner/sessions/current", {
+    method: "DELETE",
+    headers: { "X-CSRF-Token": csrfToken },
+  });
+export const listPartnerApplications = (cursor?: string) => {
+  const params = new URLSearchParams({ limit: "20" });
+  if (cursor) params.set("cursor", cursor);
+  return request<PartnerApplicationList>(`/v1/partner/applications?${params}`, {
+    method: "GET",
+  });
+};
+export const listPartnerApplicationPermissions = (applicationId: string) =>
+  request<{ items: { code: string; description: string }[] }>(
+    `/v1/partner/applications/${encodeURIComponent(applicationId)}/permissions`,
+    { method: "GET" },
+  );
+export const enrollPartnerInvitation = (token: string, password: string) =>
+  request<PartnerEnrollment>("/v1/partner/invitations/enroll", {
+    method: "POST",
+    body: JSON.stringify({ token, password }),
+  });
+export const confirmPartnerInvitation = (token: string, otp: string) =>
+  request<void>("/v1/partner/invitations/confirm", {
+    method: "POST",
+    body: JSON.stringify({ token, otp }),
+  });
+export const invitePartnerMember = (
+  organizationId: string,
+  email: string,
+  csrfToken: string,
+) =>
+  request<PartnerInvitationIssued>(
+    `/v1/team/organizations/${encodeURIComponent(organizationId)}/partner-invitations`,
+    {
+      method: "POST",
+      headers: { "X-CSRF-Token": csrfToken },
+      body: JSON.stringify({ email }),
+    },
+  );
 export const createOrganization = (body: OnboardingBody, csrfToken: string) =>
   request<OnboardingResult>("/v1/team/organizations", {
     method: "POST",
@@ -921,11 +989,12 @@ export const replaceApplicationRedirectUris = (
 export function listPartnerCredentials(
   applicationId: string,
   cursor?: string,
+  channel: "team" | "partner" = "team",
 ): Promise<CredentialList> {
   const params = new URLSearchParams({ limit: "20" });
   if (cursor) params.set("cursor", cursor);
   return request<CredentialList>(
-    `/v1/team/applications/${encodeURIComponent(applicationId)}/credentials?${params}`,
+    `/v1/${channel}/applications/${encodeURIComponent(applicationId)}/credentials?${params}`,
     { method: "GET" },
   );
 }
@@ -934,15 +1003,18 @@ export const issuePartnerCredential = (
   applicationId: string,
   issueRequestId: string,
   csrfToken: string,
+  options: { name: string; expires_in_days: number; scopes: string[] },
+  channel: "team" | "partner" = "team",
 ) =>
   request<IssuedPartnerCredential>(
-    `/v1/team/applications/${encodeURIComponent(applicationId)}/credentials`,
+    `/v1/${channel}/applications/${encodeURIComponent(applicationId)}/credentials`,
     {
       method: "POST",
       headers: {
         "X-CSRF-Token": csrfToken,
         "Idempotency-Key": issueRequestId,
       },
+      body: JSON.stringify(options),
     },
   );
 
@@ -950,9 +1022,10 @@ export const revokePartnerCredential = (
   applicationId: string,
   credentialId: string,
   csrfToken: string,
+  channel: "team" | "partner" = "team",
 ) =>
   request<void>(
-    `/v1/team/applications/${encodeURIComponent(applicationId)}/credentials/${encodeURIComponent(credentialId)}`,
+    `/v1/${channel}/applications/${encodeURIComponent(applicationId)}/credentials/${encodeURIComponent(credentialId)}`,
     { method: "DELETE", headers: { "X-CSRF-Token": csrfToken } },
   );
 
@@ -1297,14 +1370,69 @@ export type WebhookEndpoint = {
   id: string;
   application_id: string;
   url: string;
-  status: "active" | "suspended";
+  status: "draft" | "active" | "suspended";
   created_at: string;
   plain_secret: string | null;
+  last_successful_test_at?: string | null;
 };
 
-export const getApplicationWebhookEndpoint = (applicationId: string) =>
+export type WebhookDelivery = {
+  id: string;
+  event_type: "webhook.test" | "analysis.completed";
+  status: "pending" | "delivered" | "attempted" | "unknown" | "skipped";
+  endpoint_url: string;
+  http_status: number | null;
+  duration_ms: number | null;
+  created_at: string;
+  attempted_at: string | null;
+  is_test: boolean;
+};
+export type WebhookTestResult = WebhookDelivery;
+export type WebhookDeliveryList = {
+  items: WebhookDelivery[];
+  next_cursor: string | null;
+};
+
+export const testApplicationWebhookEndpoint = (
+  applicationId: string,
+  csrfToken: string,
+  channel: "team" | "partner" = "team",
+) =>
+  request<WebhookTestResult>(
+    `/v1/${channel}/applications/${encodeURIComponent(applicationId)}/webhook-endpoint/test`,
+    { method: "POST", headers: { "X-CSRF-Token": csrfToken } },
+  );
+
+export const listApplicationWebhookDeliveries = (
+  applicationId: string,
+  options: { before?: string; status?: string } = {},
+  channel: "team" | "partner" = "team",
+) => {
+  const query = new URLSearchParams({ limit: "20" });
+  if (options.before) query.set("before", options.before);
+  if (options.status) query.set("status", options.status);
+  return request<WebhookDeliveryList>(
+    `/v1/${channel}/applications/${encodeURIComponent(applicationId)}/webhook-deliveries?${query}`,
+    { method: "GET" },
+  );
+};
+
+export const getApplicationWebhookDelivery = (
+  applicationId: string,
+  deliveryId: string,
+  channel: "team" | "partner" = "team",
+) =>
+  request<WebhookDelivery>(
+    `/v1/${channel}/applications/${encodeURIComponent(applicationId)}/webhook-deliveries/${encodeURIComponent(deliveryId)}`,
+    { method: "GET" },
+  );
+
+export const getApplicationWebhookEndpoint = (
+  applicationId: string,
+  channel: "team" | "partner" = "team",
+) =>
   request<WebhookEndpoint>(
-    `/v1/team/applications/${encodeURIComponent(applicationId)}/webhook-endpoint`,
+    `/v1/${channel}/applications/${encodeURIComponent(applicationId)}/webhook-endpoint`,
     { method: "GET" },
   );
 
@@ -1312,9 +1440,10 @@ export const registerApplicationWebhookEndpoint = (
   applicationId: string,
   url: string,
   csrfToken: string,
+  channel: "team" | "partner" = "team",
 ) =>
   request<WebhookEndpoint>(
-    `/v1/team/applications/${encodeURIComponent(applicationId)}/webhook-endpoint`,
+    `/v1/${channel}/applications/${encodeURIComponent(applicationId)}/webhook-endpoint`,
     {
       method: "POST",
       headers: { "X-CSRF-Token": csrfToken },
@@ -1326,9 +1455,10 @@ export const updateApplicationWebhookEndpointStatus = (
   applicationId: string,
   status: "active" | "suspended",
   csrfToken: string,
+  channel: "team" | "partner" = "team",
 ) =>
   request<WebhookEndpoint>(
-    `/v1/team/applications/${encodeURIComponent(applicationId)}/webhook-endpoint/status`,
+    `/v1/${channel}/applications/${encodeURIComponent(applicationId)}/webhook-endpoint/status`,
     {
       method: "PUT",
       headers: { "X-CSRF-Token": csrfToken },
@@ -1339,9 +1469,10 @@ export const updateApplicationWebhookEndpointStatus = (
 export const deleteApplicationWebhookEndpoint = (
   applicationId: string,
   csrfToken: string,
+  channel: "team" | "partner" = "team",
 ) =>
   request<void>(
-    `/v1/team/applications/${encodeURIComponent(applicationId)}/webhook-endpoint`,
+    `/v1/${channel}/applications/${encodeURIComponent(applicationId)}/webhook-endpoint`,
     {
       method: "DELETE",
       headers: { "X-CSRF-Token": csrfToken },

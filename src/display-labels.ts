@@ -86,6 +86,7 @@ const decisionLabels: Record<string, string> = {
 };
 
 const scopeLabels: Record<string, string> = {
+  "application:read": "Consultar integração",
   "analysis:read": "Consultar análises",
   "analysis:submit:upload": "Enviar matrícula para análise",
   "analysis:create": "Solicitar análises",
@@ -146,3 +147,33 @@ export const decisionLabel = (value: string | null | undefined) =>
   label(decisionLabels, value, "Decisão não identificada");
 export const scopeLabel = (value: string | null | undefined) =>
   label(scopeLabels, value, "Permissão não identificada");
+export const applicationPermissionLabel = scopeLabel;
+const permissionDescriptions: Record<string, string> = {
+  "application:read": "Consulta os dados da própria aplicação.",
+  "analysis:read": "Consulta resultados e estado das análises.",
+  "analysis:create": "Solicita uma nova análise.",
+  "analysis:submit:upload": "Envia arquivos para análise.",
+  "analysis:write": "Gerencia solicitações de análise.",
+  "registry:read": "Consulta pedidos de matrícula.",
+  "registry:create": "Solicita uma matrícula ao cartório.",
+  "registry:write": "Gerencia pedidos de matrícula.",
+};
+export const applicationPermissionDescription = (
+  code: string,
+  catalogDescription?: string | null,
+) =>
+  permissionDescriptions[code] ||
+  catalogDescription?.trim() ||
+  "Ação disponível para esta aplicação.";
+const permissionGlyphs: Record<string, string> = {
+  "application:read": "◫",
+  "analysis:read": "▥",
+  "analysis:create": "＋",
+  "analysis:submit:upload": "↥",
+  "analysis:write": "✎",
+  "registry:read": "⌕",
+  "registry:create": "◇",
+  "registry:write": "⚙",
+};
+export const applicationPermissionGlyph = (code: string, index = 0) =>
+  permissionGlyphs[code] ?? String(index + 1);

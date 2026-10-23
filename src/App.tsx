@@ -44,6 +44,7 @@ import { Passkeys } from "./Passkeys";
 import { ShellIcon } from "./ShellIcon";
 import { DashboardOverview, DashboardReports } from "./DashboardOverview";
 import { teamRoleLabel } from "./display-labels";
+import { PartnerPortal } from "./PartnerPortal";
 import "./App.css";
 import "./brand.css";
 import "./directory.css";
@@ -208,7 +209,7 @@ function Login({ onLogin }: { onLogin: (session: Session) => void }) {
       <section className="login-story">
         <Brand light />
         <div>
-          <p className="eyebrow">Área interna · acesso restrito</p>
+          <p className="eyebrow">AferisAI</p>
           <h1>Clareza para cada decisão.</h1>
           <p>
             Acompanhe operações, análises e parcerias em um espaço seguro,
@@ -371,6 +372,9 @@ function Login({ onLogin }: { onLogin: (session: Session) => void }) {
               ? "A chave privada permanece no seu dispositivo ou gerenciador de senhas."
               : "Sua senha e o código do autenticador não são salvos neste navegador."}
           </p>
+          <a className="partner-team-link" href="/#parceiro">
+            Sou parceiro · acessar minha integração
+          </a>
         </div>
         <svg
           className="login-mobile-art"
@@ -922,7 +926,7 @@ function pageFromHash(): Page {
     : "overview";
 }
 
-function App() {
+function TeamApp() {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState<Page>(pageFromHash);
@@ -1364,12 +1368,12 @@ function App() {
             <ShellIcon name="menu" />
           </button>
           <div className="topbar-breadcrumb">
-            <span>Área da equipe</span>
+            <span>AferisAI</span>
             <ShellIcon name="chevron" size={15} />
             <strong>{currentItem?.label}</strong>
           </div>
           <span className="topbar-label">
-            <span className="topbar-status" /> Área interna
+            <span className="topbar-status" /> Conectado
           </span>
         </header>
         <main key={currentPage} className="page-fade-in">
@@ -1540,6 +1544,22 @@ function ToastStack({
       ))}
     </div>
   );
+}
+
+function portalMode(): "team" | "partner" | "invitation" {
+  if (window.location.hash.startsWith("#convite")) return "invitation";
+  if (window.location.hash.startsWith("#parceiro")) return "partner";
+  return "team";
+}
+
+function App() {
+  const [portal, setPortal] = useState(portalMode);
+  useEffect(() => {
+    const update = () => setPortal(portalMode());
+    window.addEventListener("hashchange", update);
+    return () => window.removeEventListener("hashchange", update);
+  }, []);
+  return portal === "team" ? <TeamApp /> : <PartnerPortal key={portal} />;
 }
 
 export default App;
