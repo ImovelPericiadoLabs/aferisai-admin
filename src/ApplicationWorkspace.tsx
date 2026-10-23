@@ -1,13 +1,16 @@
 import { useId, useState, type KeyboardEvent, type ReactNode } from "react";
+import { ApplicationOverview } from "./ApplicationOverview";
+import { ConfirmDialog } from "./ConfirmDialog";
+import { FieldAction } from "./FieldAction";
 import { CredentialManagement } from "./CredentialManagement";
 import { RedirectUriManagement } from "./RedirectUriManagement";
 import { WebhookEndpointManagement } from "./WebhookEndpointManagement";
 import { WebhookDeliveries } from "./WebhookDeliveries";
 import {
   applicationPermissionDescription,
-  applicationPermissionGlyph,
   applicationPermissionLabel,
 } from "./display-labels";
+import "./application-workspace.css";
 import "./integration-workspace.css";
 
 type Application = {
@@ -107,7 +110,6 @@ export function ApplicationWorkspace({
       ?.querySelectorAll<HTMLButtonElement>('[role="tab"]')
       [nextIndex]?.focus();
   };
-  const [showApplicationPicker, setShowApplicationPicker] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [permissionToReview, setPermissionToReview] = useState<{
     code: string;
@@ -120,37 +122,71 @@ export function ApplicationWorkspace({
 
   if (!application && applications.length > 1) {
     return (
-      <section
-        className="integration-directory"
-        aria-labelledby="integration-directory-title"
-      >
-        <div className="integration-heading">
+      <section className="appws" aria-labelledby="appws-directory-title">
+        <header className="appws-head">
           <div>
-            <p className="integration-kicker">Parceria</p>
-            <h3 id="integration-directory-title">Aplicações</h3>
-            <p>Escolha a integração que deseja consultar ou configurar.</p>
+            <h2 className="appws-title" id="appws-directory-title">
+              Aplicações
+            </h2>
+            <p className="page-subtitle">
+              Escolha a integração que deseja consultar ou configurar.
+            </p>
           </div>
-        </div>
-        <div className="integration-action-list">
-          {applications.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => {
-                onSelectApplication(item.id);
-                setTab("overview");
-              }}
-            >
-              <strong>{item.name}</strong>
-              <span>{item.status === "active" ? "Ativa" : "Suspensa"}</span>
-              <b aria-hidden="true">→</b>
-            </button>
-          ))}
+        </header>
+        <div className="data-table-wrap">
+          <table className="data-table" aria-label="Aplicações">
+            <thead>
+              <tr>
+                <th scope="col">Aplicação</th>
+                <th scope="col">Estado</th>
+                <th scope="col">
+                  <span className="sr-only">Ações</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {applications.map((item) => (
+                <tr key={item.id}>
+                  <td data-label="Aplicação">
+                    <button
+                      type="button"
+                      className="rules-cell-button"
+                      onClick={() => {
+                        onSelectApplication(item.id);
+                        setTab("overview");
+                      }}
+                    >
+                      <strong>{item.name}</strong>
+                    </button>
+                  </td>
+                  <td data-label="Estado">
+                    <span
+                      className={`badge ${item.status === "active" ? "badge-success" : "badge-warning"}`}
+                    >
+                      {item.status === "active" ? "Ativa" : "Suspensa"}
+                    </span>
+                  </td>
+                  <td className="appws-open">
+                    <button
+                      type="button"
+                      className="btn btn-secondary btn-sm"
+                      onClick={() => {
+                        onSelectApplication(item.id);
+                        setTab("overview");
+                      }}
+                    >
+                      Abrir
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
         {hasMoreApplications && onLoadMoreApplications && (
           <button
             type="button"
-            className="button secondary"
+            className="btn btn-secondary btn-md appws-more"
             disabled={loadingMoreApplications}
             onClick={onLoadMoreApplications}
           >
@@ -160,10 +196,10 @@ export function ApplicationWorkspace({
           </button>
         )}
         {additionalApplication && (
-          <div className="integration-additional">
+          <div className="appws-additional">
             <button
               type="button"
-              className="button secondary"
+              className="btn btn-secondary btn-md"
               onClick={() => setShowCreate((value) => !value)}
             >
               {showCreate ? "Fechar cadastro" : "Nova aplicação"}
@@ -176,83 +212,55 @@ export function ApplicationWorkspace({
   }
   if (!application) {
     return (
-      <section
-        className="integration-empty"
-        aria-labelledby="integration-empty-title"
-      >
-        <h3 id="integration-empty-title">Nenhuma aplicação cadastrada</h3>
-        <p>
-          {channel === "partner"
-            ? "Nenhuma aplicação está disponível para sua empresa. Peça ao administrador para liberar uma integração."
-            : "Crie uma aplicação para configurar credenciais e receber eventos."}
-        </p>
+      <section className="appws" aria-labelledby="appws-empty-title">
+        <div className="empty-state" role="status">
+          <strong id="appws-empty-title">Nenhuma aplicação cadastrada</strong>
+          <span>
+            {channel === "partner"
+              ? "Nenhuma aplicação está disponível para sua empresa. Peça ao administrador para liberar uma integração."
+              : "Crie uma aplicação para configurar credenciais e receber eventos."}
+          </span>
+        </div>
         {additionalApplication}
       </section>
     );
   }
 
+  const grantedCount = permissions.filter((permission) =>
+    application.permissions.includes(permission.code),
+  ).length;
+
   return (
     <section
-      className={`integration-workspace ${channel === "partner" ? "is-partner" : ""}`}
+      className={`appws${channel === "partner" ? " is-partner" : ""}`}
       aria-label={`Aplicação ${application.name}`}
     >
-      <div className="integration-heading">
+      <header className="appws-head">
         <div>
-          <p className="integration-kicker">Aplicação</p>
-          <h3>{application.name}</h3>
-          <p>
+          <h2 className="appws-title">{application.name}</h2>
+          <p className="page-subtitle">
             {canManage
               ? "Configure o destino dos eventos, acompanhe entregas e administre o acesso."
               : "Consulte os acessos concedidos a esta aplicação."}
           </p>
         </div>
         <span
-          className={`integration-status ${application.status === "active" ? "is-active" : "is-paused"}`}
+          className={`badge ${application.status === "active" ? "badge-success" : "badge-warning"}`}
         >
-          <span aria-hidden="true">
-            {application.status === "active" ? "✓" : "Ⅱ"}
-          </span>
           {application.status === "active" ? "Ativa" : "Suspensa"}
         </span>
-      </div>
+      </header>
 
       {applications.length > 1 && (
-        <div className="integration-picker">
-          <button
-            className="button secondary"
-            type="button"
-            aria-expanded={showApplicationPicker}
-            onClick={() => setShowApplicationPicker((value) => !value)}
-          >
-            Trocar aplicação <span aria-hidden="true">⌄</span>
-          </button>
-          {showApplicationPicker && (
-            <div
-              className="integration-picker-list"
-              role="group"
-              aria-label="Aplicações da parceria"
-            >
-              {applications.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  aria-current={item.id === application.id ? "true" : undefined}
-                  onClick={() => {
-                    onSelectApplication(item.id);
-                    setPermissionToReview(null);
-                    setTab("overview");
-                    setShowApplicationPicker(false);
-                  }}
-                >
-                  {item.name}
-                  <small>
-                    {item.status === "active" ? "Ativa" : "Suspensa"}
-                  </small>
-                </button>
-              ))}
-              {hasMoreApplications && onLoadMoreApplications && (
+        <div className="appws-switch">
+          <FieldAction
+            id="appws-switch-select"
+            label="Trocar aplicação"
+            action={
+              hasMoreApplications && onLoadMoreApplications ? (
                 <button
                   type="button"
+                  className="btn btn-secondary btn-md"
                   disabled={loadingMoreApplications}
                   onClick={onLoadMoreApplications}
                 >
@@ -260,14 +268,32 @@ export function ApplicationWorkspace({
                     ? "Carregando…"
                     : "Carregar mais aplicações"}
                 </button>
-              )}
-            </div>
-          )}
+              ) : null
+            }
+          >
+            <select
+              id="appws-switch-select"
+              className="input"
+              value={application.id}
+              onChange={(event) => {
+                onSelectApplication(event.target.value);
+                setPermissionToReview(null);
+                setTab("overview");
+              }}
+            >
+              {applications.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name} ·{" "}
+                  {item.status === "active" ? "Ativa" : "Suspensa"}
+                </option>
+              ))}
+            </select>
+          </FieldAction>
         </div>
       )}
 
       <div
-        className="integration-tabs"
+        className="seg-tabs"
         role="tablist"
         aria-label="Configurações da aplicação"
       >
@@ -277,6 +303,7 @@ export function ApplicationWorkspace({
             id={`${tabBaseId}-tab-${item.id}`}
             type="button"
             role="tab"
+            className={`seg-tab${activeTab === item.id ? " active" : ""}`}
             aria-selected={activeTab === item.id}
             aria-controls={`${tabBaseId}-panel`}
             tabIndex={activeTab === item.id ? 0 : -1}
@@ -287,69 +314,37 @@ export function ApplicationWorkspace({
           </button>
         ))}
       </div>
-      <label className="integration-tab-select">
-        <span>Área da aplicação</span>
-        <select
-          value={activeTab}
-          onChange={(event) => setTab(event.target.value as Tab)}
-        >
-          {visibleTabs.map((item) => (
-            <option key={item.id} value={item.id}>
-              {item.label}
-            </option>
-          ))}
-        </select>
-      </label>
 
       <div
         id={`${tabBaseId}-panel`}
-        className="integration-body"
+        className="appws-body"
         role="tabpanel"
         aria-labelledby={`${tabBaseId}-tab-${activeTab}`}
         tabIndex={0}
       >
-        {activeTab === "overview" && (
-          <div className="integration-overview">
-            <div className="integration-intro">
-              <h4>Integração em um só lugar</h4>
-              <p>
-                {canManage
-                  ? "Comece pelo endereço do webhook. Em seguida, confira as entregas e emita credenciais para seus sistemas."
-                  : "Consulte as permissões concedidas a esta aplicação."}
-              </p>
+        {activeTab === "overview" &&
+          (canManage ? (
+            <ApplicationOverview
+              key={application.id}
+              applicationId={application.id}
+              channel={channel}
+              grantedCount={grantedCount}
+              totalPermissions={permissions.length}
+              onOpen={setTab}
+              onUnauthorized={onUnauthorized}
+            />
+          ) : (
+            <div className="alert" role="note">
+              Consulte as permissões concedidas a esta aplicação.{" "}
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={() => setTab("access")}
+              >
+                Ver permissões
+              </button>
             </div>
-            <div className="integration-action-list">
-              {canManage && (
-                <button type="button" onClick={() => setTab("webhooks")}>
-                  <strong>Configurar webhook</strong>
-                  <span>Endereço, assinatura e teste</span>
-                  <b aria-hidden="true">→</b>
-                </button>
-              )}
-              {canManage && (
-                <button type="button" onClick={() => setTab("deliveries")}>
-                  <strong>Ver entregas</strong>
-                  <span>Eventos enviados para esta aplicação</span>
-                  <b aria-hidden="true">→</b>
-                </button>
-              )}
-              {canManage && (
-                <button type="button" onClick={() => setTab("credentials")}>
-                  <strong>Gerenciar credenciais</strong>
-                  <span>Emitir, consultar e revogar acesso</span>
-                  <b aria-hidden="true">→</b>
-                </button>
-              )}
-              {!canManage && (
-                <button type="button" onClick={() => setTab("access")}>
-                  <strong>Ver permissões</strong>
-                  <span>Acessos concedidos a esta aplicação</span>
-                  <b aria-hidden="true">→</b>
-                </button>
-              )}
-            </div>
-          </div>
-        )}
+          ))}
         {activeTab === "webhooks" && canManage && (
           <WebhookEndpointManagement
             key={application.id}
@@ -387,112 +382,85 @@ export function ApplicationWorkspace({
           />
         )}
         {activeTab === "access" && (
-          <div className="integration-access">
-            <section>
-              <h4>Permissões da aplicação</h4>
+          <div className="appws-access">
+            <section aria-labelledby="appws-permissions-title">
+              <h3 className="appws-section-title" id="appws-permissions-title">
+                Permissões da aplicação
+              </h3>
               {permissions.length ? (
-                <ul className="integration-permissions">
-                  {permissions.map((permission, index) => {
-                    const granted = application.permissions.includes(
-                      permission.code,
-                    );
-                    return (
-                      <li key={permission.code}>
-                        <span
-                          className="integration-permission-icon"
-                          aria-hidden="true"
-                        >
-                          {applicationPermissionGlyph(permission.code, index)}
-                        </span>
-                        <strong title={permission.code}>
-                          {applicationPermissionLabel(permission.code)}
-                        </strong>
-                        <small>
-                          {applicationPermissionDescription(
-                            permission.code,
-                            permission.description,
-                          )}
-                        </small>
-                        <span
-                          className={`integration-permission-state ${granted ? "is-granted" : ""}`}
-                        >
-                          {granted ? "Concedida" : "Não concedida"}
-                        </span>
-                        {canManage && channel === "team" && (
-                          <button
-                            type="button"
-                            className="back-link"
-                            disabled={permissionBusy || !editable}
-                            onClick={() =>
-                              setPermissionToReview({
-                                code: permission.code,
-                                granted,
-                              })
-                            }
-                          >
-                            {granted ? "Revogar" : "Conceder"}
-                          </button>
-                        )}
-                      </li>
-                    );
-                  })}
-                </ul>
-              ) : (
-                <p>Nenhuma permissão disponível.</p>
-              )}
-              {permissionToReview && (
-                <div
-                  className="integration-permission-review"
-                  role="group"
-                  aria-label="Revisar alteração de acesso"
-                >
-                  <div>
-                    <strong>Revisar acesso</strong>
-                    <p>
-                      {permissionToReview.granted ? "Revogar" : "Conceder"}{" "}
-                      <b>
-                        {applicationPermissionLabel(permissionToReview.code)}
-                      </b>{" "}
-                      para <b>{application.name}</b>?
-                    </p>
-                    <small>
-                      {permissionToReview.granted
-                        ? "Credenciais desta aplicação perderão esta permissão imediatamente."
-                        : "Credenciais desta aplicação poderão usar esta permissão após a alteração."}
-                    </small>
-                  </div>
-                  <div className="integration-permission-review-actions">
-                    <button
-                      type="button"
-                      className="button secondary"
-                      onClick={() => setPermissionToReview(null)}
-                    >
-                      Cancelar
-                    </button>
-                    <button
-                      type="button"
-                      className="button primary"
-                      disabled={permissionBusy || !editable}
-                      onClick={() => {
-                        onTogglePermission(
-                          application.id,
-                          permissionToReview.code,
-                          permissionToReview.granted,
+                <div className="data-table-wrap">
+                  <table className="data-table" aria-label="Permissões">
+                    <thead>
+                      <tr>
+                        <th scope="col">Permissão</th>
+                        <th scope="col">Estado</th>
+                        <th scope="col">
+                          <span className="sr-only">Ações</span>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {permissions.map((permission) => {
+                        const granted = application.permissions.includes(
+                          permission.code,
                         );
-                        setPermissionToReview(null);
-                      }}
-                    >
-                      {permissionToReview.granted
-                        ? "Confirmar revogação"
-                        : "Confirmar concessão"}
-                    </button>
-                  </div>
+                        return (
+                          <tr key={permission.code}>
+                            <td data-label="Permissão">
+                              <strong
+                                className="rules-cell-main"
+                                title={permission.code}
+                              >
+                                {applicationPermissionLabel(permission.code)}
+                              </strong>
+                              <small className="rules-cell-sub">
+                                {applicationPermissionDescription(
+                                  permission.code,
+                                  permission.description,
+                                )}
+                              </small>
+                            </td>
+                            <td data-label="Estado">
+                              <span
+                                className={`badge ${granted ? "badge-success" : "badge-neutral"}`}
+                              >
+                                {granted ? "Concedida" : "Não concedida"}
+                              </span>
+                            </td>
+                            <td className="appws-open">
+                              {canManage && channel === "team" && (
+                                <button
+                                  type="button"
+                                  className={`btn btn-sm ${granted ? "btn-ghost-danger" : "btn-secondary"}`}
+                                  disabled={permissionBusy || !editable}
+                                  onClick={() =>
+                                    setPermissionToReview({
+                                      code: permission.code,
+                                      granted,
+                                    })
+                                  }
+                                >
+                                  {granted ? "Revogar" : "Conceder"}
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="empty-state" role="status">
+                  <strong>Nenhuma permissão disponível</strong>
                 </div>
               )}
             </section>
             {canManage && channel === "team" && (
-              <section>
-                <h4>Autorização OAuth</h4>
+              <section aria-labelledby="appws-oauth-title">
+                <h3 className="appws-section-title" id="appws-oauth-title">
+                  Autorização OAuth
+                </h3>
                 <RedirectUriManagement
                   applicationId={application.id}
                   csrfToken={csrfToken}
@@ -505,10 +473,10 @@ export function ApplicationWorkspace({
         )}
       </div>
       {canManage && applications.length > 0 && additionalApplication && (
-        <div className="integration-additional">
+        <div className="appws-additional">
           <button
             type="button"
-            className="back-link"
+            className="btn btn-ghost btn-sm"
             onClick={() => setShowCreate((value) => !value)}
           >
             {showCreate ? "Fechar cadastro" : "Adicionar aplicação"}
@@ -516,33 +484,47 @@ export function ApplicationWorkspace({
           {showCreate && additionalApplication}
         </div>
       )}
-      {channel === "partner" && (
-        <nav
-          className="integration-mobile-nav"
-          aria-label="Navegação da aplicação"
-        >
-          {(canManage
-            ? (["overview", "webhooks", "deliveries", "credentials"] as Tab[])
-            : (["overview"] as Tab[])
-          ).map((item) => (
-            <button
-              key={item}
-              type="button"
-              aria-current={activeTab === item ? "page" : undefined}
-              onClick={() => setTab(item)}
-            >
-              {tabs.find((tabItem) => tabItem.id === item)?.label}
-            </button>
-          ))}
-          <button
-            type="button"
-            aria-current={activeTab === "access" ? "page" : undefined}
-            onClick={() => setTab("access")}
-          >
-            {canManage ? "Mais" : "Acessos"}
-          </button>
-        </nav>
-      )}
+      <ConfirmDialog
+        open={permissionToReview !== null}
+        tone={permissionToReview?.granted ? "danger" : "primary"}
+        title={
+          permissionToReview?.granted
+            ? "Revogar esta permissão?"
+            : "Conceder esta permissão?"
+        }
+        description={
+          permissionToReview?.granted
+            ? "As credenciais desta aplicação perdem a permissão imediatamente."
+            : "As credenciais desta aplicação poderão usar a permissão após a alteração."
+        }
+        details={
+          permissionToReview
+            ? [
+                { label: "Aplicação", value: application.name },
+                {
+                  label: "Permissão",
+                  value: applicationPermissionLabel(permissionToReview.code),
+                },
+              ]
+            : []
+        }
+        confirmLabel={
+          permissionToReview?.granted
+            ? "Confirmar revogação"
+            : "Confirmar concessão"
+        }
+        busy={permissionBusy}
+        onConfirm={() => {
+          if (!permissionToReview) return;
+          onTogglePermission(
+            application.id,
+            permissionToReview.code,
+            permissionToReview.granted,
+          );
+          setPermissionToReview(null);
+        }}
+        onCancel={() => setPermissionToReview(null)}
+      />
     </section>
   );
 }
