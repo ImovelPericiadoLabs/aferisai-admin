@@ -1,12 +1,12 @@
 /* Compact workspace rhythm follows the Vextor reference, with AferisAI color. */
 .shell {
-  grid-template-columns: 240px minmax(0, 1fr);
+  grid-template-columns: 202px minmax(0, 1fr);
   transition: grid-template-columns 240ms ease-in-out;
 }
 
 .sidebar {
   height: 100dvh;
-  padding: 0.65rem 0.5rem 0.5rem;
+  padding: 0.5rem 0.35rem 0.4rem;
   overflow: hidden;
   background: #0e2342;
   border-right: 1px solid #172f50;
@@ -16,10 +16,10 @@
 }
 
 .sidebar-head {
-  min-height: 3rem;
-  height: 3rem;
-  padding: 0 0.4rem;
-  margin: 0 0 0.65rem;
+  min-height: 2.65rem;
+  height: 2.65rem;
+  padding: 0 0.3rem;
+  margin: 0 0 0.45rem;
   border: 0;
 }
 
@@ -29,8 +29,8 @@
 }
 
 .sidebar-head .brand img {
-  width: 111px;
-  max-height: 34px;
+  width: 100px;
+  max-height: 30px;
 }
 
 .sidebar-head .brand > span:last-child {
@@ -40,8 +40,8 @@
 }
 
 .sidebar-toggle {
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   color: #b7c8e0;
 }
@@ -65,14 +65,14 @@
 }
 
 .sidebar-nav-group + .sidebar-nav-group {
-  margin-top: 0.3rem;
-  padding-top: 0.4rem;
+  margin-top: 0.2rem;
+  padding-top: 0.3rem;
   border-top: 1px solid #27405f;
 }
 
 .sidebar-nav-group:first-child .nav-title,
 .nav-title {
-  margin: 0.25rem 0.7rem 0.4rem;
+  margin: 0.2rem 0.55rem 0.3rem;
   color: #96adcd;
   font-size: 0.62rem;
   font-weight: 700;
@@ -81,14 +81,14 @@
 
 .nav-group-trigger,
 .nav-link {
-  min-height: 36px;
+  min-height: 32px;
   border: 0;
   border-left: 3px solid transparent;
   border-radius: 6px;
-  padding: 0 0.45rem;
-  gap: 0.4rem;
+  padding: 0 0.35rem;
+  gap: 0.3rem;
   color: #c6d6e9;
-  font-size: 0.91rem;
+  font-size: 0.78rem;
   font-weight: 550;
   transition:
     background-color 160ms ease,
@@ -117,18 +117,18 @@
 
 .nav-glyph,
 .nav-link .nav-glyph {
-  width: 28px;
-  flex: 0 0 28px;
+  width: 23px;
+  flex: 0 0 23px;
 }
 
 .nav-group-trigger .nav-glyph svg,
 .nav-link .nav-glyph svg {
-  width: 17px;
-  height: 17px;
+  width: 15px;
+  height: 15px;
 }
 
 .nav-link strong {
-  font-size: 0.91rem;
+  font-size: 0.78rem;
   font-weight: 550;
 }
 
@@ -146,8 +146,8 @@
 }
 
 .sidebar-nav-group:not(:first-child) .nav-group-items {
-  margin: 0.1rem 0 0.1rem 0.9rem;
-  padding-left: 0.4rem;
+  margin: 0.1rem 0 0.1rem 0.7rem;
+  padding-left: 0.3rem;
   border-left-color: #385274;
 }
 
@@ -178,14 +178,14 @@
 }
 
 .account-trigger {
-  min-height: 48px;
-  gap: 0.45rem;
-  padding: 0.3rem 0.35rem;
+  min-height: 42px;
+  gap: 0.35rem;
+  padding: 0.25rem 0.3rem;
 }
 
 .account-avatar {
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   border-radius: 7px;
   font-size: 0.68rem;
 }
@@ -195,11 +195,11 @@
 }
 
 .account-meta strong {
-  font-size: 0.8rem;
+  font-size: 0.72rem;
 }
 
 .account-meta small {
-  font-size: 0.72rem;
+  font-size: 0.65rem;
 }
 
 .account-meta .account-scope {
@@ -207,8 +207,8 @@
 }
 
 .account-settings {
-  width: 30px;
-  height: 30px;
+  width: 27px;
+  height: 27px;
 }
 
 .account-menu {
@@ -268,7 +268,7 @@
   }
 
   .sidebar {
-    width: min(280px, 86vw);
+    width: min(252px, 86vw);
     padding: 0.5rem 0.5rem calc(0.5rem + env(safe-area-inset-bottom));
     background: #0e2342;
     box-shadow: 16px 0 40px rgba(13, 33, 60, 0.15);
@@ -286,12 +286,12 @@
 
   .sidebar .nav-link,
   .sidebar .nav-group-trigger {
-    min-height: 43px;
-    font-size: 0.84rem;
+    min-height: 40px;
+    font-size: 0.8rem;
   }
 
   .sidebar .nav-link strong {
-    font-size: 0.84rem;
+    font-size: 0.8rem;
   }
 
   .sidebar .account-trigger {

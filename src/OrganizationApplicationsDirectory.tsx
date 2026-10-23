@@ -203,6 +203,11 @@ export function OrganizationApplicationsDirectory({
   const canSelectMore = selected.length < 50;
   const allVisibleSelected =
     visible.length > 0 && visible.every((item) => selected.includes(item.id));
+  const hiddenSelectedCount = selected.filter(
+    (id) => !visible.some((item) => item.id === id),
+  ).length;
+  const canSelectAllVisible =
+    visible.length > 0 && visible.length + hiddenSelectedCount <= 50;
 
   function changeSelection(id: string, checked: boolean) {
     setSelected((current) =>
@@ -220,9 +225,7 @@ export function OrganizationApplicationsDirectory({
   function selectVisible(checked: boolean) {
     setSelected((current) =>
       checked
-        ? Array.from(
-            new Set([...current, ...visible.map((item) => item.id)]),
-          ).slice(0, 50)
+        ? Array.from(new Set([...current, ...visible.map((item) => item.id)]))
         : current.filter((id) => !visible.some((item) => item.id === id)),
     );
     setPreview(null);
@@ -395,6 +398,12 @@ export function OrganizationApplicationsDirectory({
             {visible.length === 1 ? "aplicação exibida" : "aplicações exibidas"}
             {selected.length > 0 ? ` · ${selected.length} selecionadas` : ""}
           </p>
+          {canManage && !canSelectAllVisible && visible.length > 0 && (
+            <p className="organization-applications-selection-hint">
+              Para selecionar todas, refine a lista ou limpe a seleção. O lote
+              aceita até 50 aplicações.
+            </p>
+          )}
           {visible.length === 0 ? (
             <div className="organization-applications-empty">
               <h4>Nenhuma aplicação encontrada</h4>
@@ -416,9 +425,9 @@ export function OrganizationApplicationsDirectory({
                       >
                         <input
                           type="checkbox"
-                          aria-label="Selecionar até 50 aplicações exibidas"
+                          aria-label="Selecionar todas as aplicações exibidas"
                           checked={allVisibleSelected}
-                          disabled={!allVisibleSelected && !canSelectMore}
+                          disabled={!allVisibleSelected && !canSelectAllVisible}
                           onChange={(event) =>
                             selectVisible(event.target.checked)
                           }
@@ -496,6 +505,12 @@ export function OrganizationApplicationsDirectory({
             <div className="organization-applications-selection">
               <span>
                 <strong>{selected.length}</strong> selecionadas · limite de 50
+                {hiddenSelectedCount > 0 && (
+                  <small>
+                    {hiddenSelectedCount} fora do filtro atual; também serão
+                    incluídas na edição.
+                  </small>
+                )}
               </span>
               <div>
                 <button

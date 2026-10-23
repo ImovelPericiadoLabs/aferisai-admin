@@ -17,7 +17,11 @@ import "./detail.css";
 import { ApplicationCreationWizard } from "./ApplicationCreationWizard";
 import { OrganizationApplicationsDirectory } from "./OrganizationApplicationsDirectory";
 import { ApplicationWorkspace } from "./ApplicationWorkspace";
-import { applicationPermissionLabel } from "./display-labels";
+import {
+  applicationPermissionDescription,
+  applicationPermissionGlyph,
+  applicationPermissionLabel,
+} from "./display-labels";
 
 type Props = {
   organizationId: string;
@@ -75,6 +79,7 @@ export function OrganizationDetail({
   const [inviteBusy, setInviteBusy] = useState(false);
   const [inviteError, setInviteError] = useState("");
   const [inviteNotice, setInviteNotice] = useState("");
+  const [identifierNotice, setIdentifierNotice] = useState("");
 
   useEffect(() => {
     let live = true;
@@ -256,6 +261,16 @@ export function OrganizationDetail({
     }
   }
 
+  async function copyIdentifier() {
+    if (!detail) return;
+    try {
+      await navigator.clipboard.writeText(detail.id);
+      setIdentifierNotice("Identificador copiado.");
+    } catch {
+      setIdentifierNotice("Selecione o identificador para copiar.");
+    }
+  }
+
   return (
     <section className="detail" aria-labelledby="detail-title">
       <button className="back-link" onClick={onBack}>
@@ -285,24 +300,49 @@ export function OrganizationDetail({
       {!loading && detail && (
         <>
           <div className="detail-intro">
-            <div className="detail-logo">
-              {logoBlobUrl ? (
-                <img
-                  src={logoBlobUrl}
-                  alt={`Logo de ${detail.name}`}
-                  referrerPolicy="no-referrer"
-                />
-              ) : (
+            <div className="detail-intro-main">
+              <div className="detail-logo">
+                {logoBlobUrl ? (
+                  <img
+                    src={logoBlobUrl}
+                    alt={`Logo de ${detail.name}`}
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <span aria-hidden="true">
+                    {detail.name.slice(0, 1).toUpperCase()}
+                  </span>
+                )}
+              </div>
+              <div className="detail-intro-name">
+                <p className="eyebrow">Parceria</p>
+                <h1 id="detail-title">{detail.name}</h1>
+              </div>
+              <span
+                className={`detail-status detail-status--${detail.status === "active" ? "active" : detail.status === "suspended" ? "suspended" : "unknown"}`}
+              >
                 <span aria-hidden="true">
-                  {detail.name.slice(0, 1).toUpperCase()}
+                  {detail.status === "active" ? "✓" : "–"}
                 </span>
-              )}
+                {statusLabel(detail.status)}
+              </span>
             </div>
-            <div>
-              <p className="eyebrow">Parceria</p>
-              <h2 id="detail-title">{detail.name}</h2>
-            </div>
-            <span className="pill">{statusLabel(detail.status)}</span>
+            <dl className="detail-summary">
+              <div>
+                <dt>Aplicações</dt>
+                <dd>{detail.applications.length}</dd>
+              </div>
+              <div>
+                <dt>Aplicações ativas</dt>
+                <dd>
+                  {
+                    detail.applications.filter(
+                      (item) => item.status === "active",
+                    ).length
+                  }
+                </dd>
+              </div>
+            </dl>
           </div>
           <div
             className="integration-section-nav"
@@ -517,19 +557,33 @@ export function OrganizationDetail({
                       </div>
                     </form>
                   ) : (
-                    <dl>
-                      <div>
-                        <dt>Identificador</dt>
-                        <dd>{detail.id}</dd>
-                      </div>
-                      <div>
-                        <dt>Descrição</dt>
-                        <dd>
-                          {detail.description?.trim() ||
-                            "Nenhuma descrição cadastrada."}
-                        </dd>
-                      </div>
-                    </dl>
+                    <>
+                      <dl>
+                        <div>
+                          <dt>Descrição</dt>
+                          <dd>
+                            {detail.description?.trim() ||
+                              "Nenhuma descrição cadastrada."}
+                          </dd>
+                        </div>
+                      </dl>
+                      <details className="detail-technical">
+                        <summary>Identificador técnico</summary>
+                        <div>
+                          <code>{detail.id}</code>
+                          <button
+                            type="button"
+                            className="back-link"
+                            onClick={() => void copyIdentifier()}
+                          >
+                            Copiar
+                          </button>
+                        </div>
+                        {identifierNotice && (
+                          <p role="status">{identifierNotice}</p>
+                        )}
+                      </details>
+                    </>
                   )}
                 </article>
                 <section
@@ -620,74 +674,81 @@ export function OrganizationDetail({
                   <p className="detail-empty">Nenhuma ação no catálogo.</p>
                 ) : (
                   <ul className="catalog-list">
-                    {detail.permissions.map((permission) => (
+                    {detail.permissions.map((permission, index) => (
                       <li key={permission.code}>
-                        <strong title={permission.code}>
-                          {applicationPermissionLabel(permission.code)}
-                        </strong>
-                        {permissionEditing === permission.code ? (
-                          <form
-                            className="permission-description-form"
-                            onSubmit={savePermissionDescription}
-                          >
-                            <label htmlFor="permission-description">
-                              Descrição da ação
-                            </label>
-                            <input
-                              id="permission-description"
-                              required
-                              maxLength={255}
-                              value={permissionDescription}
-                              onChange={(event) =>
-                                setPermissionDescription(event.target.value)
-                              }
-                            />
-                            <div className="button-row">
-                              <button
-                                className="button primary"
-                                disabled={
-                                  permissionBusy !== null ||
-                                  !permissionDescription.trim()
+                        <span className="catalog-icon" aria-hidden="true">
+                          {applicationPermissionGlyph(permission.code, index)}
+                        </span>
+                        <div className="catalog-content">
+                          <strong title={permission.code}>
+                            {applicationPermissionLabel(permission.code)}
+                          </strong>
+                          {permissionEditing === permission.code ? (
+                            <form
+                              className="permission-description-form"
+                              onSubmit={savePermissionDescription}
+                            >
+                              <label htmlFor="permission-description">
+                                Descrição da ação
+                              </label>
+                              <input
+                                id="permission-description"
+                                required
+                                maxLength={255}
+                                value={permissionDescription}
+                                onChange={(event) =>
+                                  setPermissionDescription(event.target.value)
                                 }
-                              >
-                                {permissionBusy
-                                  ? "Salvando…"
-                                  : "Salvar descrição"}
-                              </button>
-                              <button
-                                type="button"
-                                className="button secondary"
-                                disabled={permissionBusy !== null}
-                                onClick={() => setPermissionEditing(null)}
-                              >
-                                Cancelar
-                              </button>
-                            </div>
-                          </form>
-                        ) : (
-                          <>
-                            <span>
-                              {permission.description ||
-                                "Sem descrição cadastrada."}
-                            </span>
-                            {isAdmin && (
-                              <button
-                                type="button"
-                                className="back-link"
-                                disabled={permissionBusy !== null}
-                                onClick={() => {
-                                  setPermissionEditing(permission.code);
-                                  setPermissionDescription(
-                                    permission.description,
-                                  );
-                                  setPermissionError("");
-                                }}
-                              >
-                                Editar descrição
-                              </button>
-                            )}
-                          </>
-                        )}
+                              />
+                              <div className="button-row">
+                                <button
+                                  className="button primary"
+                                  disabled={
+                                    permissionBusy !== null ||
+                                    !permissionDescription.trim()
+                                  }
+                                >
+                                  {permissionBusy
+                                    ? "Salvando…"
+                                    : "Salvar descrição"}
+                                </button>
+                                <button
+                                  type="button"
+                                  className="button secondary"
+                                  disabled={permissionBusy !== null}
+                                  onClick={() => setPermissionEditing(null)}
+                                >
+                                  Cancelar
+                                </button>
+                              </div>
+                            </form>
+                          ) : (
+                            <>
+                              <span>
+                                {permission.description?.trim() ||
+                                  applicationPermissionDescription(
+                                    permission.code,
+                                  )}
+                              </span>
+                              {isAdmin && (
+                                <button
+                                  type="button"
+                                  className="back-link"
+                                  disabled={permissionBusy !== null}
+                                  onClick={() => {
+                                    setPermissionEditing(permission.code);
+                                    setPermissionDescription(
+                                      permission.description,
+                                    );
+                                    setPermissionError("");
+                                  }}
+                                >
+                                  Editar descrição
+                                </button>
+                              )}
+                            </>
+                          )}
+                        </div>
                       </li>
                     ))}
                   </ul>

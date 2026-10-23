@@ -16,9 +16,11 @@ export function useToast() {
   const show = useCallback((message: string, kind: ToastKind = "info") => {
     const id = _next++;
     setToasts((prev) => [...prev, { id, message, kind }]);
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, 4000);
+    if (kind !== "error") {
+      setTimeout(() => {
+        setToasts((prev) => prev.filter((t) => t.id !== id));
+      }, 4000);
+    }
   }, []);
 
   const dismiss = useCallback((id: number) => {

@@ -24,12 +24,25 @@ export function PartnerOrganizationSwitcher({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const rootRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const firstOptionRef = useRef<HTMLButtonElement>(null);
+
+  function closeAndReturnFocus() {
+    setOpen(false);
+    queueMicrotask(() => triggerRef.current?.focus());
+  }
+
+  useEffect(() => {
+    if (open && !loading) firstOptionRef.current?.focus();
+  }, [open, loading]);
 
   useEffect(() => {
     if (!open) return;
     const close = (event: KeyboardEvent | PointerEvent) => {
-      if (event instanceof KeyboardEvent && event.key === "Escape")
-        setOpen(false);
+      if (event instanceof KeyboardEvent && event.key === "Escape") {
+        event.preventDefault();
+        closeAndReturnFocus();
+      }
       if (
         event instanceof PointerEvent &&
         !rootRef.current?.contains(event.target as Node)
@@ -78,13 +91,13 @@ export function PartnerOrganizationSwitcher({
 
   async function choose(item: PartnerOrganization) {
     if (item.id === activeId) {
-      setOpen(false);
+      closeAndReturnFocus();
       return;
     }
     setError("");
     try {
       await onSelect(item.id);
-      setOpen(false);
+      closeAndReturnFocus();
     } catch (cause) {
       setError(
         cause instanceof ApiError
@@ -97,6 +110,7 @@ export function PartnerOrganizationSwitcher({
   return (
     <div className="partner-context" ref={rootRef}>
       <button
+        ref={triggerRef}
         type="button"
         className="partner-context-trigger"
         aria-expanded={open}
@@ -138,8 +152,9 @@ export function PartnerOrganizationSwitcher({
             role="group"
             aria-label="Empresas disponíveis"
           >
-            {items.map((item) => (
+            {items.map((item, index) => (
               <button
+                ref={index === 0 ? firstOptionRef : undefined}
                 key={item.id}
                 type="button"
                 aria-pressed={item.id === activeId}

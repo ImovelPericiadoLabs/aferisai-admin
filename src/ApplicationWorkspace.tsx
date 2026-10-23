@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useId, useState, type KeyboardEvent, type ReactNode } from "react";
 import { CredentialManagement } from "./CredentialManagement";
 import { RedirectUriManagement } from "./RedirectUriManagement";
 import { WebhookEndpointManagement } from "./WebhookEndpointManagement";
@@ -73,6 +73,7 @@ export function ApplicationWorkspace({
   loadingMoreApplications = false,
 }: Props) {
   const [tabState, setTabState] = useState<Tab>("overview");
+  const tabBaseId = useId().replaceAll(":", "");
   const tab = selectedTab ?? tabState;
   const activeTab =
     canManage || tab === "overview" || tab === "access" ? tab : "overview";
@@ -82,6 +83,28 @@ export function ApplicationWorkspace({
   const setTab = (next: Tab) => {
     setTabState(next);
     onTabChange?.(next);
+  };
+  const handleTabKeyDown = (
+    event: KeyboardEvent<HTMLButtonElement>,
+    current: Tab,
+  ) => {
+    const index = visibleTabs.findIndex((item) => item.id === current);
+    const nextIndex =
+      event.key === "ArrowRight"
+        ? (index + 1) % visibleTabs.length
+        : event.key === "ArrowLeft"
+          ? (index - 1 + visibleTabs.length) % visibleTabs.length
+          : event.key === "Home"
+            ? 0
+            : event.key === "End"
+              ? visibleTabs.length - 1
+              : -1;
+    if (nextIndex < 0) return;
+    event.preventDefault();
+    setTab(visibleTabs[nextIndex].id);
+    event.currentTarget.parentElement
+      ?.querySelectorAll<HTMLButtonElement>('[role="tab"]')
+      [nextIndex]?.focus();
   };
   const [showApplicationPicker, setShowApplicationPicker] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
@@ -241,9 +264,13 @@ export function ApplicationWorkspace({
         {visibleTabs.map((item) => (
           <button
             key={item.id}
+            id={`${tabBaseId}-tab-${item.id}`}
             type="button"
             role="tab"
             aria-selected={activeTab === item.id}
+            aria-controls={`${tabBaseId}-panel`}
+            tabIndex={activeTab === item.id ? 0 : -1}
+            onKeyDown={(event) => handleTabKeyDown(event, item.id)}
             onClick={() => setTab(item.id)}
           >
             {item.label}
@@ -251,7 +278,13 @@ export function ApplicationWorkspace({
         ))}
       </div>
 
-      <div className="integration-body" role="tabpanel">
+      <div
+        id={`${tabBaseId}-panel`}
+        className="integration-body"
+        role="tabpanel"
+        aria-labelledby={`${tabBaseId}-tab-${activeTab}`}
+        tabIndex={0}
+      >
         {activeTab === "overview" && (
           <div className="integration-overview">
             <div className="integration-intro">

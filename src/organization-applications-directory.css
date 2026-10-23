@@ -71,6 +71,17 @@
   color: var(--muted);
   font-size: 0.66rem;
 }
+.organization-applications-selection-hint {
+  margin: 0 0 0.5rem;
+  color: var(--muted);
+  font-size: 0.68rem;
+}
+.organization-applications-selection small {
+  display: block;
+  margin-top: 0.2rem;
+  color: var(--muted);
+  font-size: 0.66rem;
+}
 .organization-applications-table-wrap {
   border: 1px solid var(--line);
   border-radius: 6px;

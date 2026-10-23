@@ -1393,9 +1393,13 @@ function ToastStack({
     info: "ℹ",
   };
   return (
-    <div className="toast-stack" aria-live="polite" aria-atomic="false">
+    <div className="toast-stack">
       {toasts.map((t) => (
-        <div key={t.id} className={`toast ${t.kind}`} role="status">
+        <div
+          key={t.id}
+          className={`toast ${t.kind}`}
+          role={t.kind === "error" ? "alert" : "status"}
+        >
           <span className="toast-icon">{icons[t.kind]}</span>
           <span>{t.message}</span>
           <button

@@ -22,7 +22,13 @@ export function OrganizationContextSwitcher({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const rootRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const firstOptionRef = useRef<HTMLButtonElement>(null);
+
+  function closeAndReturnFocus() {
+    setOpen(false);
+    queueMicrotask(() => triggerRef.current?.focus());
+  }
 
   useEffect(() => {
     if (!selectedId) return;
@@ -44,8 +50,10 @@ export function OrganizationContextSwitcher({
     if (!open) return;
     firstOptionRef.current?.focus();
     const close = (event: KeyboardEvent | PointerEvent) => {
-      if (event instanceof KeyboardEvent && event.key === "Escape")
-        setOpen(false);
+      if (event instanceof KeyboardEvent && event.key === "Escape") {
+        event.preventDefault();
+        closeAndReturnFocus();
+      }
       if (
         event instanceof PointerEvent &&
         !rootRef.current?.contains(event.target as Node)
@@ -95,12 +103,13 @@ export function OrganizationContextSwitcher({
   function choose(item: OrganizationListItem | null) {
     setName(item?.name ?? "Todas as parcerias");
     onSelect(item?.id ?? null);
-    setOpen(false);
+    closeAndReturnFocus();
   }
 
   return (
     <div className="organization-context" ref={rootRef}>
       <button
+        ref={triggerRef}
         type="button"
         className="organization-context-trigger"
         aria-expanded={open}

@@ -1,4 +1,4 @@
-import { useId, useState, type FormEvent } from "react";
+import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import {
   ApiError,
   createAdditionalApplication,
@@ -17,6 +17,12 @@ import "./application-creation-wizard.css";
 
 type Permission = { code: string; description: string };
 type Attempt = { id: string; name: string };
+type Draft = {
+  version: 1;
+  name: string;
+  callbacks: string[];
+  permissions: string[];
+};
 type Step = 0 | 1 | 2 | 3;
 const stepNames = [
   "Dados básicos",
@@ -35,6 +41,40 @@ function readAttempt(key: string): Attempt | null {
     return typeof record.id === "string" && typeof record.name === "string"
       ? { id: record.id, name: record.name }
       : null;
+  } catch {
+    return null;
+  }
+}
+
+function readDraft(key: string): Draft | null {
+  try {
+    const raw = sessionStorage.getItem(key);
+    if (!raw) return null;
+    const parsed: unknown = JSON.parse(raw);
+    if (typeof parsed !== "object" || parsed === null) return null;
+    const record = parsed as Record<string, unknown>;
+    if (
+      record.version !== 1 ||
+      typeof record.name !== "string" ||
+      !Array.isArray(record.callbacks) ||
+      !Array.isArray(record.permissions)
+    )
+      return null;
+    return {
+      version: 1,
+      name: record.name.slice(0, 255),
+      callbacks: Array.from(
+        new Set(
+          record.callbacks.filter(
+            (value): value is string =>
+              typeof value === "string" && validCallback(value) === null,
+          ),
+        ),
+      ).slice(0, 5),
+      permissions: record.permissions.filter(
+        (value): value is string => typeof value === "string",
+      ),
+    };
   } catch {
     return null;
   }
@@ -78,16 +118,31 @@ export function ApplicationCreationWizard({
 }) {
   const id = useId().replaceAll(":", "");
   const storageKey = `aferis-additional-application:${organizationId}`;
-  const [attempt, setAttempt] = useState<Attempt | null>(() =>
-    readAttempt(storageKey),
-  );
+  const draftStorageKey = `${storageKey}:draft`;
+  const completedRef = useRef(false);
+  const [initialAttempt] = useState(() => readAttempt(storageKey));
+  const [initialDraft] = useState(() => readDraft(draftStorageKey));
+  const [attempt, setAttempt] = useState<Attempt | null>(initialAttempt);
   const [step, setStep] = useState<Step>(0);
-  const [name, setName] = useState(() => readAttempt(storageKey)?.name ?? "");
+  const [name, setName] = useState(
+    () => initialAttempt?.name ?? initialDraft?.name ?? "",
+  );
   const [callbackInput, setCallbackInput] = useState("");
-  const [callbacks, setCallbacks] = useState<string[]>([]);
-  const [selectedPermissions, setSelectedPermissions] = useState<string[]>([
-    "application:read",
-  ]);
+  const [callbacks, setCallbacks] = useState<string[]>(
+    () => initialDraft?.callbacks ?? [],
+  );
+  const [selectedPermissions, setSelectedPermissions] = useState<string[]>(
+    () => [
+      "application:read",
+      ...new Set(
+        (initialDraft?.permissions ?? []).filter(
+          (code) =>
+            code !== "application:read" &&
+            availablePermissions.some((permission) => permission.code === code),
+        ),
+      ),
+    ],
+  );
   const [fieldError, setFieldError] = useState("");
   const [callbackError, setCallbackError] = useState("");
   const [saveError, setSaveError] = useState("");
@@ -96,6 +151,30 @@ export function ApplicationCreationWizard({
   const permissionOptions = availablePermissions.filter(
     (permission) => permission.code !== "application:read",
   );
+
+  useEffect(() => {
+    if (completedRef.current) return;
+    try {
+      if (
+        !name.trim() &&
+        callbacks.length === 0 &&
+        selectedPermissions.length === 1 &&
+        !attempt
+      ) {
+        sessionStorage.removeItem(draftStorageKey);
+        return;
+      }
+      const draft: Draft = {
+        version: 1,
+        name,
+        callbacks,
+        permissions: selectedPermissions,
+      };
+      sessionStorage.setItem(draftStorageKey, JSON.stringify(draft));
+    } catch {
+      // The form remains usable when browser storage is unavailable.
+    }
+  }, [attempt, callbacks, draftStorageKey, name, selectedPermissions]);
 
   function advance() {
     if (step === 0) {
@@ -132,7 +211,11 @@ export function ApplicationCreationWizard({
     event.preventDefault();
     if (step !== 3 || busy) return;
     const current = attempt ?? { id: uuidv7(), name: name.trim() };
-    sessionStorage.setItem(storageKey, JSON.stringify(current));
+    try {
+      sessionStorage.setItem(storageKey, JSON.stringify(current));
+    } catch {
+      // The current attempt still keeps the identifier stable until this view closes.
+    }
     setAttempt(current);
     setBusy(true);
     setSaveError("");
@@ -167,7 +250,13 @@ export function ApplicationCreationWizard({
           );
         }
       }
-      sessionStorage.removeItem(storageKey);
+      completedRef.current = true;
+      try {
+        sessionStorage.removeItem(storageKey);
+        sessionStorage.removeItem(draftStorageKey);
+      } catch {
+        // Completion must not fail after the server has saved the application.
+      }
       onCreated(current.id);
     } catch (cause) {
       if (cause instanceof ApiError && cause.status === 401) onUnauthorized();
@@ -189,6 +278,13 @@ export function ApplicationCreationWizard({
           <p className="app-wizard-context">{organizationName} · Aplicações</p>
           <h3 id={`${id}-title`}>Nova aplicação</h3>
           <p>Cadastre o acesso e configure a integração em etapas curtas.</p>
+          {(initialDraft || initialAttempt) && (
+            <p className="app-wizard-resume" role="status">
+              {initialAttempt
+                ? "Cadastro iniciado. Confira os dados e conclua as configurações pendentes."
+                : "Rascunho recuperado nesta sessão. Confira os dados antes de criar."}
+            </p>
+          )}
         </div>
         {onCancel && (
           <button
