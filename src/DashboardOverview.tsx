@@ -174,11 +174,10 @@ function PageIntro({
   loading: boolean;
 }) {
   return (
-    <header className="dash-page-intro">
+    <header className="page-header">
       <div>
-        <p className="dash-eyebrow">PAINEL AFERISAI</p>
-        <h1>{title}</h1>
-        <p className="dash-intro-copy">{description}</p>
+        <h1 className="page-title">{title}</h1>
+        <p className="page-subtitle">{description}</p>
       </div>
       <div className="dash-intro-actions">
         {fetchedAt && (
@@ -191,14 +190,13 @@ function PageIntro({
           </span>
         )}
         <button
-          className="dash-icon-button"
+          className="btn btn-secondary btn-sm"
           type="button"
           onClick={onRefresh}
           disabled={loading}
           aria-label="Atualizar métricas"
-          title="Atualizar métricas"
         >
-          <Icon name="refresh" />
+          <Icon name="refresh" /> Atualizar
         </button>
       </div>
     </header>
@@ -304,6 +302,7 @@ function GroupCard({
           <h2>{group.title}</h2>
           <p>{group.description}</p>
         </div>
+        <span className="dash-card-total">{sum.toLocaleString("pt-BR")}</span>
         <details className="dash-card-definition">
           <summary
             aria-label={`Como ler ${group.title}`}
@@ -388,17 +387,21 @@ function GroupCard({
 function OverviewMetrics({ groups }: { groups: DashboardGroup[] }) {
   return (
     <section
-      className="dash-metric-strip"
+      className="dash-kpi-strip"
       aria-label="Contagens atuais por módulo"
     >
       {groups.map((group) => (
-        <div className="dash-metric" key={group.key}>
-          <span className={`dash-metric-icon dash-card-icon-${group.icon}`}>
-            <Icon name={group.icon} />
-          </span>
-          <span className="dash-metric-label">{group.title}</span>
-          <strong>{groupSum(group).toLocaleString("pt-BR")}</strong>
-          <small>registros nos estados exibidos</small>
+        <div className="dash-kpi-card" key={group.key}>
+          <div className="dash-kpi-top">
+            <span className={`kpi-icon dash-card-icon-${group.icon}`}>
+              <Icon name={group.icon} />
+            </span>
+            <span className="kpi-label">{group.title}</span>
+          </div>
+          <strong className="kpi-value">
+            {groupSum(group).toLocaleString("pt-BR")}
+          </strong>
+          <small className="kpi-sub">registros nos estados exibidos</small>
         </div>
       ))}
     </section>
@@ -457,11 +460,8 @@ function Attention({
   const pendingCount = active.reduce((total, item) => total + item.value, 0);
   return (
     <section className="dash-attention" aria-labelledby="dash-attention-title">
-      <div className="dash-attention-heading">
-        <div>
-          <p className="dash-eyebrow">PARA ACOMPANHAR</p>
-          <h2 id="dash-attention-title">Pendências da equipe</h2>
-        </div>
+      <div className="dash-attention-head">
+        <strong id="dash-attention-title">Pendências da equipe</strong>
         <span className="dash-attention-count">
           {pendingCount.toLocaleString("pt-BR")}{" "}
           {pendingCount === 1 ? "pendência" : "pendências"}
@@ -693,41 +693,17 @@ export function DashboardOverview({ role, navigate }: DashboardPageProps) {
         <MessageState kind="empty" />
       ) : (
         <>
-          <Attention data={data!} role={role} navigate={navigate} />
           <OverviewMetrics groups={groups} />
-          <div className="dash-section-heading">
-            <div>
-              <p className="dash-eyebrow">COMPARAÇÃO POR ÁREA</p>
-              <h2>Situação dos módulos</h2>
-            </div>
-            <span>Estados atuais e criações nos últimos 30 dias</span>
-          </div>
-          <div className="dash-groups">
-            {groups.map((group) => (
-              <GroupCard
-                key={group.key}
-                group={group}
-                navigate={navigate}
-                series={trend.data?.series[group.key]}
-                seriesLoading={trend.loading}
-                seriesError={trend.error}
-              />
-            ))}
-          </div>
+          <Attention data={data!} role={role} navigate={navigate} />
           <section
-            className="dash-overview-trend"
+            className="dash-trend-card"
             aria-labelledby="dash-overview-trend-title"
           >
-            <div className="dash-overview-trend-head">
-              <div>
-                <p className="dash-eyebrow">ÚLTIMOS 30 DIAS · UTC</p>
-                <h2 id="dash-overview-trend-title">Evolução dos registros</h2>
-                <p>
-                  Criações diárias, comparadas ao período anterior de mesma
-                  duração.
-                </p>
-              </div>
-            </div>
+            <h2 id="dash-overview-trend-title">Evolução dos registros</h2>
+            <p className="dash-trend-sub">
+              Criações diárias nos últimos 30 dias (UTC), comparadas ao período
+              anterior de mesma duração.
+            </p>
             {trend.loading ? (
               <div
                 className="dash-series-loading"
@@ -749,6 +725,22 @@ export function DashboardOverview({ role, navigate }: DashboardPageProps) {
               />
             )}
           </section>
+          <div className="dash-section-heading">
+            <h2>Situação dos módulos</h2>
+            <span>Estados atuais e criações nos últimos 30 dias</span>
+          </div>
+          <div className="dash-groups">
+            {groups.map((group) => (
+              <GroupCard
+                key={group.key}
+                group={group}
+                navigate={navigate}
+                series={trend.data?.series[group.key]}
+                seriesLoading={trend.loading}
+                seriesError={trend.error}
+              />
+            ))}
+          </div>
           <button
             className="dash-reports-link"
             type="button"
@@ -921,7 +913,7 @@ export function DashboardReports({ role, navigate }: DashboardPageProps) {
             </span>
           </div>
           <section
-            className="dash-overview-trend"
+            className="dash-trend-card"
             aria-label="Comparação diária entre módulos"
           >
             {daily.loading ? (

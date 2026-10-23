@@ -1,4 +1,6 @@
 :root {
+  --rem-px: 14.4;
+
   --bg: #eef2f8;
   --surface: #ffffff;
   --surface-muted: #f1f5f9;
@@ -23,14 +25,14 @@
   --info: #0284c7;
   --info-bg: #f0f9ff;
 
-  --text-label: 0.6875rem;
-  --text-caption: 0.75rem;
-  --text-sm: 0.8125rem;
-  --text-base: 0.875rem;
-  --text-md: 1rem;
-  --text-lg: 1.125rem;
-  --text-xl: 1.375rem;
-  --text-2xl: 1.75rem;
+  --text-label: calc(11rem / var(--rem-px));
+  --text-caption: calc(12rem / var(--rem-px));
+  --text-sm: calc(13rem / var(--rem-px));
+  --text-base: calc(14rem / var(--rem-px));
+  --text-md: calc(16rem / var(--rem-px));
+  --text-lg: calc(18rem / var(--rem-px));
+  --text-xl: calc(22rem / var(--rem-px));
+  --text-2xl: calc(28rem / var(--rem-px));
 
   --weight-normal: 400;
   --weight-medium: 500;
@@ -42,18 +44,24 @@
   --radius-lg: 8px;
   --radius-xl: 12px;
 
-  --space-1: 0.25rem;
-  --space-2: 0.5rem;
-  --space-3: 0.75rem;
-  --space-4: 1rem;
-  --space-5: 1.25rem;
-  --space-6: 1.5rem;
-  --space-8: 2rem;
-  --space-10: 2.5rem;
-  --space-12: 3rem;
+  --space-1: calc(4rem / var(--rem-px));
+  --space-2: calc(8rem / var(--rem-px));
+  --space-3: calc(12rem / var(--rem-px));
+  --space-4: calc(16rem / var(--rem-px));
+  --space-5: calc(20rem / var(--rem-px));
+  --space-6: calc(24rem / var(--rem-px));
+  --space-8: calc(32rem / var(--rem-px));
+  --space-10: calc(40rem / var(--rem-px));
+  --space-12: calc(48rem / var(--rem-px));
 
   --sidebar-width: 60px;
   --sidebar-width-expanded: 220px;
   --topbar-height: 52px;
   --content-max: 1360px;
+}
+
+@media (max-width: 767px) {
+  :root {
+    --rem-px: 16;
+  }
 }
