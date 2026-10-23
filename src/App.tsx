@@ -38,6 +38,7 @@ import { Users } from "./Users";
 import { TeamMembers } from "./TeamMembers";
 import type { PeopleTab } from "./people-model";
 import { AnalysisProviders } from "./AnalysisProviders";
+import { RegistrySuppliers } from "./RegistrySuppliers";
 import { Organizations } from "./Organizations";
 import { DesignSystemGuide } from "./DesignSystemGuide";
 import { IntegrationMap } from "./IntegrationMap";
@@ -74,6 +75,7 @@ type Page =
   | "users"
   | "team-members"
   | "analysis-providers"
+  | "registry-suppliers"
   | "passkeys";
 type HiddenPage = "design-system" | "integration-map";
 type Session = { csrf: string; member: TeamMember };
@@ -100,6 +102,11 @@ const nav: { page: Page; label: string; detail: string }[] = [
     page: "analysis-providers",
     label: "Provedores IA",
     detail: "Contas e limites",
+  },
+  {
+    page: "registry-suppliers",
+    label: "Fornecedores",
+    detail: "Contas registrais",
   },
   { page: "passkeys", label: "Minhas chaves", detail: "Acesso à conta" },
   { page: "access", label: "Permissões", detail: "Estrutura de acesso" },
@@ -482,6 +489,7 @@ function pageFromHash(): Page | HiddenPage {
     value === "users" ||
     value === "team-members" ||
     value === "analysis-providers" ||
+    value === "registry-suppliers" ||
     value === "passkeys" ||
     value === "design-system" ||
     value === "integration-map"
@@ -658,6 +666,8 @@ function TeamApp() {
         (item.page !== "team-members" ||
           session.member.role === "administrator") &&
         (item.page !== "analysis-providers" ||
+          session.member.role === "administrator") &&
+        (item.page !== "registry-suppliers" ||
           session.member.role === "administrator"),
   );
   const currentPage =
@@ -823,15 +833,21 @@ function TeamApp() {
                     <ShellIcon name="passkeys" size={17} /> Minhas chaves
                   </button>
                   {visibleNav.some((item) =>
-                    ["team-members", "analysis-providers", "access"].includes(
-                      item.page,
-                    ),
+                    [
+                      "team-members",
+                      "analysis-providers",
+                      "registry-suppliers",
+                      "access",
+                    ].includes(item.page),
                   ) && <p>Configurações</p>}
                   {visibleNav
                     .filter((item) =>
-                      ["team-members", "analysis-providers", "access"].includes(
-                        item.page,
-                      ),
+                      [
+                        "team-members",
+                        "analysis-providers",
+                        "registry-suppliers",
+                        "access",
+                      ].includes(item.page),
                     )
                     .map((item) => (
                       <button
@@ -1000,6 +1016,13 @@ function TeamApp() {
             <AnalysisProviders
               csrf={session.csrf}
               onUnauthorized={unauthorize}
+            />
+          ) : currentPage === "registry-suppliers" &&
+            session.member.role === "administrator" ? (
+            <RegistrySuppliers
+              csrf={session.csrf}
+              onUnauthorized={unauthorize}
+              onToast={showToast}
             />
           ) : currentPage === "design-system" ? (
             <DesignSystemGuide />

@@ -2192,3 +2192,76 @@ export const getPartnerCommissions = (cursor?: string) =>
     `/v1/partner/commissions?limit=20${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`,
     { method: "GET" },
   );
+
+export type RegistrySupplierKind = "onr" | "infosimples";
+export type RegistrySupplierAccount = {
+  id: string;
+  label: string;
+  provider: RegistrySupplierKind;
+  /** Digest that links orders and costs to the account; not a credential. */
+  account_binding_sha256: string;
+  credential_hint: string;
+  status: "draft" | "active" | "suspended";
+  version: number;
+  created_at: string;
+  updated_at: string;
+};
+export type RegistrySupplierPage = {
+  items: RegistrySupplierAccount[];
+  next_cursor: string | null;
+};
+export type RegistrySupplierCreate = {
+  label: string;
+  provider: RegistrySupplierKind;
+  email: string;
+  password: string;
+  token: string | null;
+  portal_account_sha256: string | null;
+  reason: string;
+};
+
+export const listRegistrySupplierAccounts = (cursor?: string) =>
+  request<RegistrySupplierPage>(
+    `/v1/team/registry-supplier-accounts?limit=20${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`,
+    { method: "GET" },
+  );
+
+export const createRegistrySupplierAccount = (
+  body: RegistrySupplierCreate,
+  csrfToken: string,
+) =>
+  request<RegistrySupplierAccount>("/v1/team/registry-supplier-accounts", {
+    method: "POST",
+    headers: { "X-CSRF-Token": csrfToken },
+    body: JSON.stringify(body),
+  });
+
+const supplierDecision = (
+  id: string,
+  action: "activate" | "suspend",
+  expectedVersion: number,
+  reason: string,
+  csrfToken: string,
+) =>
+  request<RegistrySupplierAccount>(
+    `/v1/team/registry-supplier-accounts/${encodeURIComponent(id)}/${action}`,
+    {
+      method: "POST",
+      headers: { "X-CSRF-Token": csrfToken },
+      body: JSON.stringify({ expected_version: expectedVersion, reason }),
+    },
+  );
+
+export const activateRegistrySupplierAccount = (
+  id: string,
+  expectedVersion: number,
+  reason: string,
+  csrfToken: string,
+) => supplierDecision(id, "activate", expectedVersion, reason, csrfToken);
+
+export const suspendRegistrySupplierAccount = (
+  id: string,
+  expectedVersion: number,
+  reason: string,
+  csrfToken: string,
+) => supplierDecision(id, "suspend", expectedVersion, reason, csrfToken);

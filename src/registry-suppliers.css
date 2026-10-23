@@ -1,0 +1,22 @@
+.sup-sub {
+  display: block;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.sup-actions {
+  display: flex;
+  gap: var(--space-2);
+  justify-content: flex-end;
+}
+
+.sup-form {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+}
+
+.sup-error {
+  color: var(--danger);
+}
