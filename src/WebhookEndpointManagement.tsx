@@ -19,6 +19,7 @@ import { IntegrationIcon } from "./IntegrationIcon";
 import { webhookHost } from "./application-overview-model";
 import { WebhookFlow } from "./WebhookFlow";
 import { WebhookPayloads } from "./WebhookPayloads";
+import { WebhookSettings } from "./WebhookSettings";
 import "./partner-onboarding.css";
 
 type Props = {
@@ -414,6 +415,19 @@ export function WebhookEndpointManagement({
             </div>
           )}
         </>
+      )}
+
+      {endpoint && endpoint.status !== "draft" && canManage && canEdit && (
+        <WebhookSettings
+          applicationId={applicationId}
+          csrfToken={csrfToken}
+          channel={channel}
+          endpoint={endpoint}
+          onEndpoint={setEndpoint}
+          onSecret={setSecret}
+          onUnauthorized={onUnauthorized}
+          onChanged={onChanged}
+        />
       )}
 
       <WebhookPayloads endpointUrl={endpoint?.url ?? null} />

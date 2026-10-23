@@ -1,4 +1,7 @@
 import { useEffect, useRef, useState } from "react";
+import { ConfirmDialog } from "./ConfirmDialog";
+import { canResend } from "./webhook-settings-model";
+import "./webhook-settings.css";
 import { createPortal } from "react-dom";
 import { summarizeDeliveries } from "./application-overview-model";
 import { useDialogFocus } from "./useDialogFocus";
@@ -11,6 +14,7 @@ import {
   ApiError,
   getApplicationWebhookDelivery,
   listApplicationWebhookDeliveries,
+  resendWebhookDelivery,
   type WebhookDelivery,
 } from "./api";
 
@@ -18,6 +22,9 @@ type Props = {
   applicationId: string;
   onUnauthorized: () => void;
   channel?: "team" | "partner";
+  /** Resend needs the CSRF token and a role that manages integrations. */
+  csrfToken?: string;
+  canResend?: boolean;
 };
 type Filter = "all" | "delivered" | "attempted" | "unknown" | "skipped";
 const filters: { value: Filter; label: string }[] = [
@@ -42,7 +49,11 @@ export function WebhookDeliveries({
   applicationId,
   onUnauthorized,
   channel = "team",
+  csrfToken,
+  canResend: resendAllowed = false,
 }: Props) {
+  const [confirmResend, setConfirmResend] = useState(false);
+  const [resendNotice, setResendNotice] = useState("");
   const [items, setItems] = useState<WebhookDelivery[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>("all");
@@ -118,6 +129,37 @@ export function WebhookDeliveries({
     }
   }
 
+  async function resend(reason: string) {
+    if (!selected || !csrfToken) return;
+    setBusy(true);
+    setDetailError("");
+    try {
+      const result = await resendWebhookDelivery(
+        applicationId,
+        selected.id,
+        reason,
+        csrfToken,
+        channel,
+      );
+      setSelected(result);
+      setResendNotice(
+        "Reenvio solicitado. O sistema confere a conexão antes de tentar de novo.",
+      );
+      await refresh();
+    } catch (cause) {
+      if (cause instanceof ApiError && cause.status === 401) onUnauthorized();
+      else
+        setDetailError(
+          cause instanceof ApiError
+            ? cause.detail
+            : "Não foi possível pedir o reenvio.",
+        );
+    } finally {
+      setConfirmResend(false);
+      setBusy(false);
+    }
+  }
+
   async function loadMore() {
     if (!cursor) return;
     setBusy(true);
@@ -139,6 +181,7 @@ export function WebhookDeliveries({
   }
 
   async function openDetail(id: string) {
+    setResendNotice("");
     const request = ++detailRequestRef.current;
     lastOpenedId.current = id;
     setDetailOpen(true);
@@ -469,6 +512,44 @@ export function WebhookDeliveries({
                             </dd>
                           </dl>
                         </section>
+                        {selected.is_test && selected.test_payload && (
+                          <section className="detail-panel-section">
+                            <h3 className="detail-panel-section-title">
+                              Corpo fictício enviado
+                              {selected.simulated_event_type
+                                ? ` (${eventLabel(selected.simulated_event_type)})`
+                                : ""}
+                            </h3>
+                            <pre className="wh-payload">
+                              {JSON.stringify(selected.test_payload, null, 2)}
+                            </pre>
+                          </section>
+                        )}
+                        {resendNotice && (
+                          <div className="alert alert-success" role="status">
+                            {resendNotice}
+                          </div>
+                        )}
+                        {resendAllowed && csrfToken && canResend(selected) && (
+                          <section className="detail-panel-section">
+                            <h3 className="detail-panel-section-title">
+                              Reenviar evento
+                            </h3>
+                            <p className="form-hint">
+                              Máximo de três decisões por evento. Um resultado
+                              incerto pode ter chegado ao receptor: deduplique
+                              pelo identificador do evento.
+                            </p>
+                            <button
+                              type="button"
+                              className="btn btn-secondary btn-md"
+                              disabled={busy}
+                              onClick={() => setConfirmResend(true)}
+                            >
+                              Reenviar evento
+                            </button>
+                          </section>
+                        )}
                         <p className="form-hint">
                           O detalhe técnico não expõe a chave de assinatura nem
                           dados pessoais do evento.
@@ -483,6 +564,28 @@ export function WebhookDeliveries({
         </>,
         document.body,
       )}
+      <ConfirmDialog
+        open={confirmResend}
+        title="Reenviar este evento?"
+        description="O evento volta para a fila e o destino recebe uma nova tentativa."
+        details={
+          selected
+            ? [
+                { label: "Evento", value: eventLabel(selected.event_type) },
+                { label: "Identificador", value: selected.id },
+              ]
+            : []
+        }
+        confirmLabel="Reenviar evento"
+        busy={busy}
+        reason={{
+          label: "Motivo (fica na trilha de auditoria)",
+          min: 10,
+          max: 500,
+        }}
+        onConfirm={(reason) => void resend(reason)}
+        onCancel={() => setConfirmResend(false)}
+      />
     </section>
   );
 }

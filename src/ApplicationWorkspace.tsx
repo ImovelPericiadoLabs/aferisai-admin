@@ -370,6 +370,8 @@ export function ApplicationWorkspace({
             applicationId={application.id}
             onUnauthorized={onUnauthorized}
             channel={channel}
+            csrfToken={csrfToken}
+            canResend={canManage && editable}
           />
         )}
         {activeTab === "credentials" && canManage && (

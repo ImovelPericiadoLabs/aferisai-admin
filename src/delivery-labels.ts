@@ -3,7 +3,9 @@ export function eventLabel(value: string): string {
     ? "Evento de teste"
     : value === "analysis.completed"
       ? "Análise concluída"
-      : "Evento não identificado";
+      : value === "analysis.created"
+        ? "Análise criada"
+        : "Evento não identificado";
 }
 export function deliveryTone(value: string): string {
   return value === "delivered"
