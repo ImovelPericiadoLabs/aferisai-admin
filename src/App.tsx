@@ -38,6 +38,7 @@ import { Users } from "./Users";
 import { TeamMembers } from "./TeamMembers";
 import type { PeopleTab } from "./people-model";
 import { AnalysisProviders } from "./AnalysisProviders";
+import { ExecutiveDashboard } from "./ExecutiveDashboard";
 import { RegistrySuppliers } from "./RegistrySuppliers";
 import { Organizations } from "./Organizations";
 import { DesignSystemGuide } from "./DesignSystemGuide";
@@ -59,6 +60,7 @@ import "./shell.css";
 type Page =
   | "overview"
   | "reports"
+  | "executive"
   | "organizations"
   | "commercial"
   | "promotions"
@@ -82,6 +84,11 @@ type Session = { csrf: string; member: TeamMember };
 
 const nav: { page: Page; label: string; detail: string }[] = [
   { page: "overview", label: "Visão geral", detail: "Início" },
+  {
+    page: "executive",
+    label: "Painel executivo",
+    detail: "Receita e operação",
+  },
   { page: "reports", label: "Relatórios", detail: "Indicadores disponíveis" },
   { page: "organizations", label: "Parceiros", detail: "Parcerias ativas" },
   {
@@ -124,7 +131,7 @@ const nav: { page: Page; label: string; detail: string }[] = [
 ];
 
 const navGroups: { title: string; pages: Page[] }[] = [
-  { title: "Painel", pages: ["overview", "reports"] },
+  { title: "Painel", pages: ["overview", "executive", "reports"] },
   {
     title: "Operação",
     pages: [
@@ -474,6 +481,7 @@ function pageFromHash(): Page | HiddenPage {
   const value = window.location.hash.slice(1);
   return value === "organizations" ||
     value === "reports" ||
+    value === "executive" ||
     value === "commercial" ||
     value === "promotions" ||
     value === "requests" ||
@@ -668,7 +676,8 @@ function TeamApp() {
         (item.page !== "analysis-providers" ||
           session.member.role === "administrator") &&
         (item.page !== "registry-suppliers" ||
-          session.member.role === "administrator"),
+          session.member.role === "administrator") &&
+        (item.page !== "executive" || session.member.role === "administrator"),
   );
   const currentPage =
     visibleNav.some((item) => item.page === page) ||
@@ -922,6 +931,9 @@ function TeamApp() {
         <main key={currentPage} className="page-fade-in">
           {currentPage === "overview" ? (
             <DashboardOverview role={session.member.role} navigate={navigate} />
+          ) : currentPage === "executive" &&
+            session.member.role === "administrator" ? (
+            <ExecutiveDashboard onUnauthorized={unauthorize} />
           ) : currentPage === "reports" ? (
             <DashboardReports role={session.member.role} navigate={navigate} />
           ) : currentPage === "organizations" ? (

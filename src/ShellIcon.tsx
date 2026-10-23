@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 type IconName =
   | "overview"
   | "reports"
+  | "executive"
   | "organizations"
   | "commercial"
   | "promotions"
@@ -45,6 +46,12 @@ const paths: Record<IconName, ReactNode> = {
     <>
       <path d="M4 20V10m5 10V4m5 16v-7m5 7V8" />
       <path d="M2 21h20" />
+    </>
+  ),
+  executive: (
+    <>
+      <path d="M3 17l5-5 4 3 8-9" />
+      <path d="M15 6h5v5M3 21h18" />
     </>
   ),
   organizations: (
