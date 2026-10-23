@@ -861,11 +861,19 @@ button.delivery-row:hover {
   .integration-tabs {
     display: none;
   }
+  .integration-workspace:not(.is-partner) .integration-tabs {
+    display: flex;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
   .integration-body {
     padding-top: 1rem;
   }
   .integration-workspace {
     padding-bottom: 5rem;
+  }
+  .integration-workspace:not(.is-partner) {
+    padding-bottom: 1rem;
   }
   .integration-mobile-nav {
     position: fixed;

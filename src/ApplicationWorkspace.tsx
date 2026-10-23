@@ -40,6 +40,9 @@ type Props = {
   selectedTab?: IntegrationTab;
   onTabChange?: (tab: IntegrationTab) => void;
   additionalApplication: ReactNode;
+  onLoadMoreApplications?: () => void;
+  hasMoreApplications?: boolean;
+  loadingMoreApplications?: boolean;
 };
 
 const tabs: { id: Tab; label: string }[] = [
@@ -65,9 +68,17 @@ export function ApplicationWorkspace({
   selectedTab,
   onTabChange,
   additionalApplication,
+  onLoadMoreApplications,
+  hasMoreApplications = false,
+  loadingMoreApplications = false,
 }: Props) {
   const [tabState, setTabState] = useState<Tab>("overview");
   const tab = selectedTab ?? tabState;
+  const activeTab =
+    canManage || tab === "overview" || tab === "access" ? tab : "overview";
+  const visibleTabs = canManage
+    ? tabs
+    : tabs.filter((item) => item.id === "overview" || item.id === "access");
   const setTab = (next: Tab) => {
     setTabState(next);
     onTabChange?.(next);
@@ -108,6 +119,18 @@ export function ApplicationWorkspace({
             </button>
           ))}
         </div>
+        {hasMoreApplications && onLoadMoreApplications && (
+          <button
+            type="button"
+            className="button secondary"
+            disabled={loadingMoreApplications}
+            onClick={onLoadMoreApplications}
+          >
+            {loadingMoreApplications
+              ? "Carregando…"
+              : "Carregar mais aplicações"}
+          </button>
+        )}
         {additionalApplication && (
           <div className="integration-additional">
             <button
@@ -146,8 +169,9 @@ export function ApplicationWorkspace({
           <p className="integration-kicker">Aplicação</p>
           <h3>{application.name}</h3>
           <p>
-            Configure o destino dos eventos, acompanhe entregas e administre o
-            acesso.
+            {canManage
+              ? "Configure o destino dos eventos, acompanhe entregas e administre o acesso."
+              : "Consulte os acessos concedidos a esta aplicação."}
           </p>
         </div>
         <span
@@ -193,6 +217,17 @@ export function ApplicationWorkspace({
                   </small>
                 </button>
               ))}
+              {hasMoreApplications && onLoadMoreApplications && (
+                <button
+                  type="button"
+                  disabled={loadingMoreApplications}
+                  onClick={onLoadMoreApplications}
+                >
+                  {loadingMoreApplications
+                    ? "Carregando…"
+                    : "Carregar mais aplicações"}
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -203,12 +238,12 @@ export function ApplicationWorkspace({
         role="tablist"
         aria-label="Configurações da aplicação"
       >
-        {tabs.map((item) => (
+        {visibleTabs.map((item) => (
           <button
             key={item.id}
             type="button"
             role="tab"
-            aria-selected={tab === item.id}
+            aria-selected={activeTab === item.id}
             onClick={() => setTab(item.id)}
           >
             {item.label}
@@ -217,35 +252,49 @@ export function ApplicationWorkspace({
       </div>
 
       <div className="integration-body" role="tabpanel">
-        {tab === "overview" && (
+        {activeTab === "overview" && (
           <div className="integration-overview">
             <div className="integration-intro">
               <h4>Integração em um só lugar</h4>
               <p>
-                Comece pelo endereço do webhook. Em seguida, confira as entregas
-                e emita credenciais para seus sistemas.
+                {canManage
+                  ? "Comece pelo endereço do webhook. Em seguida, confira as entregas e emita credenciais para seus sistemas."
+                  : "Consulte as permissões concedidas a esta aplicação."}
               </p>
             </div>
             <div className="integration-action-list">
-              <button type="button" onClick={() => setTab("webhooks")}>
-                <strong>Configurar webhook</strong>
-                <span>Endereço, assinatura e teste</span>
-                <b aria-hidden="true">→</b>
-              </button>
-              <button type="button" onClick={() => setTab("deliveries")}>
-                <strong>Ver entregas</strong>
-                <span>Eventos enviados para esta aplicação</span>
-                <b aria-hidden="true">→</b>
-              </button>
-              <button type="button" onClick={() => setTab("credentials")}>
-                <strong>Gerenciar credenciais</strong>
-                <span>Emitir, consultar e revogar acesso</span>
-                <b aria-hidden="true">→</b>
-              </button>
+              {canManage && (
+                <button type="button" onClick={() => setTab("webhooks")}>
+                  <strong>Configurar webhook</strong>
+                  <span>Endereço, assinatura e teste</span>
+                  <b aria-hidden="true">→</b>
+                </button>
+              )}
+              {canManage && (
+                <button type="button" onClick={() => setTab("deliveries")}>
+                  <strong>Ver entregas</strong>
+                  <span>Eventos enviados para esta aplicação</span>
+                  <b aria-hidden="true">→</b>
+                </button>
+              )}
+              {canManage && (
+                <button type="button" onClick={() => setTab("credentials")}>
+                  <strong>Gerenciar credenciais</strong>
+                  <span>Emitir, consultar e revogar acesso</span>
+                  <b aria-hidden="true">→</b>
+                </button>
+              )}
+              {!canManage && (
+                <button type="button" onClick={() => setTab("access")}>
+                  <strong>Ver permissões</strong>
+                  <span>Acessos concedidos a esta aplicação</span>
+                  <b aria-hidden="true">→</b>
+                </button>
+              )}
             </div>
           </div>
         )}
-        {tab === "webhooks" && canManage && (
+        {activeTab === "webhooks" && canManage && (
           <WebhookEndpointManagement
             key={application.id}
             applicationId={application.id}
@@ -256,7 +305,7 @@ export function ApplicationWorkspace({
             channel={channel}
           />
         )}
-        {tab === "deliveries" && (
+        {activeTab === "deliveries" && canManage && (
           <WebhookDeliveries
             key={application.id}
             applicationId={application.id}
@@ -264,7 +313,7 @@ export function ApplicationWorkspace({
             channel={channel}
           />
         )}
-        {tab === "credentials" && canManage && (
+        {activeTab === "credentials" && canManage && (
           <CredentialManagement
             key={application.id}
             applicationId={application.id}
@@ -281,7 +330,7 @@ export function ApplicationWorkspace({
             channel={channel}
           />
         )}
-        {tab === "access" && (
+        {activeTab === "access" && (
           <div className="integration-access">
             <section>
               <h4>Permissões da aplicação</h4>
@@ -363,30 +412,33 @@ export function ApplicationWorkspace({
           {showCreate && additionalApplication}
         </div>
       )}
-      <nav
-        className="integration-mobile-nav"
-        aria-label="Navegação da aplicação"
-      >
-        {(["overview", "webhooks", "deliveries", "credentials"] as Tab[]).map(
-          (item) => (
+      {channel === "partner" && (
+        <nav
+          className="integration-mobile-nav"
+          aria-label="Navegação da aplicação"
+        >
+          {(canManage
+            ? (["overview", "webhooks", "deliveries", "credentials"] as Tab[])
+            : (["overview"] as Tab[])
+          ).map((item) => (
             <button
               key={item}
               type="button"
-              aria-current={tab === item ? "page" : undefined}
+              aria-current={activeTab === item ? "page" : undefined}
               onClick={() => setTab(item)}
             >
               {tabs.find((tabItem) => tabItem.id === item)?.label}
             </button>
-          ),
-        )}
-        <button
-          type="button"
-          aria-current={tab === "access" ? "page" : undefined}
-          onClick={() => setTab("access")}
-        >
-          Mais
-        </button>
-      </nav>
+          ))}
+          <button
+            type="button"
+            aria-current={activeTab === "access" ? "page" : undefined}
+            onClick={() => setTab("access")}
+          >
+            {canManage ? "Mais" : "Acessos"}
+          </button>
+        </nav>
+      )}
     </section>
   );
 }

@@ -19,13 +19,13 @@ import {
   currentMember,
   deleteSession,
   finishPasskeyLogin,
-  listOrganizations,
   renewCsrf,
   type OnboardingResult,
-  type OrganizationListItem,
   type TeamMember,
 } from "./api";
 import { OrganizationDetail } from "./OrganizationDetail";
+import { PartnerDirectory } from "./PartnerDirectory";
+import { OrganizationContextSwitcher } from "./OrganizationContextSwitcher";
 import { Analyses } from "./Analyses";
 import { SourceClassification } from "./SourceClassification";
 import { FinancialExceptions } from "./FinancialExceptions";
@@ -443,7 +443,13 @@ function Brand({
     <div className={`brand ${light ? "brand-light" : ""}`}>
       <img
         src={
-          compact ? "/icon.svg" : light ? "/logo-light.svg" : "/logo-dark.svg"
+          compact
+            ? light
+              ? "/icon-light.svg"
+              : "/icon.svg"
+            : light
+              ? "/logo-light.svg"
+              : "/logo-dark.svg"
         }
         alt="AferisAI"
       />
@@ -452,171 +458,22 @@ function Brand({
   );
 }
 
-function OrganizationDirectory({
-  unauthorize,
-  onSelect,
-}: {
-  unauthorize: () => void;
-  onSelect: (id: string) => void;
-}) {
-  const [search, setSearch] = useState("");
-  const [query, setQuery] = useState("");
-  const [cursor, setCursor] = useState<string | undefined>();
-  const [nextCursor, setNextCursor] = useState<string | null>(null);
-  const [items, setItems] = useState<OrganizationListItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [revision, setRevision] = useState(0);
-
-  useEffect(() => {
-    let live = true;
-    listOrganizations(query, cursor)
-      .then((result) => {
-        if (!live) return;
-        setItems((current) =>
-          cursor ? [...current, ...result.items] : result.items,
-        );
-        setNextCursor(result.next_cursor);
-      })
-      .catch((cause) => {
-        if (!live) return;
-        if (cause instanceof ApiError && cause.status === 401) unauthorize();
-        else setError(message(cause));
-      })
-      .finally(() => {
-        if (live) setLoading(false);
-      });
-    return () => {
-      live = false;
-    };
-  }, [query, cursor, revision, unauthorize]);
-
-  function submitSearch(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setLoading(true);
-    setError("");
-    setCursor(undefined);
-    setQuery(search);
-    setRevision((value) => value + 1);
-  }
-
-  return (
-    <section className="directory" aria-labelledby="directory-title">
-      <div className="directory-head">
-        <div>
-          <p className="eyebrow">Diretório</p>
-          <h2 id="directory-title">Organizações cadastradas</h2>
-        </div>
-        <form onSubmit={submitSearch} role="search">
-          <label htmlFor="org-search">Buscar organização</label>
-          <div>
-            <input
-              id="org-search"
-              maxLength={100}
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Nome ou identificador"
-            />
-            <button className="button secondary" type="submit">
-              Buscar
-            </button>
-          </div>
-        </form>
-      </div>
-      {error && (
-        <p className="error" role="alert">
-          {error}
-        </p>
-      )}
-      {loading && items.length === 0 ? (
-        <div
-          className="skeleton-rows"
-          role="status"
-          aria-label="Carregando organizações"
-        >
-          {[0.7, 0.85, 0.6, 0.75, 0.65].map((w, i) => (
-            <div
-              key={i}
-              style={{ display: "flex", gap: "1rem", alignItems: "center" }}
-            >
-              <div
-                className="skeleton"
-                style={{ height: "1rem", width: `${w * 100}%` }}
-              />
-              <div
-                className="skeleton"
-                style={{ height: "1rem", width: "6rem", flexShrink: 0 }}
-              />
-            </div>
-          ))}
-        </div>
-      ) : items.length === 0 && !error ? (
-        <p className="directory-state">Nenhuma organização encontrada.</p>
-      ) : (
-        <div className="directory-table" role="table" aria-label="Organizações">
-          <div className="directory-row directory-labels" role="row">
-            <span role="columnheader">Organização</span>
-            <span role="columnheader">Identificador</span>
-            <span role="columnheader">Estado</span>
-          </div>
-          {items.map((item) => (
-            <div className="directory-row" role="row" key={item.id}>
-              <span role="cell">
-                <button
-                  className="directory-name"
-                  onClick={() => onSelect(item.id)}
-                  aria-label={`Abrir ${item.name}`}
-                >
-                  <strong>{item.name}</strong>
-                </button>
-                <small>{item.id}</small>
-              </span>
-              <span role="cell">{item.slug}</span>
-              <span role="cell">
-                <span
-                  className={`badge ${item.status === "active" ? "badge-green" : item.status === "suspended" ? "badge-yellow" : "badge-gray"}`}
-                >
-                  {item.status === "active"
-                    ? "Ativa"
-                    : item.status === "suspended"
-                      ? "Suspensa"
-                      : "Desconhecido"}
-                </span>
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
-      {nextCursor && (
-        <button
-          className="button secondary load-more"
-          disabled={loading}
-          onClick={() => {
-            setLoading(true);
-            setError("");
-            setCursor(nextCursor);
-          }}
-        >
-          {loading ? "Carregando…" : "Carregar mais"}
-        </button>
-      )}
-    </section>
-  );
-}
-
 function Organizations({
   csrf,
   canManage,
   isAdmin,
   unauthorize,
+  selectedId,
+  onSelect,
 }: {
   csrf: string;
   canManage: boolean;
   isAdmin: boolean;
   unauthorize: () => void;
+  selectedId: string | null;
+  onSelect: (id: string | null) => void;
 }) {
   const [view, setView] = useState<"directory" | "create">("directory");
-  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [slug, setSlug] = useState("");
   const [name, setName] = useState("");
   const [application, setApplication] = useState("");
@@ -664,34 +521,33 @@ function Organizations({
 
   return (
     <div className="content">
-      <header className="page-head">
-        <div>
-          <p className="eyebrow">Parcerias</p>
-          <h1>Parceiros</h1>
-          <p className="muted">
-            Consulte as organizações parceiras ou cadastre uma nova.
-          </p>
-        </div>
-        {canManage && view === "directory" && !selectedId && (
-          <button className="button primary" onClick={() => setView("create")}>
-            Nova organização <span aria-hidden="true">＋</span>
-          </button>
-        )}
-      </header>
+      {view === "create" && (
+        <header className="page-head">
+          <div>
+            <p className="eyebrow">Parcerias</p>
+            <h1>Parceiros</h1>
+            <p className="muted">
+              Consulte as organizações parceiras ou cadastre uma nova.
+            </p>
+          </div>
+        </header>
+      )}
       {view === "directory" || !canManage ? (
         selectedId ? (
           <OrganizationDetail
+            key={selectedId}
             organizationId={selectedId}
             csrfToken={csrf}
             canManage={canManage}
             isAdmin={isAdmin}
-            onBack={() => setSelectedId(null)}
+            onBack={() => onSelect(null)}
             onUnauthorized={unauthorize}
           />
         ) : (
-          <OrganizationDirectory
-            unauthorize={unauthorize}
-            onSelect={setSelectedId}
+          <PartnerDirectory
+            onUnauthorized={unauthorize}
+            onSelect={(id) => onSelect(id)}
+            onCreate={canManage ? () => setView("create") : undefined}
           />
         )
       ) : created ? (
@@ -930,6 +786,9 @@ function TeamApp() {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState<Page>(pageFromHash);
+  const [selectedOrganizationId, setSelectedOrganizationId] = useState<
+    string | null
+  >(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
@@ -1135,7 +994,7 @@ function TeamApp() {
         ref={sidebarRef}
       >
         <div className="sidebar-head">
-          <Brand compact={sidebarCollapsed && !menuOpen} />
+          <Brand light compact={sidebarCollapsed && !menuOpen} />
           <button
             className="sidebar-toggle"
             type="button"
@@ -1372,6 +1231,13 @@ function TeamApp() {
             <ShellIcon name="chevron" size={15} />
             <strong>{currentItem?.label}</strong>
           </div>
+          {currentPage === "organizations" && (
+            <OrganizationContextSwitcher
+              selectedId={selectedOrganizationId}
+              onSelect={setSelectedOrganizationId}
+              onUnauthorized={unauthorize}
+            />
+          )}
           <span className="topbar-label">
             <span className="topbar-status" /> Conectado
           </span>
@@ -1390,6 +1256,8 @@ function TeamApp() {
               }
               isAdmin={session.member.role === "administrator"}
               unauthorize={unauthorize}
+              selectedId={selectedOrganizationId}
+              onSelect={setSelectedOrganizationId}
             />
           ) : currentPage === "commercial" &&
             session.member.role === "administrator" ? (
@@ -1470,7 +1338,7 @@ function TeamApp() {
             <Access />
           )}
         </main>
-        <footer>AferisAI · Área restrita da equipe</footer>
+        <footer>AferisAI</footer>
       </div>
       {session && (
         <nav className="bottom-nav" aria-label="Atalhos da equipe">

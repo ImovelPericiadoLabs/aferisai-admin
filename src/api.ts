@@ -20,8 +20,13 @@ export type TeamMember = {
 export type PartnerMember = {
   id: string;
   email: string;
-  organization_id: string;
-  organization_name: string;
+  organization_id: string | null;
+  organization_name: string | null;
+};
+export type PartnerOrganization = { id: string; name: string; active: boolean };
+export type PartnerOrganizationList = {
+  items: PartnerOrganization[];
+  next_cursor: string | null;
 };
 export type PartnerApplication = { id: string; name: string; status: string };
 export type PartnerApplicationList = {
@@ -50,17 +55,57 @@ export type AdditionalApplication = {
   name: string;
   status: string;
 };
+export type ApplicationBulkChanges = {
+  status?: "active" | "suspended";
+  grant_permissions?: string[];
+  revoke_permissions?: string[];
+};
+export type ApplicationBulkPreview = {
+  preview_id: string;
+  organization_id: string;
+  expires_at: string;
+  confirmation_hash: string;
+  selected_count: number;
+  affected_count: number;
+  state: "preview" | "applied";
+  items: {
+    application_id: string;
+    name: string;
+    current_status: string;
+    next_status: string;
+    current_permissions: string[];
+    next_permissions: string[];
+    can_apply: boolean;
+    reason?: string | null;
+  }[];
+};
+export type ApplicationBulkResult = {
+  preview_id: string;
+  organization_id: string;
+  applied_at: string;
+  selected_count: number;
+  affected_count: number;
+  items: {
+    application_id: string;
+    outcome: "applied" | "no_change" | "conflict" | "blocked" | "not_found";
+    reason?: string | null;
+  }[];
+};
 export type OrganizationListItem = {
   id: string;
   slug: string;
   name: string;
   status: string;
+  applications_count: number;
 };
 export type OrganizationList = {
   items: OrganizationListItem[];
   next_cursor: string | null;
 };
-export type OrganizationDetail = OrganizationListItem & {
+export type OrganizationDetail = Omit<
+  OrganizationListItem,
+  "applications_count"
+> & {
   description: string | null;
   logo_url: string | null;
   applications: {
@@ -649,6 +694,37 @@ export const createAdditionalApplication = (
     },
   );
 
+export const previewApplicationBulkChange = (
+  organizationId: string,
+  applicationIds: string[],
+  changes: ApplicationBulkChanges,
+  csrfToken: string,
+  idempotencyKey: string,
+) =>
+  request<ApplicationBulkPreview>(
+    `/v1/team/organizations/${encodeURIComponent(organizationId)}/applications/bulk-previews`,
+    {
+      method: "POST",
+      headers: { "X-CSRF-Token": csrfToken, "Idempotency-Key": idempotencyKey },
+      body: JSON.stringify({ application_ids: applicationIds, changes }),
+    },
+  );
+
+export const applyApplicationBulkChange = (
+  organizationId: string,
+  previewId: string,
+  confirmationHash: string,
+  csrfToken: string,
+) =>
+  request<ApplicationBulkResult>(
+    `/v1/team/organizations/${encodeURIComponent(organizationId)}/applications/bulk-previews/${encodeURIComponent(previewId)}/apply`,
+    {
+      method: "POST",
+      headers: { "X-CSRF-Token": csrfToken },
+      body: JSON.stringify({ confirmation_hash: confirmationHash }),
+    },
+  );
+
 export const classifyAnalysisOriginal = (
   requestId: string,
   body: SourceDecisionBody,
@@ -838,6 +914,35 @@ export const createPartnerSession = (body: LoginBody) =>
   });
 export const currentPartnerMember = () =>
   request<PartnerMember>("/v1/partner/sessions/current", { method: "GET" });
+export const listPartnerOrganizations = (q = "", cursor?: string) => {
+  const params = new URLSearchParams({ limit: "20" });
+  if (q) params.set("q", q);
+  if (cursor) params.set("cursor", cursor);
+  return request<PartnerOrganizationList>(
+    `/v1/partner/organizations?${params}`,
+    {
+      method: "GET",
+    },
+  );
+};
+export const switchPartnerOrganization = (
+  organizationId: string,
+  csrfToken: string,
+) =>
+  request<PartnerMember>("/v1/partner/sessions/current/organization", {
+    method: "POST",
+    headers: { "X-CSRF-Token": csrfToken },
+    body: JSON.stringify({ organization_id: organizationId }),
+  });
+export const acceptPartnerOrganizationInvitation = (
+  token: string,
+  csrfToken: string,
+) =>
+  request<{ organization_id: string }>("/v1/partner/invitations/accept", {
+    method: "POST",
+    headers: { "X-CSRF-Token": csrfToken },
+    body: JSON.stringify({ token }),
+  });
 export const renewPartnerCsrf = () =>
   request<CsrfResult>("/v1/partner/sessions/current/csrf", { method: "POST" });
 export const deletePartnerSession = (csrfToken: string) =>
@@ -889,10 +994,12 @@ export const createOrganization = (body: OnboardingBody, csrfToken: string) =>
 export function listOrganizations(
   query = "",
   cursor?: string,
+  status?: "active" | "suspended",
 ): Promise<OrganizationList> {
   const params = new URLSearchParams({ limit: "20" });
   if (query.trim()) params.set("q", query.trim());
   if (cursor) params.set("cursor", cursor);
+  if (status) params.set("status", status);
   return request<OrganizationList>(`/v1/team/organizations?${params}`, {
     method: "GET",
   });

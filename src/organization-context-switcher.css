@@ -1,0 +1,121 @@
+.organization-context {
+  position: relative;
+  margin-left: auto;
+  min-width: 0;
+}
+.organization-context-trigger {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  max-width: 260px;
+  min-height: 34px;
+  padding: 0.4rem 0.65rem;
+  border: 1px solid #dbe4ef;
+  border-radius: 5px;
+  background: #fff;
+  color: #173659;
+  font: inherit;
+  font-size: 0.74rem;
+  cursor: pointer;
+}
+.organization-context-trigger:hover,
+.organization-context-trigger:focus-visible {
+  border-color: #1765e9;
+  outline: none;
+}
+.organization-context-mark {
+  color: #1765e9;
+  font-size: 1rem;
+}
+.organization-context-name {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-weight: 700;
+}
+.organization-context-menu {
+  position: absolute;
+  z-index: 50;
+  top: calc(100% + 0.4rem);
+  right: 0;
+  width: min(330px, calc(100vw - 2rem));
+  padding: 0.75rem;
+  border: 1px solid #dbe4ef;
+  border-radius: 7px;
+  background: white;
+  box-shadow: 0 12px 35px #1228491f;
+}
+.organization-context-menu label {
+  display: block;
+  margin-bottom: 0.45rem;
+  color: #16375b;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+.organization-context-menu input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 36px;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid #cfdbea;
+  border-radius: 5px;
+  font: inherit;
+  font-size: 0.74rem;
+}
+.organization-context-menu input:focus-visible {
+  outline: 2px solid #1765e9;
+  outline-offset: 1px;
+}
+.organization-context-options {
+  max-height: 250px;
+  margin-top: 0.5rem;
+  overflow-y: auto;
+}
+.organization-context-options button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  width: 100%;
+  min-height: 39px;
+  padding: 0.4rem 0.5rem;
+  border: 0;
+  border-bottom: 1px solid #eef2f7;
+  background: white;
+  color: #16375b;
+  text-align: left;
+  font: inherit;
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+.organization-context-options button:hover,
+.organization-context-options button[aria-current="true"] {
+  background: #eaf2ff;
+}
+.organization-context-options small {
+  color: #647b96;
+  white-space: nowrap;
+}
+.organization-context-menu p {
+  margin: 0.6rem 0.2rem 0;
+  color: #647b96;
+  font-size: 0.72rem;
+}
+.organization-context-more {
+  margin-top: 0.5rem;
+  border: 0;
+  background: transparent;
+  color: #0d5ce1;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+@media (max-width: 600px) {
+  .organization-context-trigger {
+    max-width: 152px;
+  }
+  .organization-context-menu {
+    right: -0.4rem;
+  }
+}

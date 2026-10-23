@@ -247,7 +247,7 @@
 .partner-topbar strong {
   color: #18304e;
 }
-.partner-topbar span::after {
+.partner-topbar > span::after {
   content: "›";
   margin-left: 0.6rem;
   color: #99a8b9;

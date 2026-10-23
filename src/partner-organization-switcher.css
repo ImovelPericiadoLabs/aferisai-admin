@@ -1,0 +1,132 @@
+.partner-context {
+  position: relative;
+  min-width: 0;
+}
+.partner-context-trigger {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 35px;
+  min-width: min(220px, 42vw);
+  max-width: min(350px, 48vw);
+  border: 1px solid #d9e4f2;
+  border-radius: 6px;
+  background: #fff;
+  color: #183759;
+  padding: 0.35rem 0.6rem;
+  font: inherit;
+  font-size: 0.77rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.partner-context-trigger:hover,
+.partner-context-trigger[aria-expanded="true"] {
+  border-color: #7ea8e8;
+  background: #f6faff;
+}
+.partner-context-trigger:focus-visible,
+.partner-context-menu button:focus-visible,
+.partner-context-menu input:focus-visible {
+  outline: 2px solid #1768dc;
+  outline-offset: 2px;
+}
+.partner-context-trigger:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+.partner-context-mark {
+  display: grid;
+  place-items: center;
+  color: #1768dc;
+  font-size: 1rem;
+}
+.partner-context-name {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+}
+.partner-context-menu {
+  position: absolute;
+  z-index: 50;
+  top: calc(100% + 0.4rem);
+  left: 0;
+  width: min(340px, calc(100vw - 1.8rem));
+  padding: 0.65rem;
+  border: 1px solid #d9e4f2;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 14px 36px #0e234226;
+}
+.partner-context-menu label {
+  display: block;
+  margin: 0 0 0.4rem;
+  color: #526987;
+  font-size: 0.69rem;
+  font-weight: 700;
+}
+.partner-context-menu input {
+  width: 100%;
+  min-height: 35px;
+  margin-bottom: 0.45rem;
+  border: 1px solid #cfdbeb;
+  border-radius: 5px;
+  padding: 0.35rem 0.55rem;
+  font: inherit;
+  font-size: 0.77rem;
+}
+.partner-context-options {
+  max-height: min(280px, 38dvh);
+  overflow-y: auto;
+}
+.partner-context-options button,
+.partner-context-more {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  min-height: 36px;
+  border: 0;
+  border-radius: 5px;
+  padding: 0.45rem 0.55rem;
+  background: transparent;
+  color: #173657;
+  font: inherit;
+  font-size: 0.77rem;
+  text-align: left;
+  cursor: pointer;
+}
+.partner-context-options button:hover,
+.partner-context-options button[aria-current="true"],
+.partner-context-more:hover {
+  background: #eef5ff;
+}
+.partner-context-options small {
+  color: #1768dc;
+}
+.partner-context-menu p {
+  margin: 0.45rem 0.3rem;
+  font-size: 0.72rem;
+  color: #526987;
+}
+.partner-context-more {
+  color: #1768dc;
+  font-weight: 700;
+}
+@media (max-width: 760px) {
+  .partner-context-trigger {
+    min-width: min(160px, 42vw);
+    max-width: 46vw;
+  }
+  .partner-context-menu {
+    left: auto;
+    right: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .partner-context-trigger {
+    scroll-behavior: auto;
+  }
+}

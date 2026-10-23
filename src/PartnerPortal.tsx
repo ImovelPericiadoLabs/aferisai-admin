@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import {
   ApiError,
+  acceptPartnerOrganizationInvitation,
   confirmPartnerInvitation,
   createPartnerSession,
   currentPartnerMember,
@@ -9,9 +10,11 @@ import {
   listPartnerApplicationPermissions,
   listPartnerApplications,
   renewPartnerCsrf,
+  switchPartnerOrganization,
   type PartnerApplication,
   type PartnerMember,
 } from "./api";
+import { PartnerOrganizationSwitcher } from "./PartnerOrganizationSwitcher";
 import {
   ApplicationWorkspace,
   type IntegrationTab,
@@ -38,6 +41,48 @@ function Invitation() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [completed, setCompleted] = useState(false);
+  const [existingMember, setExistingMember] = useState<PartnerMember | null>(
+    null,
+  );
+  const [existingCsrf, setExistingCsrf] = useState("");
+
+  useEffect(() => {
+    let live = true;
+    currentPartnerMember()
+      .then(async (member) => {
+        const csrf = await renewPartnerCsrf();
+        if (live) {
+          setExistingMember(member);
+          setExistingCsrf(csrf.csrf_token);
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, []);
+
+  async function acceptExisting() {
+    if (!existingCsrf) return;
+    setBusy(true);
+    setError("");
+    try {
+      const accepted = await acceptPartnerOrganizationInvitation(
+        token,
+        existingCsrf,
+      );
+      await switchPartnerOrganization(accepted.organization_id, existingCsrf);
+      window.history.replaceState(null, "", "/#parceiro");
+      window.location.reload();
+    } catch (cause) {
+      setError(
+        cause instanceof ApiError
+          ? cause.detail
+          : "Não foi possível aceitar o convite.",
+      );
+      setBusy(false);
+    }
+  }
 
   async function enroll(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -103,6 +148,27 @@ function Invitation() {
             <h1>Convite não encontrado</h1>
             <p>Abra o link recebido por e-mail para preparar seu acesso.</p>
           </>
+        ) : existingMember ? (
+          <div>
+            <h1>Adicionar empresa ao seu acesso</h1>
+            <p>
+              Convite para {existingMember.email}. Você poderá trocar de empresa
+              no topo do painel.
+            </p>
+            {error && (
+              <p className="error" role="alert">
+                {error}
+              </p>
+            )}
+            <button
+              type="button"
+              className="button primary"
+              disabled={busy || !existingCsrf}
+              onClick={() => void acceptExisting()}
+            >
+              {busy ? "Adicionando…" : "Aceitar convite"}
+            </button>
+          </div>
         ) : !secret ? (
           <form onSubmit={(event) => void enroll(event)}>
             <h1>Crie seu acesso</h1>
@@ -183,6 +249,11 @@ export function PartnerPortal() {
   const [session, setSession] = useState<PartnerSession | null>(null);
   const [loading, setLoading] = useState(true);
   const [applications, setApplications] = useState<PartnerApplication[]>([]);
+  const [applicationsCursor, setApplicationsCursor] = useState<string | null>(
+    null,
+  );
+  const [requestedCursor, setRequestedCursor] = useState<string | undefined>();
+  const [loadingMoreApplications, setLoadingMoreApplications] = useState(false);
   const [permissions, setPermissions] = useState<
     Record<string, { code: string; description: string }[]>
   >({});
@@ -192,12 +263,17 @@ export function PartnerPortal() {
   const [password, setPassword] = useState("");
   const [otp, setOtp] = useState("");
   const [busy, setBusy] = useState(false);
+  const [switching, setSwitching] = useState(false);
   const [error, setError] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
   const isInvitation = window.location.hash.startsWith("#convite");
   const unauthorize = useCallback(() => {
     setSession(null);
     setApplications([]);
+    setApplicationsCursor(null);
+    setRequestedCursor(undefined);
+    setPermissions({});
+    setSelectedId(null);
   }, []);
 
   useEffect(() => {
@@ -218,22 +294,60 @@ export function PartnerPortal() {
     };
   }, []);
 
+  const activeOrganizationId = session?.member.organization_id;
   useEffect(() => {
-    if (!session) return;
+    if (!activeOrganizationId) return;
     let live = true;
-    listPartnerApplications()
+    listPartnerApplications(requestedCursor)
       .then((result) => {
-        if (live) setApplications(result.items);
+        if (!live) return;
+        setApplications((current) =>
+          requestedCursor ? [...current, ...result.items] : result.items,
+        );
+        setApplicationsCursor(result.next_cursor);
       })
       .catch((cause: unknown) => {
         if (!live) return;
         if (cause instanceof ApiError && cause.status === 401) unauthorize();
         else setError("Não foi possível carregar suas aplicações.");
+      })
+      .finally(() => {
+        if (live) setLoadingMoreApplications(false);
       });
     return () => {
       live = false;
     };
-  }, [session, unauthorize]);
+  }, [activeOrganizationId, requestedCursor, unauthorize]);
+
+  function loadMoreApplications() {
+    if (!applicationsCursor || loadingMoreApplications) return;
+    setLoadingMoreApplications(true);
+    setRequestedCursor(applicationsCursor);
+  }
+
+  async function changeOrganization(organizationId: string) {
+    if (!session) return;
+    setSwitching(true);
+    try {
+      const member = await switchPartnerOrganization(
+        organizationId,
+        session.csrf,
+      );
+      setApplications([]);
+      setApplicationsCursor(null);
+      setRequestedCursor(undefined);
+      setPermissions({});
+      setSelectedId(null);
+      setTab("overview");
+      setError("");
+      setSession({ ...session, member });
+    } catch (cause) {
+      if (cause instanceof ApiError && cause.status === 401) unauthorize();
+      throw cause;
+    } finally {
+      setSwitching(false);
+    }
+  }
 
   const application =
     applications.find((item) => item.id === selectedId) ??
@@ -382,7 +496,10 @@ export function PartnerPortal() {
   const selectedPermissions = application
     ? permissions[application.id] || []
     : [];
-  const appRecords = applications.map((item) => ({
+  const visibleApplications = session.member.organization_id
+    ? applications
+    : [];
+  const appRecords = visibleApplications.map((item) => ({
     ...item,
     permissions: permissions[item.id]?.map((entry) => entry.code) || [],
   }));
@@ -399,11 +516,13 @@ export function PartnerPortal() {
         </div>
         <div className="partner-organization">
           <small>MINHA PARCERIA</small>
-          <strong>{session.member.organization_name}</strong>
+          <strong>
+            {session.member.organization_name || "Selecione uma empresa"}
+          </strong>
           <span>
-            {applications.length === 1
+            {visibleApplications.length === 1
               ? "1 aplicação"
-              : `${applications.length} aplicações`}
+              : `${visibleApplications.length} aplicações`}
           </span>
         </div>
         <nav aria-label="Integração">
@@ -453,7 +572,13 @@ export function PartnerPortal() {
           >
             ☰
           </button>
-          <span>{session.member.organization_name}</span>
+          <PartnerOrganizationSwitcher
+            activeId={session.member.organization_id}
+            activeName={session.member.organization_name}
+            disabled={switching}
+            onSelect={changeOrganization}
+            onUnauthorized={unauthorize}
+          />
           <strong>Minha integração</strong>
         </header>
         <main className="partner-content">
@@ -462,22 +587,35 @@ export function PartnerPortal() {
               {error}
             </p>
           )}
-          <ApplicationWorkspace
-            applications={appRecords}
-            permissions={selectedPermissions}
-            selectedApplicationId={selectedId}
-            onSelectApplication={setSelectedId}
-            csrfToken={session.csrf}
-            canManage
-            canEdit
-            onUnauthorized={unauthorize}
-            permissionBusy={false}
-            onTogglePermission={() => {}}
-            additionalApplication={null}
-            channel="partner"
-            selectedTab={tab}
-            onTabChange={setTab}
-          />
+          {!session.member.organization_id ? (
+            <div className="integration-empty">
+              <h1>Escolha uma empresa</h1>
+              <p>
+                Selecione no topo uma empresa à qual você tem acesso para ver as
+                aplicações.
+              </p>
+            </div>
+          ) : (
+            <ApplicationWorkspace
+              applications={appRecords}
+              permissions={selectedPermissions}
+              selectedApplicationId={selectedId}
+              onSelectApplication={setSelectedId}
+              csrfToken={session.csrf}
+              canManage
+              canEdit
+              onUnauthorized={unauthorize}
+              permissionBusy={false}
+              onTogglePermission={() => {}}
+              additionalApplication={null}
+              hasMoreApplications={Boolean(applicationsCursor)}
+              loadingMoreApplications={loadingMoreApplications}
+              onLoadMoreApplications={loadMoreApplications}
+              channel="partner"
+              selectedTab={tab}
+              onTabChange={setTab}
+            />
+          )}
         </main>
       </div>
     </div>

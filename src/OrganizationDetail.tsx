@@ -14,7 +14,8 @@ import {
   type OrganizationDetail as Detail,
 } from "./api";
 import "./detail.css";
-import { AdditionalApplicationForm } from "./AdditionalApplicationForm";
+import { ApplicationCreationWizard } from "./ApplicationCreationWizard";
+import { OrganizationApplicationsDirectory } from "./OrganizationApplicationsDirectory";
 import { ApplicationWorkspace } from "./ApplicationWorkspace";
 import { applicationPermissionLabel } from "./display-labels";
 
@@ -300,7 +301,6 @@ export function OrganizationDetail({
             <div>
               <p className="eyebrow">Parceria</p>
               <h2 id="detail-title">{detail.name}</h2>
-              <p className="detail-slug">{detail.slug}</p>
             </div>
             <span className="pill">{statusLabel(detail.status)}</span>
           </div>
@@ -326,42 +326,71 @@ export function OrganizationDetail({
               Dados da parceria
             </button>
           </div>
-          {section === "application" && (
-            <ApplicationWorkspace
+          {section === "application" && selectedApplicationId && (
+            <>
+              <button
+                type="button"
+                className="back-link"
+                onClick={() => setSelectedApplicationId(null)}
+              >
+                ← Voltar às aplicações
+              </button>
+              <ApplicationWorkspace
+                key={selectedApplicationId ?? organizationId}
+                applications={detail.applications}
+                permissions={detail.permissions}
+                selectedApplicationId={selectedApplicationId}
+                onSelectApplication={setSelectedApplicationId}
+                csrfToken={csrfToken}
+                canManage={canManage}
+                canEdit={detail.status === "active"}
+                onUnauthorized={onUnauthorized}
+                permissionBusy={permissionBusy !== null}
+                onTogglePermission={(applicationId, code, granted) =>
+                  void changePermission(
+                    () =>
+                      granted
+                        ? revokeApplicationPermission(
+                            applicationId,
+                            code,
+                            csrfToken,
+                          )
+                        : grantApplicationPermission(
+                            applicationId,
+                            code,
+                            csrfToken,
+                          ),
+                    `${applicationId}:${code}`,
+                    granted ? "Permissão revogada." : "Permissão concedida.",
+                  )
+                }
+                additionalApplication={null}
+              />
+            </>
+          )}
+          {section === "application" && !selectedApplicationId && (
+            <OrganizationApplicationsDirectory
+              organizationId={organizationId}
+              organizationName={detail.name}
               applications={detail.applications}
               permissions={detail.permissions}
-              selectedApplicationId={selectedApplicationId}
-              onSelectApplication={setSelectedApplicationId}
+              canManage={canManage && detail.status === "active"}
               csrfToken={csrfToken}
-              canManage={canManage}
-              canEdit={detail.status === "active"}
+              onOpen={setSelectedApplicationId}
+              onChanged={() => setRevision((value) => value + 1)}
               onUnauthorized={onUnauthorized}
-              permissionBusy={permissionBusy !== null}
-              onTogglePermission={(applicationId, code, granted) =>
-                void changePermission(
-                  () =>
-                    granted
-                      ? revokeApplicationPermission(
-                          applicationId,
-                          code,
-                          csrfToken,
-                        )
-                      : grantApplicationPermission(
-                          applicationId,
-                          code,
-                          csrfToken,
-                        ),
-                  `${applicationId}:${code}`,
-                  granted ? "Permissão revogada." : "Permissão concedida.",
-                )
-              }
-              additionalApplication={
+              createForm={
                 canManage && detail.status === "active" ? (
-                  <AdditionalApplicationForm
+                  <ApplicationCreationWizard
                     key={organizationId}
                     organizationId={organizationId}
+                    organizationName={detail.name}
+                    availablePermissions={detail.permissions}
                     csrfToken={csrfToken}
-                    onCreated={() => setRevision((value) => value + 1)}
+                    onCreated={(applicationId) => {
+                      setSelectedApplicationId(applicationId);
+                      setRevision((value) => value + 1);
+                    }}
                     onUnauthorized={onUnauthorized}
                   />
                 ) : null

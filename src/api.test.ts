@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   ApiError,
+  applyApplicationBulkChange,
   beginPasskeyLogin,
   beginPasskeyRegistration,
   classifyAnalysisOriginal,
@@ -20,6 +21,7 @@ import {
   listOrganizations,
   listPendingSourceClassifications,
   listPartnerCredentials,
+  previewApplicationBulkChange,
   mediaUrl,
   replaceOrganizationProfile,
   replaceApplicationRedirectUris,
@@ -347,15 +349,81 @@ describe("cliente da API interna", () => {
       }),
     );
     vi.stubGlobal("fetch", fetchMock);
-    await listOrganizations("  cartório  ", "cursor-opaco");
+    await listOrganizations("  cartório  ", "cursor-opaco", "active");
     const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit];
     const parsed = new URL(url);
     expect(parsed.pathname).toBe("/v1/team/organizations");
     expect(parsed.searchParams.get("q")).toBe("cartório");
     expect(parsed.searchParams.get("cursor")).toBe("cursor-opaco");
     expect(parsed.searchParams.get("limit")).toBe("20");
+    expect(parsed.searchParams.get("status")).toBe("active");
     expect(options.credentials).toBe("include");
     expect(options.headers).not.toHaveProperty("X-CSRF-Token");
+  });
+
+  it("prepara e confirma alteração em massa com CSRF e chave de idempotência", async () => {
+    const preview = {
+      preview_id: uuidv7(),
+      organization_id: uuidv7(),
+      expires_at: new Date().toISOString(),
+      confirmation_hash: "hash-seguro",
+      selected_count: 2,
+      affected_count: 2,
+      state: "preview",
+      items: [],
+    };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify(preview), { status: 200 }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ ...preview, items: [] }), {
+          status: 200,
+        }),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+    const requestId = uuidv7();
+    const appIds = [uuidv7(), uuidv7()];
+    await previewApplicationBulkChange(
+      preview.organization_id,
+      appIds,
+      { status: "suspended" },
+      "csrf",
+      requestId,
+    );
+    await applyApplicationBulkChange(
+      preview.organization_id,
+      preview.preview_id,
+      preview.confirmation_hash,
+      "csrf",
+    );
+    const [previewUrl, previewInit] = fetchMock.mock.calls[0] as [
+      string,
+      RequestInit,
+    ];
+    const [applyUrl, applyInit] = fetchMock.mock.calls[1] as [
+      string,
+      RequestInit,
+    ];
+    expect(new URL(previewUrl).pathname).toBe(
+      `/v1/team/organizations/${preview.organization_id}/applications/bulk-previews`,
+    );
+    expect(previewInit.headers).toMatchObject({
+      "X-CSRF-Token": "csrf",
+      "Idempotency-Key": requestId,
+    });
+    expect(JSON.parse(previewInit.body as string)).toEqual({
+      application_ids: appIds,
+      changes: { status: "suspended" },
+    });
+    expect(new URL(applyUrl).pathname).toBe(
+      `/v1/team/organizations/${preview.organization_id}/applications/bulk-previews/${preview.preview_id}/apply`,
+    );
+    expect(applyInit.headers).toMatchObject({ "X-CSRF-Token": "csrf" });
+    expect(JSON.parse(applyInit.body as string)).toEqual({
+      confirmation_hash: "hash-seguro",
+    });
   });
 
   it("consulta detalhe por ID sem credencial de parceiro ou CSRF", async () => {
