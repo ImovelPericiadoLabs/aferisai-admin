@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ApiError } from "./api";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { Slider } from "./controls";
 import { FileDropzone } from "./FileDropzone";
 import { describeFile, formatBytes, type FileRule } from "./file-rules";
 import { clampZoom, computeCrop, fitWithin } from "./image-model";
@@ -268,43 +269,35 @@ export function ImageUploader({
                 aria-label="Enquadramento da imagem"
               />
               <div className="iu-sliders">
-                <label className="form-field-label" htmlFor="iu-zoom">
-                  Zoom ({zoom.toFixed(1)}×)
-                </label>
-                <input
+                <Slider
                   id="iu-zoom"
-                  type="range"
-                  min="1"
-                  max="4"
-                  step="0.1"
+                  label="Zoom"
                   value={zoom}
-                  onChange={(event) =>
-                    setZoom(clampZoom(Number(event.target.value)))
-                  }
+                  min={1}
+                  max={4}
+                  step={0.1}
+                  format={(value) => `${value.toFixed(1)}×`}
+                  onChange={(value) => setZoom(clampZoom(value))}
                 />
-                <label className="form-field-label" htmlFor="iu-x">
-                  Posição horizontal
-                </label>
-                <input
+                <Slider
                   id="iu-x"
-                  type="range"
-                  min="-1"
-                  max="1"
-                  step="0.05"
+                  label="Posição horizontal"
                   value={offsetX}
-                  onChange={(event) => setOffsetX(Number(event.target.value))}
+                  min={-1}
+                  max={1}
+                  step={0.05}
+                  format={(value) => `${Math.round(value * 100)}%`}
+                  onChange={setOffsetX}
                 />
-                <label className="form-field-label" htmlFor="iu-y">
-                  Posição vertical
-                </label>
-                <input
+                <Slider
                   id="iu-y"
-                  type="range"
-                  min="-1"
-                  max="1"
-                  step="0.05"
+                  label="Posição vertical"
                   value={offsetY}
-                  onChange={(event) => setOffsetY(Number(event.target.value))}
+                  min={-1}
+                  max={1}
+                  step={0.05}
+                  format={(value) => `${Math.round(value * 100)}%`}
+                  onChange={setOffsetY}
                 />
                 <div className="iu-actions">
                   <button
