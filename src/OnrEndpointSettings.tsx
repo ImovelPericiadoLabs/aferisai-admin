@@ -24,10 +24,14 @@ function message(cause: unknown): string {
 }
 
 export function OnrEndpointSettings({
+  accountId,
+  accountLabel,
   csrf,
   onUnauthorized,
   onToast,
 }: {
+  accountId: string;
+  accountLabel: string;
   csrf: string;
   onUnauthorized: () => void;
   onToast: (message: string, kind: ToastKind) => void;
@@ -45,7 +49,7 @@ export function OnrEndpointSettings({
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const current = await getOnrEndpoint();
+      const current = await getOnrEndpoint(accountId);
       setEndpoint(current);
       setOrigin(current.mode === "proxy" ? current.origin : "");
       setError("");
@@ -55,7 +59,7 @@ export function OnrEndpointSettings({
     } finally {
       setLoading(false);
     }
-  }, [onUnauthorized]);
+  }, [accountId, onUnauthorized]);
 
   useEffect(() => {
     queueMicrotask(() => void load());
@@ -68,8 +72,9 @@ export function OnrEndpointSettings({
     setError("");
     try {
       const updated = await setOnrEndpoint(
+        accountId,
         origin.trim(),
-        key,
+        key || null,
         endpoint.version,
         reason.trim(),
         csrf,
@@ -96,6 +101,7 @@ export function OnrEndpointSettings({
     setError("");
     try {
       const updated = await resetOnrEndpoint(
+        accountId,
         endpoint.version,
         resetReason.trim(),
         csrf,
@@ -119,8 +125,8 @@ export function OnrEndpointSettings({
     <section className="onr-endpoint" aria-labelledby="onr-endpoint-title">
       <div className="onr-endpoint-heading">
         <div>
-          <h2 id="onr-endpoint-title">Conexão RI Digital</h2>
-          <p>Escolha a origem usada nas próximas consultas e pedidos.</p>
+          <h2 id="onr-endpoint-title">Conexão de {accountLabel}</h2>
+          <p>Origem usada por esta conta nas próximas consultas e pedidos.</p>
         </div>
         <button
           type="button"
@@ -181,7 +187,9 @@ export function OnrEndpointSettings({
               className="btn btn-secondary btn-md"
               onClick={() => setEditing(true)}
             >
-              {endpoint.mode === "proxy" ? "Trocar proxy" : "Configurar proxy"}
+              {endpoint.mode === "proxy"
+                ? "Editar conexão"
+                : "Configurar proxy"}
             </button>
           ) : (
             <form
@@ -213,13 +221,15 @@ export function OnrEndpointSettings({
                 minLength={24}
                 maxLength={256}
                 autoComplete="off"
-                required
+                required={!endpoint.proxy_key_configured}
                 disabled={busy}
                 onChange={(event) => setKey(event.target.value)}
               />
               <small>
-                O Worker deve retornar 401 ou 403 sem a chave. Ela não aparecerá
-                novamente.
+                {endpoint.proxy_key_configured
+                  ? "Deixe em branco para manter a chave desta conta. Informe outra para trocá-la."
+                  : "Informe a chave do Worker. Ela não aparecerá novamente."}{" "}
+                O Worker deve retornar 401 ou 403 sem a chave.
               </small>
               <label htmlFor="onr-proxy-reason">Motivo da troca</label>
               <textarea

@@ -183,12 +183,13 @@ describe("registry supplier accounts API", () => {
   });
   it("changes and restores the RI Digital endpoint with version and CSRF", async () => {
     const last = stub();
-    await getOnrEndpoint();
+    await getOnrEndpoint("a1");
     expect(last()).toMatchObject({
-      path: "/v1/team/onr-endpoint",
+      path: "/v1/team/registry-supplier-accounts/a1/onr-endpoint",
       method: "GET",
     });
     await setOnrEndpoint(
+      "a1",
       "https://onr.sec-devchamps.workers.dev",
       "synthetic-private-proxy-key-32chars",
       2,
@@ -196,7 +197,7 @@ describe("registry supplier accounts API", () => {
       "csrf",
     );
     expect(last()).toMatchObject({
-      path: "/v1/team/onr-endpoint",
+      path: "/v1/team/registry-supplier-accounts/a1/onr-endpoint",
       method: "PUT",
       headers: { "X-CSRF-Token": "csrf" },
       body: {
@@ -207,9 +208,9 @@ describe("registry supplier accounts API", () => {
     expect(String(vi.mocked(fetch).mock.calls.at(-1)?.[0])).not.toContain(
       "synthetic-private",
     );
-    await resetOnrEndpoint(3, "Restaurar conexão oficial", "csrf");
+    await resetOnrEndpoint("a1", 3, "Restaurar conexão oficial", "csrf");
     expect(last()).toMatchObject({
-      path: "/v1/team/onr-endpoint/reset",
+      path: "/v1/team/registry-supplier-accounts/a1/onr-endpoint/reset",
       method: "POST",
       body: { expected_version: 3, reason: "Restaurar conexão oficial" },
     });

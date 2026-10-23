@@ -2275,37 +2275,48 @@ export type OnrEndpoint = {
   version: number;
 };
 
-export const getOnrEndpoint = () =>
-  request<OnrEndpoint>("/v1/team/onr-endpoint", { method: "GET" });
+export const getOnrEndpoint = (accountId: string) =>
+  request<OnrEndpoint>(
+    `/v1/team/registry-supplier-accounts/${encodeURIComponent(accountId)}/onr-endpoint`,
+    { method: "GET" },
+  );
 
 export const setOnrEndpoint = (
+  accountId: string,
   origin: string,
-  proxyKey: string,
+  proxyKey: string | null,
   expectedVersion: number,
   reason: string,
   csrfToken: string,
 ) =>
-  request<OnrEndpoint>("/v1/team/onr-endpoint", {
-    method: "PUT",
-    headers: { "X-CSRF-Token": csrfToken },
-    body: JSON.stringify({
-      origin,
-      proxy_key: proxyKey,
-      expected_version: expectedVersion,
-      reason,
-    }),
-  });
+  request<OnrEndpoint>(
+    `/v1/team/registry-supplier-accounts/${encodeURIComponent(accountId)}/onr-endpoint`,
+    {
+      method: "PUT",
+      headers: { "X-CSRF-Token": csrfToken },
+      body: JSON.stringify({
+        origin,
+        ...(proxyKey ? { proxy_key: proxyKey } : {}),
+        expected_version: expectedVersion,
+        reason,
+      }),
+    },
+  );
 
 export const resetOnrEndpoint = (
+  accountId: string,
   expectedVersion: number,
   reason: string,
   csrfToken: string,
 ) =>
-  request<OnrEndpoint>("/v1/team/onr-endpoint/reset", {
-    method: "POST",
-    headers: { "X-CSRF-Token": csrfToken },
-    body: JSON.stringify({ expected_version: expectedVersion, reason }),
-  });
+  request<OnrEndpoint>(
+    `/v1/team/registry-supplier-accounts/${encodeURIComponent(accountId)}/onr-endpoint/reset`,
+    {
+      method: "POST",
+      headers: { "X-CSRF-Token": csrfToken },
+      body: JSON.stringify({ expected_version: expectedVersion, reason }),
+    },
+  );
 
 export type ManagementEvent = {
   id: string;
