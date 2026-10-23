@@ -187,7 +187,7 @@ export function Connections({
           gap: "0.6rem",
           marginBottom: "1.5rem",
           flexWrap: "wrap",
-          alignItems: "flex-end",
+          alignItems: "flex-start",
         }}
       >
         <div style={{ flex: "1 1 240px", maxWidth: "320px" }}>
@@ -222,27 +222,34 @@ export function Connections({
             onChange={setAppFilter}
           />
         </div>
-        <button
-          type="submit"
-          className="button secondary"
-          disabled={loading || !appFilter}
-        >
-          Filtrar
-        </button>
-        {activeFilter && (
-          <button
-            type="button"
-            className="button secondary"
-            onClick={() => {
-              setAppFilter("");
-              setOrgFilter("");
-              setActiveFilter("");
-              void load(undefined, "");
-            }}
-          >
-            Limpar filtro
-          </button>
-        )}
+        <div style={{ display: "flex", flexDirection: "column" }}>
+          <div className="picker" aria-hidden="true">
+            <label className="form-field-label">&nbsp;</label>
+          </div>
+          <div style={{ display: "flex", gap: "0.6rem" }}>
+            <button
+              type="submit"
+              className="btn btn-secondary btn-md"
+              disabled={loading || !appFilter}
+            >
+              Filtrar
+            </button>
+            {activeFilter && (
+              <button
+                type="button"
+                className="btn btn-secondary btn-md"
+                onClick={() => {
+                  setAppFilter("");
+                  setOrgFilter("");
+                  setActiveFilter("");
+                  void load(undefined, "");
+                }}
+              >
+                Limpar filtro
+              </button>
+            )}
+          </div>
+        </div>
       </form>
 
       {error && (

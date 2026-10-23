@@ -7,6 +7,9 @@ const SRC = fileURLToPath(new URL(".", import.meta.url));
 const stylesheets: [string, string][] = readdirSync(SRC)
   .filter((name) => name.endsWith(".css"))
   .map((name) => [name, readFileSync(SRC + name, "utf8")]);
+const components: [string, string][] = readdirSync(SRC)
+  .filter((name) => name.endsWith(".tsx"))
+  .map((name) => [name, readFileSync(SRC + name, "utf8")]);
 
 // Bottom alignment is intentional for titles beside actions and for charts.
 // Controls that share a row with a labelled field must use `.field-action`
@@ -36,7 +39,9 @@ function bottomAlignedSelectors(css: string): string[] {
   const rule = /([^{}]+)\{([^{}]*)\}/g;
   let match: RegExpExecArray | null;
   while ((match = rule.exec(css))) {
-    if (/align-items:\s*(flex-end|end)\b/.test(match[2]))
+    if (
+      /(align-items|align-self|place-items):\s*(flex-end|end)\b/.test(match[2])
+    )
       for (const selector of match[1].split(",")) found.push(selector.trim());
   }
   return found;
@@ -65,5 +70,19 @@ describe("css layout guard", () => {
       bottomAlignedSelectors(".form { display: flex; align-items: flex-end; }"),
     ).toEqual([".form"]);
     expect(bottomAlignedSelectors(".ok { align-items: center; }")).toEqual([]);
+  });
+
+  it("does not bottom-align rows with inline styles in components", () => {
+    const offenders = components
+      .filter(([, source]) =>
+        /(alignItems|alignSelf|placeItems):\s*["'](flex-end|end)["']/.test(
+          source,
+        ),
+      )
+      .map(([file]) => file);
+    expect(
+      offenders,
+      "Use FieldAction ou alinhe pelo topo com um espaçador de rótulo; veja docs/design-system/layout-rules.md",
+    ).toEqual([]);
   });
 });

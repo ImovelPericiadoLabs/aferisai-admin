@@ -56,7 +56,9 @@ function visible(element: Element): boolean {
 
 export function auditAlignment(root: ParentNode = document): AlignmentIssue[] {
   const controls = Array.from(
-    root.querySelectorAll(".btn, .input, input.input, select.input"),
+    root.querySelectorAll(
+      ".btn, .button, .input, input.input, select.input, .picker-control",
+    ),
   ).filter(visible);
   const byGroup = new Map<Element, Element[]>();
   for (const control of controls) {

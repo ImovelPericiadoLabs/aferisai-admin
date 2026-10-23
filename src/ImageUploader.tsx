@@ -237,6 +237,11 @@ export function ImageUploader({
             }
             hint="PNG ou JPEG"
           />
+          {error && status !== "error" && (
+            <p className="dz-error" role="alert">
+              {error}
+            </p>
+          )}
 
           {best && previewUrl && (
             <div className="iu-previews" aria-label="Como vai aparecer">
