@@ -1,4 +1,4 @@
-import { useRef, useState, type DragEvent } from "react";
+import { useEffect, useRef, useState, type DragEvent } from "react";
 import {
   describeFile,
   formatBytes,
@@ -67,6 +67,8 @@ export function FileDropzone({
   disabled = false,
 }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const areaRef = useRef<HTMLDivElement>(null);
+  const hadFile = useRef(Boolean(file));
   const [dragging, setDragging] = useState(false);
   const [shake, setShake] = useState(false);
   const [message, setMessage] = useState("");
@@ -97,6 +99,24 @@ export function FileDropzone({
     if (!locked) choose(event.dataTransfer.files);
   }
 
+  useEffect(() => {
+    const has = Boolean(file);
+    if (has !== hadFile.current) {
+      const active = document.activeElement;
+      if (
+        !active ||
+        active === document.body ||
+        areaRef.current?.contains(active)
+      )
+        areaRef.current
+          ?.querySelector<HTMLElement>(
+            has ? ".dz-file-actions button:not(:disabled)" : ".dz-pick",
+          )
+          ?.focus();
+      hadFile.current = has;
+    }
+  }, [file]);
+
   const info = file ? describeFile(file) : null;
   const percent = Math.round(Math.min(1, Math.max(0, progress)) * 100);
   const shownError = message || (status === "error" ? errorMessage : "");
@@ -107,6 +127,7 @@ export function FileDropzone({
         {label}
       </span>
       <div
+        ref={areaRef}
         className={`dz-area${dragging ? " dragging" : ""}${shake ? " shake" : ""}${file ? " has-file" : ""}${shownError ? " invalid" : ""}`}
         onDragEnter={(event) => {
           event.preventDefault();
@@ -222,7 +243,7 @@ export function FileDropzone({
           </div>
         )}
         {busy && (
-          <div className="dz-progress" aria-live="polite">
+          <div className="dz-progress">
             <div
               className="dz-bar"
               role="progressbar"
@@ -237,6 +258,13 @@ export function FileDropzone({
           </div>
         )}
       </div>
+      <span className="sr-only" role="status" aria-live="polite">
+        {status === "uploading"
+          ? "Enviando arquivo."
+          : status === "done"
+            ? "Envio concluído."
+            : ""}
+      </span>
       {shownError && (
         <p className="dz-error" role="alert">
           {shownError}

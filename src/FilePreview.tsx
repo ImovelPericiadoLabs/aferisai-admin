@@ -72,12 +72,17 @@ function PdfPreview({ file }: { file: File }) {
     void (async () => {
       try {
         const { getDocument, GlobalWorkerOptions } = await import("pdfjs-dist");
+        if (disposed) return;
         GlobalWorkerOptions.workerSrc = workerUrl;
         const data = new Uint8Array(await file.arrayBuffer());
+        if (disposed) return;
         const loading = getDocument({ data, enableXfa: false });
         task = loading;
         const doc = await loading.promise;
-        if (disposed) return;
+        if (disposed) {
+          void loading.destroy();
+          return;
+        }
         const page = await doc.getPage(1);
         const base = page.getViewport({ scale: 1 });
         const viewport = page.getViewport({ scale: 180 / base.width });

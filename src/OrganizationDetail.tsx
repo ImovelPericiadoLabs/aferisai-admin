@@ -215,11 +215,19 @@ export function OrganizationDetail({
   }
 
   async function refreshLogo(notice: string) {
-    setLogoBlobUrl(null);
-    setDetail(await getOrganization(organizationId));
-    setLogoRevision((value) => value + 1);
-    setLogoError("");
-    setLogoNotice(notice);
+    try {
+      const next = await getOrganization(organizationId);
+      setLogoBlobUrl(null);
+      setDetail(next);
+      setLogoRevision((value) => value + 1);
+      setLogoError("");
+      setLogoNotice(notice);
+    } catch {
+      setLogoNotice("");
+      setLogoError(
+        "A alteração foi salva, mas não foi possível atualizar a tela. Recarregue a página para ver o resultado.",
+      );
+    }
   }
 
   async function uploadLogo(

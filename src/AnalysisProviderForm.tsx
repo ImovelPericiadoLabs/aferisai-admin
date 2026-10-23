@@ -8,6 +8,7 @@ import { kindLabels } from "./AnalysisProviderPanel";
 import { FileDropzone } from "./FileDropzone";
 import { FilePreview } from "./FilePreview";
 import { SERVICE_ACCOUNT_RULE } from "./file-rules";
+import { summarizeServiceAccount } from "./file-preview-model";
 import { formToLimits, limitsToForm, type LimitsForm } from "./provider-model";
 import { validateReason } from "./reason";
 
@@ -74,7 +75,13 @@ export function AnalysisProviderForm({
     }
     try {
       const value = await file.text();
-      JSON.parse(value);
+      const summary = summarizeServiceAccount(value);
+      if (!summary.ok) {
+        setCredential("");
+        setCredentialFile(null);
+        setError(summary.message);
+        return;
+      }
       setCredential(value);
       setCredentialFile(file);
       setError("");

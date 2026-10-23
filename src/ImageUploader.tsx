@@ -65,6 +65,10 @@ export function ImageUploader({
   const [error, setError] = useState("");
   const [askRemove, setAskRemove] = useState(false);
   const [removing, setRemoving] = useState(false);
+  const doneTimer = useRef<number | undefined>(undefined);
+  const sendRef = useRef<HTMLButtonElement>(null);
+  const zoomWrapRef = useRef<HTMLDivElement>(null);
+  const wasAdjusting = useRef(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
   const best = framed ?? file;
@@ -109,7 +113,16 @@ export function ImageUploader({
     context.drawImage(image, sx, sy, size, size, 0, 0, FRAME, FRAME);
   }
 
+  useEffect(() => () => window.clearTimeout(doneTimer.current), []);
+
+  useEffect(() => {
+    if (adjusting) zoomWrapRef.current?.querySelector("input")?.focus();
+    else if (wasAdjusting.current) sendRef.current?.focus();
+    wasAdjusting.current = adjusting;
+  }, [adjusting]);
+
   function reset(next: File | null) {
+    window.clearTimeout(doneTimer.current);
     setFile(next);
     setFramed(null);
     setAdjusting(false);
@@ -161,7 +174,7 @@ export function ImageUploader({
       await onUpload(best, setProgress);
       setProgress(1);
       setStatus("done");
-      window.setTimeout(() => reset(null), 1600);
+      doneTimer.current = window.setTimeout(() => reset(null), 1600);
     } catch (cause) {
       if (cause instanceof ApiError && cause.status === 401) onUnauthorized?.();
       setError(
@@ -273,7 +286,7 @@ export function ImageUploader({
                 className={`iu-canvas iu-${shape}`}
                 aria-label="Enquadramento da imagem"
               />
-              <div className="iu-sliders">
+              <div className="iu-sliders" ref={zoomWrapRef}>
                 <Slider
                   id="iu-zoom"
                   label="Zoom"
@@ -327,6 +340,7 @@ export function ImageUploader({
           {file && !adjusting && status !== "done" && (
             <div className="iu-actions">
               <button
+                ref={sendRef}
                 className="btn btn-primary btn-md"
                 type="button"
                 disabled={status === "uploading"}
