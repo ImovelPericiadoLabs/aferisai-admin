@@ -2116,3 +2116,52 @@ export const listTeamRegistryRequests = ({
     { method: "GET" },
   );
 };
+
+export type PartnerActivity = {
+  organization_id: string;
+  application_id: string | null;
+  since: string;
+  until: string;
+  active_connections: number;
+  analysis_submissions: number;
+  analysis_completions: number;
+  registry_requests: number;
+  webhook_attempts: number;
+  webhook_delivered: number;
+  webhook_latency_p50_ms: number | null;
+  webhook_latency_p95_ms: number | null;
+  coupon_redemptions: number;
+  link_redemptions: number;
+};
+
+export const getPartnerMetrics = (days: number, applicationId?: string) =>
+  request<PartnerActivity>(
+    `${applicationId ? `/v1/partner/applications/${encodeURIComponent(applicationId)}/metrics` : "/v1/partner/metrics"}?days=${days}`,
+    { method: "GET" },
+  );
+
+export type PartnerCommissionItem = {
+  id: string;
+  item_kind: string;
+  amount_cents: number;
+  status: string;
+  created_at: string;
+  settled_at: string | null;
+};
+export type PartnerCommissionStatement = {
+  organization_id: string;
+  totals: {
+    provisional_cents: number;
+    owed_cents: number;
+    settled_cents: number;
+    reversed_cents: number;
+  };
+  items: PartnerCommissionItem[];
+  next_cursor: string | null;
+};
+
+export const getPartnerCommissions = (cursor?: string) =>
+  request<PartnerCommissionStatement>(
+    `/v1/partner/commissions?limit=20${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`,
+    { method: "GET" },
+  );

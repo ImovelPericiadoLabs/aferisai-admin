@@ -74,3 +74,25 @@ describe("webhook settings API", () => {
     expect(last().body).toBeUndefined();
   });
 });
+
+import { getPartnerCommissions, getPartnerMetrics } from "./api";
+
+describe("partner metrics and statement API", () => {
+  it("reads organization and application metrics over a window", async () => {
+    const last = stub();
+    await getPartnerMetrics(7);
+    expect(last()).toMatchObject({
+      path: "/v1/partner/metrics",
+      method: "GET",
+    });
+    await getPartnerMetrics(90, "a 1");
+    expect(last().path).toBe("/v1/partner/applications/a%201/metrics");
+  });
+  it("pages the statement with cursor and no CSRF", async () => {
+    const last = stub();
+    await getPartnerCommissions("c1");
+    expect(last().path).toBe("/v1/partner/commissions");
+    expect(String(vi.mocked(fetch).mock.calls.at(-1)?.[0])).toContain("cursor=c1");
+    expect(last().headers["X-CSRF-Token"]).toBeUndefined();
+  });
+});

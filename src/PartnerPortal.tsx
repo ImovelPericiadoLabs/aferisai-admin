@@ -29,6 +29,9 @@ import {
 } from "./ApplicationWorkspace";
 import { Breadcrumbs } from "./Breadcrumbs";
 import { PartnerPeople } from "./PartnerPeople";
+import { PartnerMetrics } from "./PartnerMetrics";
+import { PartnerStatement } from "./PartnerStatement";
+import { portalSections, type PortalSection } from "./partner-finance-model";
 import { memberAccess, roleLabel } from "./partner-roles";
 import { ToastStack } from "./ToastStack";
 import { useToast } from "./useToast";
@@ -272,9 +275,8 @@ export function PartnerPortal() {
   >({});
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [tab, setTab] = useState<IntegrationTab>("overview");
-  const [section, setSection] = useState<"integrations" | "people">(
-    "integrations",
-  );
+  const [requestedSection, setSection] =
+    useState<PortalSection>("integrations");
   const { toasts, show: showToast, dismiss: dismissToast } = useToast();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -312,6 +314,12 @@ export function PartnerPortal() {
 
   const activeOrganizationId = session?.member.organization_id;
   const access = memberAccess(session?.member.role);
+  const sections = portalSections(access);
+  const section: PortalSection | null = sections.some(
+    (item) => item.id === requestedSection,
+  )
+    ? requestedSection
+    : (sections[0]?.id ?? null);
   const csrfForPeople = session?.csrf;
   const peopleApi = useMemo(
     () => (csrfForPeople ? ownerPeopleApi(csrfForPeople) : null),
@@ -593,27 +601,22 @@ export function PartnerPortal() {
                   : []),
               ]}
             />
-            {access.people && (
+            {sections.length > 1 && (
               <nav className="seg-tabs" aria-label="Seções da parceria">
-                {(
-                  [
-                    ["integrations", "Integrações"],
-                    ["people", "Pessoas"],
-                  ] as const
-                ).map(([value, label]) => (
+                {sections.map((item) => (
                   <button
-                    key={value}
+                    key={item.id}
                     type="button"
-                    className={`seg-tab${section === value ? " active" : ""}`}
-                    aria-current={section === value ? "page" : undefined}
-                    onClick={() => setSection(value)}
+                    className={`seg-tab${section === item.id ? " active" : ""}`}
+                    aria-current={section === item.id ? "page" : undefined}
+                    onClick={() => setSection(item.id)}
                   >
-                    {label}
+                    {item.label}
                   </button>
                 ))}
               </nav>
             )}
-            {section === "people" && access.people && peopleApi ? (
+            {section === "people" && peopleApi ? (
               <PartnerPeople
                 api={peopleApi}
                 organizationName={
@@ -624,13 +627,21 @@ export function PartnerPortal() {
                 onUnauthorized={unauthorize}
                 onToast={showToast}
               />
-            ) : !access.integrations ? (
+            ) : section === "metrics" ? (
+              <PartnerMetrics
+                applications={applications}
+                organizationName={
+                  session.member.organization_name || "esta parceria"
+                }
+                onUnauthorized={unauthorize}
+              />
+            ) : section === "statement" ? (
+              <PartnerStatement onUnauthorized={unauthorize} />
+            ) : section === null ? (
               <div className="empty-state" role="status">
-                <strong>Integrações não fazem parte do seu papel</strong>
+                <strong>Seu papel não tem telas disponíveis</strong>
                 <span>
-                  Com o papel {roleLabel(session.member.role)} você acompanha
-                  métricas e extrato quando estiverem disponíveis. Credenciais e
-                  webhooks ficam com proprietários e desenvolvedores.
+                  Peça a um proprietário da parceria para ajustar o seu papel.
                 </span>
               </div>
             ) : (
