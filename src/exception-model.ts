@@ -131,3 +131,25 @@ export function filterCases(
     return items.filter((item) => stageOf(item) === "executing");
   return items;
 }
+
+export type AffectedItemRow = {
+  key: string;
+  title: string;
+  detail: string;
+  error: string | null;
+};
+
+export function affectedItemRows(
+  item: PaymentExceptionCase,
+): AffectedItemRow[] {
+  return [...(item.affected_items ?? [])]
+    .sort((a, b) => a.ordinal - b.ordinal)
+    .map((entry) => ({
+      key: String(entry.ordinal),
+      title: `Documento ${entry.ordinal}`,
+      detail: entry.work_id
+        ? `Trabalho ${entry.work_id}${entry.work_status ? ` · situação ${entry.work_status}` : ""}`
+        : "Trabalho ainda não criado",
+      error: entry.error_code,
+    }));
+}

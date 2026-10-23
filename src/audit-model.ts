@@ -46,9 +46,13 @@ export function auditTone(item: ApplicationAuditItem): "success" | "warning" {
 }
 
 export function actorLabel(item: ApplicationAuditItem): string {
-  if (item.actor_team_member_id) return "Equipe Aferis";
-  if (item.actor_partner_member_id) return "Pessoa do parceiro";
-  return "Sistema";
+  const kind = item.actor_team_member_id
+    ? "Equipe Aferis"
+    : item.actor_partner_member_id
+      ? "Pessoa do parceiro"
+      : null;
+  if (kind === null) return "Sistema";
+  return item.actor_label ? `${kind} · ${item.actor_label}` : kind;
 }
 
 const STATUS_LABELS: Record<string, string> = {

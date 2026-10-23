@@ -4,6 +4,7 @@ import { ConfirmDialog } from "./ConfirmDialog";
 import { Disclosure, RadioGroup } from "./controls";
 import { statusLabel } from "./display-labels";
 import {
+  affectedItemRows,
   dueState,
   nextAction,
   reassignBlock,
@@ -84,6 +85,7 @@ export function ExceptionPanel({
   const [target, setTarget] = useState<"manager" | "financial">("manager");
   const [newMember, setNewMember] = useState("");
   const stage = stageOf(item);
+  const affectedRows = affectedItemRows(item);
   const due = dueState(item.due_at, now);
   const action = nextAction(item, role, memberId);
   const block = reassignBlock(item, role, target);
@@ -193,6 +195,24 @@ export function ExceptionPanel({
             <dd>{person(item.financial_assignee_id)}</dd>
           </dl>
         </section>
+        {affectedRows.length > 0 && (
+          <section className="detail-panel-section">
+            <h3 className="detail-panel-section-title">
+              Documentos da compra ({affectedRows.length})
+            </h3>
+            <ul className="exc-affected">
+              {affectedRows.map((row) => (
+                <li key={row.key}>
+                  <strong>{row.title}</strong>
+                  <small>{row.detail}</small>
+                  {row.error && (
+                    <span className="badge badge-danger">{row.error}</span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
         <section className="detail-panel-section">
           <h3 className="detail-panel-section-title">Andamento</h3>
           <ol className="exc-timeline">

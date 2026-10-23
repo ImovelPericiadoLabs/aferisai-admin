@@ -204,6 +204,12 @@ export type AttentionPage = {
   }[];
   next_cursor: string | null;
 };
+export type ExceptionAffectedItem = {
+  ordinal: number;
+  work_id: string | null;
+  work_status: string | null;
+  error_code: string | null;
+};
 export type PaymentExceptionCase = {
   id: string;
   work_id: string;
@@ -221,6 +227,8 @@ export type PaymentExceptionCase = {
   manager_assignee_id: string | null;
   financial_assignee_id: string | null;
   execution_status: "attempted" | "pending" | "done" | "unknown" | null;
+  /** Documents of the same registry purchase; empty for uploaded-file cases. */
+  affected_items?: ExceptionAffectedItem[];
 };
 export type PaymentExceptionPage = {
   items: PaymentExceptionCase[];
@@ -1048,6 +1056,7 @@ export type ApplicationAuditItem = {
   subject_code: string | null;
   actor_team_member_id: string | null;
   actor_partner_member_id: string | null;
+  actor_label?: string | null;
   previous_status: string | null;
   new_status: string | null;
   reason: string | null;

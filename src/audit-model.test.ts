@@ -97,6 +97,26 @@ describe("actorLabel", () => {
   });
 });
 
+describe("actorLabel with the actor's e-mail", () => {
+  it("appends the e-mail the backend resolved, for either kind of actor", () => {
+    expect(actorLabel(item({ actor_label: "ana@aferis.ai" }))).toBe(
+      "Equipe Aferis · ana@aferis.ai",
+    );
+    expect(
+      actorLabel(
+        item({
+          actor_team_member_id: null,
+          actor_partner_member_id: "p1",
+          actor_label: "bia@parceiro.com.br",
+        }),
+      ),
+    ).toBe("Pessoa do parceiro · bia@parceiro.com.br");
+  });
+  it("keeps the generic label when the identity no longer exists", () => {
+    expect(actorLabel(item({ actor_label: null }))).toBe("Equipe Aferis");
+  });
+});
+
 describe("statusChange", () => {
   it("translates webhook status transitions", () => {
     expect(

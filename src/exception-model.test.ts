@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { PaymentExceptionCase } from "./api";
 import {
+  affectedItemRows,
   dueState,
   filterCases,
   nextAction,
@@ -32,6 +33,7 @@ function kase(
     manager_assignee_id: null,
     financial_assignee_id: null,
     execution_status: null,
+    affected_items: [],
     ...overrides,
   };
 }
@@ -239,5 +241,43 @@ describe("sortByUrgency and filterCases", () => {
     ]);
     expect(filterCases(items, "all", "m1", NOW)).toHaveLength(4);
     expect(filterCases(items, "executing", "m1", NOW)).toHaveLength(0);
+  });
+});
+
+describe("affectedItemRows", () => {
+  it("is empty for upload cases and for older responses without the field", () => {
+    expect(affectedItemRows(kase())).toEqual([]);
+    const legacy = kase();
+    delete (legacy as Partial<PaymentExceptionCase>).affected_items;
+    expect(affectedItemRows(legacy)).toEqual([]);
+  });
+  it("orders by document position and describes each item", () => {
+    const rows = affectedItemRows(
+      kase({
+        affected_items: [
+          { ordinal: 3, work_id: null, work_status: null, error_code: null },
+          {
+            ordinal: 1,
+            work_id: "w1",
+            work_status: "error",
+            error_code: "analysis.blocked",
+          },
+        ],
+      }),
+    );
+    expect(rows).toEqual([
+      {
+        key: "1",
+        title: "Documento 1",
+        detail: "Trabalho w1 · situação error",
+        error: "analysis.blocked",
+      },
+      {
+        key: "3",
+        title: "Documento 3",
+        detail: "Trabalho ainda não criado",
+        error: null,
+      },
+    ]);
   });
 });
