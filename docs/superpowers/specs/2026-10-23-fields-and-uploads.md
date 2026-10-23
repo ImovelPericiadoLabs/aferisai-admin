@@ -51,6 +51,8 @@ Dropzone + prévia + **enquadramento opcional** (zoom e posição dentro de mold
 - Datas e horas: manter `datetime-local` nativo, com o estilo `.input` e rótulo de fuso; sem criar calendário próprio nesta rodada.
 - `<select>`: já usa `.input`; sem componente novo.
 
+**Decisão (2026-10-23, Lucas):** o enquadramento é **opcional** e aprovado; sem ajuste, vai o arquivo original.
+
 ## 4. Aplicação nas telas
 - **Já feita (onda 1):** arquivo JSON do provedor → `FileDropzone` + `FilePreview` JSON seguro.
 - **Onda 3:** logo da parceria → `ImageUploader`.
