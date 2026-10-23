@@ -24,6 +24,7 @@ type Props = {
   permissionDescriptions?: Record<string, string>;
   channel?: "team" | "partner";
   onUnauthorized: () => void;
+  onChanged?: () => void;
 };
 
 function dateLabel(value: string): string {
@@ -48,6 +49,7 @@ export function CredentialManagement({
   permissionDescriptions = {},
   channel = "team",
   onUnauthorized,
+  onChanged,
 }: Props) {
   const [items, setItems] = useState<PartnerCredential[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
@@ -108,6 +110,7 @@ export function CredentialManagement({
       setLoaded(true);
       setListError(false);
       if (uncertain) setReconciled(true);
+      onChanged?.();
     } catch (cause) {
       if (cause instanceof ApiError && cause.status === 401) onUnauthorized();
       else {
@@ -221,6 +224,7 @@ export function CredentialManagement({
       );
       await refresh();
     } catch (cause) {
+      setConfirmRevoke(null);
       if (cause instanceof ApiError && cause.status === 401) onUnauthorized();
       else
         setError(

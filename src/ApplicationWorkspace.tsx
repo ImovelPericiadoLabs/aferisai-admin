@@ -13,7 +13,6 @@ import {
   applicationPermissionLabel,
 } from "./display-labels";
 import "./application-workspace.css";
-import "./integration-workspace.css";
 
 type Application = {
   id: string;
@@ -121,7 +120,11 @@ export function ApplicationWorkspace({
     applications.find((item) => item.id === selectedApplicationId) ??
     (applications.length === 1 ? applications[0] : undefined);
   const editable = canEdit && application?.status === "active";
-  const { data: snapshot, failed: snapshotFailed } = useApplicationSnapshot(
+  const {
+    data: snapshot,
+    failed: snapshotFailed,
+    refresh: refreshSnapshot,
+  } = useApplicationSnapshot(
     application?.id ?? "",
     channel,
     canManage && application !== undefined,
@@ -359,6 +362,7 @@ export function ApplicationWorkspace({
             canManage={canManage}
             canEdit={editable}
             onUnauthorized={onUnauthorized}
+            onChanged={refreshSnapshot}
             channel={channel}
           />
         )}
@@ -384,6 +388,7 @@ export function ApplicationWorkspace({
               ]),
             )}
             onUnauthorized={onUnauthorized}
+            onChanged={refreshSnapshot}
             channel={channel}
           />
         )}

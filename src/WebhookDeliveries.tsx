@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { summarizeDeliveries } from "./application-overview-model";
 import { useDialogFocus } from "./useDialogFocus";
+import { deliveryLabel, deliveryTone, eventLabel } from "./delivery-labels";
 import {
   ApiError,
   getApplicationWebhookDelivery,
@@ -33,36 +34,6 @@ function dateLabel(value: string | null): string {
         timeStyle: "short",
       }).format(date);
 }
-function eventLabel(value: string): string {
-  return value === "webhook.test"
-    ? "Evento de teste"
-    : value === "analysis.completed"
-      ? "Análise concluída"
-      : "Evento não identificado";
-}
-function deliveryTone(value: string): string {
-  return value === "delivered"
-    ? "badge-success"
-    : value === "attempted" || value === "unknown"
-      ? "badge-warning"
-      : value === "pending"
-        ? "badge-info"
-        : "badge-neutral";
-}
-function deliveryLabel(value: string): string {
-  return (
-    (
-      {
-        delivered: "Entregue",
-        attempted: "Falha",
-        unknown: "Em conferência",
-        pending: "Aguardando envio",
-        skipped: "Não enviada",
-      } as Record<string, string>
-    )[value] ?? "Estado desconhecido"
-  );
-}
-
 export function WebhookDeliveries({
   applicationId,
   onUnauthorized,
@@ -189,7 +160,7 @@ export function WebhookDeliveries({
   const metrics = summarizeDeliveries(items);
 
   return (
-    <section className="deliv" aria-labelledby="delivery-title">
+    <section className="cred" aria-labelledby="delivery-title">
       <header className="cred-head">
         <div>
           <h3 className="appws-section-title" id="delivery-title">

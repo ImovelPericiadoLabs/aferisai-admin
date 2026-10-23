@@ -88,6 +88,20 @@ describe("summarizeEndpoint", () => {
   });
 });
 
+describe("summarizeCredentials (expiry)", () => {
+  it("does not count an expired credential as active", () => {
+    const result = summarizeCredentials(
+      [
+        credential(),
+        credential({ id: "c2", expires_at: "2020-01-01T00:00:00Z" }),
+      ],
+      Date.parse("2026-10-23T00:00:00Z"),
+    );
+    expect(result.active).toBe(1);
+    expect(result.label).toBe("1 de 2 ativas");
+  });
+});
+
 describe("summarizeCredentials", () => {
   it("counts active credentials against the limit of 2", () => {
     expect(

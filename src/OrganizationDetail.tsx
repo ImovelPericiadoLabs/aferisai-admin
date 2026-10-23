@@ -437,7 +437,7 @@ export function OrganizationDetail({
                   role="tab"
                   className={`seg-tab${section === item.id ? " active" : ""}`}
                   aria-selected={section === item.id}
-                  aria-controls={`partner-panel-${item.id}`}
+                  aria-controls="partner-panel"
                   tabIndex={section === item.id ? 0 : -1}
                   onClick={() => setSection(item.id)}
                 >
@@ -457,9 +457,13 @@ export function OrganizationDetail({
             </div>
           )}
           <div
-            id={`partner-panel-${section}`}
-            role="tabpanel"
-            aria-labelledby={`partner-tab-${section}`}
+            id="partner-panel"
+            {...(openApplication
+              ? {}
+              : {
+                  role: "tabpanel",
+                  "aria-labelledby": `partner-tab-${section}`,
+                })}
           >
             {section === "application" && selectedApplicationId && (
               <>

@@ -35,14 +35,21 @@ export function summarizeEndpoint(endpoint: WebhookEndpoint | null): {
   return { ...status, detail: webhookHost(endpoint.url) };
 }
 
-export function summarizeCredentials(items: PartnerCredential[]): {
+export function summarizeCredentials(
+  items: PartnerCredential[],
+  now: number = Date.now(),
+): {
   active: number;
   revoked: number;
   tone: Tone;
   label: string;
 } {
-  const active = items.filter((item) => item.status === "active").length;
-  const revoked = items.length - active;
+  const active = items.filter(
+    (item) =>
+      item.status === "active" &&
+      !(item.expires_at && Date.parse(item.expires_at) <= now),
+  ).length;
+  const revoked = items.filter((item) => item.status === "revoked").length;
   return {
     active,
     revoked,

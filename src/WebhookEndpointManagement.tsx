@@ -22,6 +22,7 @@ type Props = {
   canEdit: boolean;
   onUnauthorized: () => void;
   channel?: "team" | "partner";
+  onChanged?: () => void;
 };
 
 function validUrl(value: string): boolean {
@@ -46,6 +47,7 @@ export function WebhookEndpointManagement({
   canEdit,
   onUnauthorized,
   channel = "team",
+  onChanged,
 }: Props) {
   const [endpoint, setEndpoint] = useState<WebhookEndpoint | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -105,6 +107,7 @@ export function WebhookEndpointManagement({
       setUrl("");
       setConfigured(false);
       setTest(null);
+      onChanged?.();
     } catch (cause) {
       if (cause instanceof ApiError && cause.status === 401) onUnauthorized();
       else if (cause instanceof ApiError && cause.status === 409)
@@ -130,6 +133,7 @@ export function WebhookEndpointManagement({
       setTest(
         await testApplicationWebhookEndpoint(applicationId, csrfToken, channel),
       );
+      onChanged?.();
     } catch (cause) {
       if (cause instanceof ApiError && cause.status === 401) onUnauthorized();
       else
@@ -157,7 +161,13 @@ export function WebhookEndpointManagement({
       );
       setSecret(null);
       setConfirmSuspend(false);
+      if (status === "suspended") {
+        setTest(null);
+        setConfigured(false);
+      }
+      onChanged?.();
     } catch (cause) {
+      setConfirmSuspend(false);
       if (cause instanceof ApiError && cause.status === 401) onUnauthorized();
       else
         setError(
@@ -180,7 +190,9 @@ export function WebhookEndpointManagement({
       setTest(null);
       setConfirmRemove(false);
       setConfigured(false);
+      onChanged?.();
     } catch (cause) {
+      setConfirmRemove(false);
       if (cause instanceof ApiError && cause.status === 401) onUnauthorized();
       else
         setError(

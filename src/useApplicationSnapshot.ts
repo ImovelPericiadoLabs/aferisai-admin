@@ -20,12 +20,13 @@ export function useApplicationSnapshot(
   channel: "team" | "partner",
   enabled: boolean,
   onUnauthorized: () => void,
-): { data: ApplicationSnapshot | null; failed: boolean } {
+): { data: ApplicationSnapshot | null; failed: boolean; refresh: () => void } {
   const [state, setState] = useState<{
     key: string;
     data: ApplicationSnapshot | null;
     failed: boolean;
   }>({ key: "", data: null, failed: false });
+  const [revision, setRevision] = useState(0);
   const key = `${channel}:${applicationId}`;
 
   useEffect(() => {
@@ -63,9 +64,10 @@ export function useApplicationSnapshot(
     return () => {
       live = false;
     };
-  }, [applicationId, channel, enabled, key, onUnauthorized]);
+  }, [applicationId, channel, enabled, key, revision, onUnauthorized]);
 
+  const refresh = () => setRevision((value) => value + 1);
   return state.key === key
-    ? { data: state.data, failed: state.failed }
-    : { data: null, failed: false };
+    ? { data: state.data, failed: state.failed, refresh }
+    : { data: null, failed: false, refresh };
 }

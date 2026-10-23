@@ -206,11 +206,6 @@
   height: 32px;
 }
 
-.partner-crumb {
-  color: var(--text-muted);
-  font-size: var(--text-sm);
-}
-
 @media (prefers-reduced-motion: reduce) {
   .partner-head,
   .partner-head-stats,
