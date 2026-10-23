@@ -64,7 +64,11 @@ export const resolveApplication =
 
 export const searchPromotionPolicies: PickerSearch = (query) =>
   pagedResult(
-    (cursor) => listCommercialPolicies(cursor),
+    (cursor) =>
+      listCommercialPolicies(cursor, {
+        channel: "promotion",
+        status: "published",
+      }),
     (policy) =>
       policy.channel === "promotion" && policy.status === "published"
         ? {
@@ -98,7 +102,7 @@ export const searchCommissionEntries =
 
 export const LIMIT_NOTES = {
   policies:
-    "A API de regras ainda não filtra por canal/estado: a busca vale só para as páginas já carregadas. Use “Carregar mais resultados”.",
+    "A busca por texto considera as páginas carregadas. Use “Carregar mais resultados” para continuar a busca.",
   entries:
     "A API de comissões não busca por texto: a busca vale só para as páginas já carregadas. Use “Carregar mais resultados”.",
 } as const;

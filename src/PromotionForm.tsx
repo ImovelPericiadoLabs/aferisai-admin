@@ -76,6 +76,7 @@ export function PromotionForm({
             placeholder="Buscar regra publicada de promoção"
             required
             hint="Só aparecem regras publicadas do canal promoção."
+            emptyMessage="Nenhuma regra de promoção publicada. Crie e publique uma regra antes de criar a promoção."
             value={form.policyVersionId}
             search={searchPromotionPolicies}
             limitNote={LIMIT_NOTES.policies}

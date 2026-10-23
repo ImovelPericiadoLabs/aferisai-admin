@@ -38,7 +38,10 @@ export type PartnerInvitationIssued = {
   expires_in: number;
 };
 export type PartnerEnrollment = { totp_secret: string; otpauth_uri: string };
-export type TeamInvitationEnrollment = { totp_secret: string; otpauth_uri: string };
+export type TeamInvitationEnrollment = {
+  totp_secret: string;
+  otpauth_uri: string;
+};
 export type OnboardingBody = {
   organization_slug: string;
   organization_name: string;
@@ -464,11 +467,24 @@ export const suspendAnalysisProviderAccount = (
     },
   );
 
-export const listCommercialPolicies = (cursor?: string) =>
-  request<CommercialPolicyPage>(
-    `/v1/team/commercial-policies?limit=20${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`,
-    { method: "GET" },
+export const listCommercialPolicies = (
+  cursor?: string,
+  filters?: {
+    channel?: CommercialPolicy["channel"];
+    status?: CommercialPolicy["status"];
+  },
+) => {
+  const params = new URLSearchParams({ limit: "20" });
+  if (cursor) params.set("cursor", cursor);
+  if (filters?.channel) params.set("channel", filters.channel);
+  if (filters?.status) params.set("status", filters.status);
+  return request<CommercialPolicyPage>(
+    `/v1/team/commercial-policies?${params}`,
+    {
+      method: "GET",
+    },
   );
+};
 
 export const createCommercialPolicyDraft = (
   body: CommercialPolicyDraft,

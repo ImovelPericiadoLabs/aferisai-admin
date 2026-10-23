@@ -116,7 +116,7 @@ export function Promotions({
 
   useEffect(() => {
     let live = true;
-    listCommercialPolicies()
+    listCommercialPolicies(undefined, { channel: "promotion" })
       .then((page) => {
         if (!live) return;
         setRuleNames(
