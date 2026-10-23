@@ -396,7 +396,10 @@ export function OrganizationDetail({
             >
               {statusLabel(detail.status)}
             </span>
-            <div className="partner-head-stats" aria-hidden={openApplication !== null}>
+            <div
+              className="partner-head-stats"
+              aria-hidden={openApplication !== null}
+            >
               <dl className="partner-stats">
                 <div>
                   <dt>Aplicações</dt>
