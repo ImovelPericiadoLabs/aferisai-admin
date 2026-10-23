@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useMemo,
   useState,
   type FormEvent,
   type ReactNode,
@@ -16,6 +17,7 @@ import {
   listPartnerApplicationPermissions,
   listPartnerApplications,
   renewPartnerCsrf,
+  ownerPeopleApi,
   switchPartnerOrganization,
   type PartnerApplication,
   type PartnerMember,
@@ -26,6 +28,10 @@ import {
   type IntegrationTab,
 } from "./ApplicationWorkspace";
 import { Breadcrumbs } from "./Breadcrumbs";
+import { PartnerPeople } from "./PartnerPeople";
+import { memberAccess, roleLabel } from "./partner-roles";
+import { ToastStack } from "./ToastStack";
+import { useToast } from "./useToast";
 import "./partner-portal.css";
 
 type PartnerSession = { member: PartnerMember; csrf: string };
@@ -266,6 +272,10 @@ export function PartnerPortal() {
   >({});
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [tab, setTab] = useState<IntegrationTab>("overview");
+  const [section, setSection] = useState<"integrations" | "people">(
+    "integrations",
+  );
+  const { toasts, show: showToast, dismiss: dismissToast } = useToast();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [otp, setOtp] = useState("");
@@ -301,8 +311,14 @@ export function PartnerPortal() {
   }, []);
 
   const activeOrganizationId = session?.member.organization_id;
+  const access = memberAccess(session?.member.role);
+  const csrfForPeople = session?.csrf;
+  const peopleApi = useMemo(
+    () => (csrfForPeople ? ownerPeopleApi(csrfForPeople) : null),
+    [csrfForPeople],
+  );
   useEffect(() => {
-    if (!activeOrganizationId) return;
+    if (!activeOrganizationId || !access.integrations) return;
     let live = true;
     listPartnerApplications(requestedCursor)
       .then((result) => {
@@ -323,7 +339,7 @@ export function PartnerPortal() {
     return () => {
       live = false;
     };
-  }, [activeOrganizationId, requestedCursor, unauthorize]);
+  }, [activeOrganizationId, access.integrations, requestedCursor, unauthorize]);
 
   function loadMoreApplications() {
     if (!applicationsCursor || loadingMoreApplications) return;
@@ -345,6 +361,7 @@ export function PartnerPortal() {
       setPermissions({});
       setSelectedId(null);
       setTab("overview");
+      setSection("integrations");
       setError("");
       setSession({ ...session, member });
     } catch (cause) {
@@ -531,6 +548,11 @@ export function PartnerPortal() {
             {session.member.email.slice(0, 2).toUpperCase()}
           </span>
           <span className="pp-account-email">{session.member.email}</span>
+          {session.member.role && (
+            <span className="badge badge-neutral">
+              {roleLabel(session.member.role)}
+            </span>
+          )}
           <button
             type="button"
             className="btn btn-secondary btn-sm"
@@ -571,28 +593,71 @@ export function PartnerPortal() {
                   : []),
               ]}
             />
-            <ApplicationWorkspace
-              applications={appRecords}
-              permissions={selectedPermissions}
-              selectedApplicationId={selectedId}
-              onSelectApplication={setSelectedId}
-              csrfToken={session.csrf}
-              canManage
-              canEdit
-              onUnauthorized={unauthorize}
-              permissionBusy={false}
-              onTogglePermission={() => {}}
-              additionalApplication={null}
-              hasMoreApplications={Boolean(applicationsCursor)}
-              loadingMoreApplications={loadingMoreApplications}
-              onLoadMoreApplications={loadMoreApplications}
-              channel="partner"
-              selectedTab={tab}
-              onTabChange={setTab}
-            />
+            {access.people && (
+              <nav className="seg-tabs" aria-label="Seções da parceria">
+                {(
+                  [
+                    ["integrations", "Integrações"],
+                    ["people", "Pessoas"],
+                  ] as const
+                ).map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    className={`seg-tab${section === value ? " active" : ""}`}
+                    aria-current={section === value ? "page" : undefined}
+                    onClick={() => setSection(value)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </nav>
+            )}
+            {section === "people" && access.people && peopleApi ? (
+              <PartnerPeople
+                api={peopleApi}
+                organizationName={
+                  session.member.organization_name || "esta parceria"
+                }
+                canManage
+                viewerId={session.member.id}
+                onUnauthorized={unauthorize}
+                onToast={showToast}
+              />
+            ) : !access.integrations ? (
+              <div className="empty-state" role="status">
+                <strong>Integrações não fazem parte do seu papel</strong>
+                <span>
+                  Com o papel {roleLabel(session.member.role)} você acompanha
+                  métricas e extrato quando estiverem disponíveis. Credenciais e
+                  webhooks ficam com proprietários e desenvolvedores.
+                </span>
+              </div>
+            ) : (
+              <ApplicationWorkspace
+                applications={appRecords}
+                permissions={selectedPermissions}
+                selectedApplicationId={selectedId}
+                onSelectApplication={setSelectedId}
+                csrfToken={session.csrf}
+                canManage
+                canEdit
+                onUnauthorized={unauthorize}
+                permissionBusy={false}
+                onTogglePermission={() => {}}
+                additionalApplication={null}
+                hasMoreApplications={Boolean(applicationsCursor)}
+                loadingMoreApplications={loadingMoreApplications}
+                onLoadMoreApplications={loadMoreApplications}
+                channel="partner"
+                selectedTab={tab}
+                onTabChange={setTab}
+              />
+            )}
           </>
         )}
       </main>
+      <ToastStack toasts={toasts} dismiss={dismissToast} />
     </div>
   );
 }

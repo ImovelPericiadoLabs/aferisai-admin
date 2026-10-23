@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import {
   ApiError,
   describeOrganizationPermission,
@@ -10,6 +10,7 @@ import {
   putOrganizationLogoWithProgress,
   replaceOrganizationProfile,
   revokeApplicationPermission,
+  teamPeopleApi,
   type OrganizationDetail as Detail,
 } from "./api";
 import type { ToastKind } from "./useToast";
@@ -55,6 +56,10 @@ export function OrganizationDetail({
   onUnauthorized,
   onToast,
 }: Props) {
+  const peopleApi = useMemo(
+    () => teamPeopleApi(organizationId, csrfToken),
+    [organizationId, csrfToken],
+  );
   const [detail, setDetail] = useState<Detail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -571,10 +576,9 @@ export function OrganizationDetail({
                   </section>
 
                   <PartnerPeople
-                    organizationId={organizationId}
+                    api={peopleApi}
                     organizationName={detail.name}
-                    csrfToken={csrfToken}
-                    isAdmin={isAdmin}
+                    canManage={isAdmin}
                     onUnauthorized={onUnauthorized}
                     onToast={onToast}
                   />

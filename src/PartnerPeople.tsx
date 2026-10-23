@@ -9,26 +9,23 @@ import {
 import { createPortal } from "react-dom";
 import {
   ApiError,
-  invitePartnerMember,
-  listPartnerPeople,
-  listPartnerPersonEvents,
-  reactivatePartnerPerson,
-  resendPartnerInvitation,
-  revokePartnerInvitation,
-  suspendPartnerPerson,
   type PartnerManagementEvent,
   type PartnerPerson,
+  type PartnerRole,
+  type PeopleApi,
 } from "./api";
 import { ConfirmDialog } from "./ConfirmDialog";
-import { FieldAction } from "./FieldAction";
 import { relativeTime } from "./integration-insights-model";
+import { roleLabel } from "./partner-roles";
+import { RolePicker } from "./RolePicker";
 import {
   countPeople,
+  eventActor,
   eventLabel,
+  eventValueLabel,
   filterPeople,
   invitationNote,
   personView,
-  statusValueLabel,
   type PeopleFilter,
   type PersonAction,
 } from "./partner-people-model";
@@ -89,6 +86,15 @@ const actionCopy: Record<
     success: "Acesso suspenso. As sessões da pessoa foram encerradas.",
     danger: true,
   },
+  "change-role": {
+    button: "Alterar papel",
+    title: "Alterar o papel desta pessoa?",
+    description:
+      "O novo papel vale só nesta parceria. As sessões atuais da pessoa são encerradas e ela precisa entrar de novo.",
+    confirm: "Alterar papel",
+    success: "Papel alterado. A pessoa precisa entrar de novo.",
+    danger: false,
+  },
   reactivate: {
     button: "Reativar acesso",
     title: "Reativar o acesso desta pessoa?",
@@ -103,17 +109,17 @@ const actionCopy: Record<
 type Pending = { action: PersonAction; person: PartnerPerson };
 
 export function PartnerPeople({
-  organizationId,
+  api,
   organizationName,
-  csrfToken,
-  isAdmin,
+  canManage: isAdmin,
+  viewerId,
   onUnauthorized,
   onToast,
 }: {
-  organizationId: string;
+  api: PeopleApi;
   organizationName: string;
-  csrfToken: string;
-  isAdmin: boolean;
+  canManage: boolean;
+  viewerId?: string;
   onUnauthorized: () => void;
   onToast: (message: string, kind: ToastKind) => void;
 }) {
@@ -132,6 +138,11 @@ export function PartnerPeople({
   const [inviteEditable, setInviteEditable] = useState(false);
   const [inviteConfirm, setInviteConfirm] = useState(false);
   const [inviteError, setInviteError] = useState("");
+  const [inviteRole, setInviteRole] = useState<PartnerRole | null>(null);
+  const [newRole, setNewRole] = useState<PartnerRole | null>(null);
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const inviteRef = useRef<HTMLElement>(null);
+  const inviteTrigger = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLElement>(null);
   const lastOpened = useRef<string | null>(null);
 
@@ -147,7 +158,7 @@ export function PartnerPeople({
   const load = useCallback(
     async (cursor?: string) => {
       try {
-        const page = await listPartnerPeople(organizationId, cursor);
+        const page = await api.list(cursor);
         setItems((current) =>
           cursor ? [...current, ...page.items] : page.items,
         );
@@ -161,7 +172,7 @@ export function PartnerPeople({
         setLoading(false);
       }
     },
-    [organizationId, onUnauthorized],
+    [api, onUnauthorized],
   );
 
   useEffect(() => {
@@ -190,7 +201,7 @@ export function PartnerPeople({
     setEvents(null);
     setEventsFailed(false);
     try {
-      const page = await listPartnerPersonEvents(organizationId, person.id);
+      const page = await api.events(person.id);
       setEvents(page.items);
     } catch (cause) {
       if (cause instanceof ApiError && cause.status === 401) onUnauthorized();
@@ -198,41 +209,33 @@ export function PartnerPeople({
     }
   }
 
+  function closeInvite() {
+    if (busy) return;
+    setInviteOpen(false);
+    setInviteConfirm(false);
+    setInviteError("");
+  }
+
+  useDialogFocus(inviteOpen && !inviteConfirm, inviteRef, closeInvite, {
+    returnFocus: () => inviteTrigger.current,
+  });
+
   async function confirmAction(reason: string) {
     if (!pending) return;
     const { action, person } = pending;
     setBusy(true);
     try {
       if (action === "resend" && person.invitation)
-        await resendPartnerInvitation(
-          organizationId,
-          person.invitation.id,
-          reason,
-          csrfToken,
-        );
+        await api.resend(person.invitation.id, reason);
       else if (action === "revoke" && person.invitation)
-        await revokePartnerInvitation(
-          organizationId,
-          person.invitation.id,
-          reason,
-          csrfToken,
-        );
-      else if (action === "suspend")
-        await suspendPartnerPerson(
-          organizationId,
-          person.id,
-          reason,
-          csrfToken,
-        );
-      else if (action === "reactivate")
-        await reactivatePartnerPerson(
-          organizationId,
-          person.id,
-          reason,
-          csrfToken,
-        );
+        await api.revoke(person.invitation.id, reason);
+      else if (action === "suspend") await api.suspend(person.id, reason);
+      else if (action === "reactivate") await api.reactivate(person.id, reason);
+      else if (action === "change-role" && newRole)
+        await api.changeRole(person.id, newRole, reason);
       onToast(actionCopy[action].success, "success");
       setPending(null);
+      setNewRole(null);
       await load();
     } catch (cause) {
       setPending(null);
@@ -253,6 +256,10 @@ export function PartnerPeople({
       setInviteError("Informe um e-mail válido, como nome@empresa.com.br.");
       return;
     }
+    if (!inviteRole) {
+      setInviteError("Escolha o papel da pessoa nesta parceria.");
+      return;
+    }
     setInviteError("");
     setInviteConfirm(true);
   }
@@ -260,13 +267,16 @@ export function PartnerPeople({
   async function sendInvite() {
     setBusy(true);
     try {
-      await invitePartnerMember(organizationId, inviteEmail.trim(), csrfToken);
+      if (!inviteRole) return;
+      await api.invite(inviteEmail.trim(), inviteRole);
       onToast(
         "Convite enviado por e-mail. O link vale por 24 horas.",
         "success",
       );
       setInviteEmail("");
+      setInviteRole(null);
       setInviteEditable(false);
+      setInviteOpen(false);
       await load();
     } catch (cause) {
       fail(
@@ -293,51 +303,22 @@ export function PartnerPeople({
             O acesso vale para todas as aplicações de {organizationName}.
           </p>
         </div>
-        <span className="badge badge-neutral">{counts.all}</span>
+        <div className="people-header-actions">
+          <span className="badge badge-neutral">{counts.all}</span>
+          {isAdmin && (
+            <button
+              type="button"
+              className="btn btn-primary btn-md"
+              aria-haspopup="dialog"
+              ref={inviteTrigger}
+              onClick={() => setInviteOpen(true)}
+            >
+              Convidar pessoa
+            </button>
+          )}
+        </div>
       </div>
       <div className="card-body">
-        {isAdmin && (
-          <form noValidate onSubmit={requestInvite}>
-            <FieldAction
-              id="partner-invite-email"
-              label="Convidar pessoa responsável"
-              hint={
-                inviteError ? (
-                  <span role="alert">{inviteError}</span>
-                ) : (
-                  "Ela cria a senha e ativa o autenticador antes de entrar."
-                )
-              }
-              action={
-                <button
-                  className="btn btn-primary btn-md"
-                  disabled={busy || !inviteEmail.trim()}
-                >
-                  Enviar convite
-                </button>
-              }
-            >
-              <input
-                id="partner-invite-email"
-                className="input"
-                name="responsible-contact"
-                type="text"
-                inputMode="email"
-                autoComplete="off"
-                autoCapitalize="none"
-                spellCheck={false}
-                readOnly={!inviteEditable}
-                onFocus={() => setInviteEditable(true)}
-                value={inviteEmail}
-                onChange={(event) => {
-                  setInviteEmail(event.target.value);
-                  setInviteError("");
-                }}
-              />
-            </FieldAction>
-          </form>
-        )}
-
         <div className="seg" role="group" aria-label="Filtrar pessoas">
           {filters.map((item) => (
             <button
@@ -402,7 +383,10 @@ export function PartnerPeople({
                     {person.email.slice(0, 2).toUpperCase()}
                   </span>
                   <div className="people-main">
-                    <strong>{person.email}</strong>
+                    <strong>
+                      {person.email}
+                      {person.id === viewerId && " (você)"}
+                    </strong>
                     <small>
                       {note ??
                         (person.last_access_at
@@ -412,8 +396,13 @@ export function PartnerPeople({
                             : "—")}
                     </small>
                   </div>
-                  <span className={`badge badge-${view.tone}`}>
-                    {view.label}
+                  <span className="people-status">
+                    <span className="badge badge-neutral people-role">
+                      {roleLabel(person.role)}
+                    </span>
+                    <span className={`badge badge-${view.tone}`}>
+                      {view.label}
+                    </span>
                   </span>
                   <div className="people-actions">
                     {view.actions.map((action) => (
@@ -422,7 +411,10 @@ export function PartnerPeople({
                         type="button"
                         className={`btn btn-sm ${actionCopy[action].danger ? "btn-ghost-danger" : "btn-secondary"}`}
                         disabled={busy}
-                        onClick={() => setPending({ action, person })}
+                        onClick={() => {
+                          setNewRole(null);
+                          setPending({ action, person });
+                        }}
                       >
                         {actionCopy[action].button}
                       </button>
@@ -460,6 +452,7 @@ export function PartnerPeople({
         details={[
           { label: "Parceria", value: organizationName },
           { label: "Enviar para", value: inviteEmail.trim() },
+          { label: "Papel", value: roleLabel(inviteRole) },
         ]}
         confirmLabel="Enviar convite"
         busy={busy}
@@ -484,14 +477,123 @@ export function PartnerPeople({
           min: 3,
           max: 500,
         }}
+        confirmDisabled={
+          pending?.action === "change-role" &&
+          (newRole === null || newRole === pending.person.role)
+        }
         confirmLabel={copy?.confirm ?? ""}
         busy={busy}
         onConfirm={(reason) => void confirmAction(reason)}
         onCancel={() => setPending(null)}
-      />
+      >
+        {pending?.action === "change-role" && (
+          <RolePicker
+            label={`Novo papel (atual: ${roleLabel(pending.person.role)})`}
+            value={newRole ?? pending.person.role}
+            disabled={busy}
+            onChange={setNewRole}
+          />
+        )}
+      </ConfirmDialog>
 
       {createPortal(
         <>
+          {inviteOpen && (
+            <div className="detail-panel-overlay" onClick={closeInvite} />
+          )}
+          <aside
+            ref={inviteRef}
+            className={`detail-panel${inviteOpen ? " open" : ""}`}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="people-invite-title"
+            aria-hidden={!inviteOpen}
+          >
+            {inviteOpen && (
+              <form
+                noValidate
+                onSubmit={requestInvite}
+                className="people-invite"
+              >
+                <div className="detail-panel-header">
+                  <div>
+                    <h2 className="rules-panel-title" id="people-invite-title">
+                      Convidar pessoa
+                    </h2>
+                    <p className="rules-panel-sub">{organizationName}</p>
+                  </div>
+                  <button
+                    className="btn btn-ghost btn-sm"
+                    type="button"
+                    aria-label="Fechar"
+                    onClick={closeInvite}
+                  >
+                    ✕
+                  </button>
+                </div>
+                <div className="detail-panel-body">
+                  <div className="form-field">
+                    <label
+                      className="form-field-label"
+                      htmlFor="partner-invite-email"
+                    >
+                      E-mail da pessoa
+                    </label>
+                    <input
+                      id="partner-invite-email"
+                      className="input"
+                      name="responsible-contact"
+                      type="text"
+                      inputMode="email"
+                      autoComplete="off"
+                      autoCapitalize="none"
+                      spellCheck={false}
+                      readOnly={!inviteEditable}
+                      onFocus={() => setInviteEditable(true)}
+                      value={inviteEmail}
+                      onChange={(event) => {
+                        setInviteEmail(event.target.value);
+                        setInviteError("");
+                      }}
+                    />
+                    <span className="form-hint">
+                      Ela cria a senha e ativa o autenticador antes de entrar.
+                    </span>
+                  </div>
+                  <RolePicker
+                    label="Papel na parceria"
+                    value={inviteRole}
+                    disabled={busy}
+                    onChange={(role) => {
+                      setInviteRole(role);
+                      setInviteError("");
+                    }}
+                  />
+                  {inviteError && (
+                    <div className="alert alert-danger" role="alert">
+                      {inviteError}
+                    </div>
+                  )}
+                </div>
+                <div className="detail-panel-footer">
+                  <button
+                    className="btn btn-primary btn-md"
+                    disabled={busy || !inviteEmail.trim() || !inviteRole}
+                  >
+                    Enviar convite
+                  </button>
+                  <button
+                    className="btn btn-ghost btn-md"
+                    type="button"
+                    disabled={busy}
+                    onClick={closeInvite}
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </form>
+            )}
+          </aside>
           {history && (
             <div className="detail-panel-overlay" onClick={closeHistory} />
           )}
@@ -550,14 +652,15 @@ export function PartnerPeople({
                           <strong>{eventLabel(event.action)}</strong>
                           <small>
                             {dateTime.format(new Date(event.created_at))} ·{" "}
-                            {event.actor_team_member_id
-                              ? "pela equipe Aferis"
-                              : "pela própria pessoa"}
+                            {eventActor(event)}
                           </small>
                           {(event.previous_value || event.new_value) && (
                             <small>
-                              {statusValueLabel(event.previous_value)} →{" "}
-                              {statusValueLabel(event.new_value)}
+                              {eventValueLabel(
+                                event.action,
+                                event.previous_value,
+                              )}{" "}
+                              → {eventValueLabel(event.action, event.new_value)}
                             </small>
                           )}
                           <p>{event.reason}</p>

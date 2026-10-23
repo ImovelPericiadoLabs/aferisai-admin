@@ -1,7 +1,13 @@
-import type { PartnerInvitationSummary, PartnerPerson } from "./api";
+import type {
+  PartnerInvitationSummary,
+  PartnerManagementEvent,
+  PartnerPerson,
+} from "./api";
+import { roleLabel } from "./partner-roles";
 import { relativeTime } from "./integration-insights-model";
 
-export type PersonAction = "resend" | "revoke" | "suspend" | "reactivate";
+export type PersonAction =
+  "resend" | "revoke" | "suspend" | "reactivate" | "change-role";
 export type PersonTone = "success" | "warning" | "info" | "neutral";
 
 export function personView(
@@ -20,7 +26,11 @@ function baseView(person: PartnerPerson): {
   if (person.membership_status === "suspended")
     return { label: "Suspenso", tone: "warning", actions: ["reactivate"] };
   if (person.membership_status === "active")
-    return { label: "Ativo", tone: "success", actions: ["suspend"] };
+    return {
+      label: "Ativo",
+      tone: "success",
+      actions: ["change-role", "suspend"],
+    };
   switch (person.invitation?.status) {
     case "smtp_accepted":
       return {
@@ -90,6 +100,7 @@ const EVENT_LABELS: Record<string, string> = {
   accepted: "Convite aceito",
   suspended: "Acesso suspenso",
   reactivated: "Acesso reativado",
+  role_changed: "Papel alterado",
 };
 
 export const eventLabel = (action: string) =>
@@ -130,3 +141,15 @@ const STATUS_LABELS: Record<string, string> = {
 
 export const statusValueLabel = (value: string | null) =>
   value === null ? "—" : (STATUS_LABELS[value] ?? value);
+
+export function eventValueLabel(action: string, value: string | null): string {
+  return action === "role_changed" && value !== null
+    ? roleLabel(value)
+    : statusValueLabel(value);
+}
+
+export function eventActor(event: PartnerManagementEvent): string {
+  if (event.actor_team_member_id) return "pela equipe Aferis";
+  if (event.actor_partner_member_id) return "por um proprietário da parceria";
+  return "pela própria pessoa";
+}

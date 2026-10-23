@@ -142,3 +142,9 @@
   text-align: center;
   text-decoration: underline;
 }
+
+@media (max-width: 720px) {
+  .pp-account .badge {
+    display: none;
+  }
+}

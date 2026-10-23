@@ -18,11 +18,13 @@ export type TeamMember = {
   email: string;
   role: "administrator" | "manager" | "viewer" | "financial";
 };
+export type PartnerRole = "owner" | "developer" | "financial_reader";
 export type PartnerMember = {
   id: string;
   email: string;
   organization_id: string | null;
   organization_name: string | null;
+  role?: PartnerRole | null;
 };
 export type PartnerOrganization = { id: string; name: string; active: boolean };
 export type PartnerOrganizationList = {
@@ -1028,13 +1030,14 @@ export const invitePartnerMember = (
   organizationId: string,
   email: string,
   csrfToken: string,
+  role?: PartnerRole,
 ) =>
   request<PartnerInvitationIssued>(
     `/v1/team/organizations/${encodeURIComponent(organizationId)}/partner-invitations`,
     {
       method: "POST",
       headers: { "X-CSRF-Token": csrfToken },
-      body: JSON.stringify({ email }),
+      body: JSON.stringify(role ? { email, role } : { email }),
     },
   );
 export type ApplicationAuditItem = {
@@ -1074,7 +1077,8 @@ export type PartnerInvitationStatus =
 export type PartnerInvitationSummary = {
   id: string;
   status: PartnerInvitationStatus;
-  actor_team_member_id: string;
+  actor_team_member_id: string | null;
+  actor_partner_member_id: string | null;
   created_at: string;
   expires_at: string;
   attempted_at: string | null;
@@ -1089,6 +1093,7 @@ export type PartnerPerson = {
   email: string;
   identity_status: string;
   membership_status: string;
+  role: PartnerRole;
   last_access_at: string | null;
   invitation: PartnerInvitationSummary | null;
 };
@@ -1194,6 +1199,121 @@ export const reactivatePartnerPerson = (
     reason,
     csrfToken,
   );
+
+export const changePartnerPersonRole = (
+  organizationId: string,
+  memberId: string,
+  role: PartnerRole,
+  reason: string,
+  csrfToken: string,
+) =>
+  request<{ member_id: string; organization_id: string; role: PartnerRole }>(
+    `${partnerPeoplePath(organizationId)}/partner-people/${encodeURIComponent(memberId)}/role`,
+    {
+      method: "PUT",
+      headers: { "X-CSRF-Token": csrfToken },
+      body: JSON.stringify({ role, reason }),
+    },
+  );
+
+/** People management as seen by a partner owner: the organization comes from the session. */
+const ownPeoplePath = "/v1/partner/people";
+const ownPost = (path: string, body: unknown, csrfToken: string) =>
+  request<unknown>(path, {
+    method: "POST",
+    headers: { "X-CSRF-Token": csrfToken },
+    body: JSON.stringify(body),
+  });
+
+export type PeopleApi = {
+  list: (cursor?: string) => Promise<PartnerPeoplePage>;
+  events: (
+    memberId: string,
+    cursor?: string,
+  ) => Promise<PartnerManagementEventPage>;
+  invite: (email: string, role: PartnerRole) => Promise<unknown>;
+  resend: (invitationId: string, reason: string) => Promise<unknown>;
+  revoke: (invitationId: string, reason: string) => Promise<unknown>;
+  suspend: (memberId: string, reason: string) => Promise<unknown>;
+  reactivate: (memberId: string, reason: string) => Promise<unknown>;
+  changeRole: (
+    memberId: string,
+    role: PartnerRole,
+    reason: string,
+  ) => Promise<unknown>;
+};
+
+const cursorQuery = (cursor?: string) =>
+  `limit=20${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`;
+
+export const teamPeopleApi = (
+  organizationId: string,
+  csrfToken: string,
+): PeopleApi => ({
+  list: (cursor) => listPartnerPeople(organizationId, cursor),
+  events: (memberId, cursor) =>
+    listPartnerPersonEvents(organizationId, memberId, cursor),
+  invite: (email, role) =>
+    invitePartnerMember(organizationId, email, csrfToken, role),
+  resend: (id, reason) =>
+    resendPartnerInvitation(organizationId, id, reason, csrfToken),
+  revoke: (id, reason) =>
+    revokePartnerInvitation(organizationId, id, reason, csrfToken),
+  suspend: (id, reason) =>
+    suspendPartnerPerson(organizationId, id, reason, csrfToken),
+  reactivate: (id, reason) =>
+    reactivatePartnerPerson(organizationId, id, reason, csrfToken),
+  changeRole: (id, role, reason) =>
+    changePartnerPersonRole(organizationId, id, role, reason, csrfToken),
+});
+
+export const ownerPeopleApi = (csrfToken: string): PeopleApi => ({
+  list: (cursor) =>
+    request<PartnerPeoplePage>(`${ownPeoplePath}?${cursorQuery(cursor)}`, {
+      method: "GET",
+    }),
+  events: (memberId, cursor) =>
+    request<PartnerManagementEventPage>(
+      `${ownPeoplePath}/${encodeURIComponent(memberId)}/events?${cursorQuery(cursor)}`,
+      { method: "GET" },
+    ),
+  invite: (email, role) =>
+    ownPost(
+      "/v1/partner/invitations",
+      { email, role, reason: "Convite enviado pelo proprietário da parceria" },
+      csrfToken,
+    ),
+  resend: (id, reason) =>
+    ownPost(
+      `/v1/partner/invitations/${encodeURIComponent(id)}/resend`,
+      { reason },
+      csrfToken,
+    ),
+  revoke: (id, reason) =>
+    ownPost(
+      `/v1/partner/invitations/${encodeURIComponent(id)}/revoke`,
+      { reason },
+      csrfToken,
+    ),
+  suspend: (id, reason) =>
+    ownPost(
+      `${ownPeoplePath}/${encodeURIComponent(id)}/suspend`,
+      { reason },
+      csrfToken,
+    ),
+  reactivate: (id, reason) =>
+    ownPost(
+      `${ownPeoplePath}/${encodeURIComponent(id)}/reactivate`,
+      { reason },
+      csrfToken,
+    ),
+  changeRole: (id, role, reason) =>
+    request<unknown>(`${ownPeoplePath}/${encodeURIComponent(id)}/role`, {
+      method: "PUT",
+      headers: { "X-CSRF-Token": csrfToken },
+      body: JSON.stringify({ role, reason }),
+    }),
+});
 
 export const createOrganization = (body: OnboardingBody, csrfToken: string) =>
   request<OnboardingResult>("/v1/team/organizations", {

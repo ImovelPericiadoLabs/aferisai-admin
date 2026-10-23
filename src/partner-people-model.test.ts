@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import type { PartnerInvitationSummary, PartnerPerson } from "./api";
 import {
   countPeople,
+  eventActor,
   eventLabel,
+  eventValueLabel,
   statusValueLabel,
   filterPeople,
   invitationNote,
@@ -17,6 +19,7 @@ const invitation = (
   id: "i1",
   status: "smtp_accepted",
   actor_team_member_id: "t1",
+  actor_partner_member_id: null,
   created_at: "2026-10-22T12:00:00Z",
   expires_at: "2026-10-23T18:00:00Z",
   attempted_at: "2026-10-22T12:00:01Z",
@@ -33,6 +36,7 @@ const person = (o: Partial<PartnerPerson> = {}): PartnerPerson => ({
   email: "ana@parceiro.com.br",
   identity_status: "active",
   membership_status: "active",
+  role: "developer",
   last_access_at: null,
   invitation: null,
   ...o,
@@ -43,7 +47,7 @@ describe("personView", () => {
     expect(personView(person(), true)).toEqual({
       label: "Ativo",
       tone: "success",
-      actions: ["suspend"],
+      actions: ["change-role", "suspend"],
     });
   });
   it("lets an administrator reactivate a suspended person", () => {
@@ -173,5 +177,58 @@ describe("statusValueLabel", () => {
     expect(statusValueLabel("invited")).toBe("Convidado");
     expect(statusValueLabel(null)).toBe("—");
     expect(statusValueLabel("outro")).toBe("outro");
+  });
+});
+
+describe("role changes", () => {
+  it("offers a role change only for active people", () => {
+    expect(personView(person(), true).actions).toEqual([
+      "change-role",
+      "suspend",
+    ]);
+    expect(
+      personView(person({ membership_status: "suspended" }), true).actions,
+    ).toEqual(["reactivate"]);
+    expect(personView(person(), false).actions).toEqual([]);
+  });
+  it("labels the role event and its values", () => {
+    expect(eventLabel("role_changed")).toBe("Papel alterado");
+    expect(eventValueLabel("role_changed", "financial_reader")).toBe(
+      "Financeiro (leitura)",
+    );
+    expect(eventValueLabel("suspended", "active")).toBe("Ativo");
+    expect(eventValueLabel("invited", null)).toBe("—");
+  });
+  it("names who acted", () => {
+    const base = {
+      id: "e",
+      action: "invited",
+      invitation_id: null,
+      previous_value: null,
+      new_value: null,
+      reason: "x",
+      created_at: "2026-10-23T12:00:00Z",
+    };
+    expect(
+      eventActor({
+        ...base,
+        actor_team_member_id: "t",
+        actor_partner_member_id: null,
+      }),
+    ).toBe("pela equipe Aferis");
+    expect(
+      eventActor({
+        ...base,
+        actor_team_member_id: null,
+        actor_partner_member_id: "p",
+      }),
+    ).toBe("por um proprietário da parceria");
+    expect(
+      eventActor({
+        ...base,
+        actor_team_member_id: null,
+        actor_partner_member_id: null,
+      }),
+    ).toBe("pela própria pessoa");
   });
 });

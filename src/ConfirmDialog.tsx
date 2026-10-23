@@ -9,6 +9,8 @@ type Props = {
   description?: ReactNode;
   details?: { label: string; value: ReactNode }[];
   reason?: { label: string; min: number; max: number };
+  children?: ReactNode;
+  confirmDisabled?: boolean;
   confirmLabel: string;
   cancelLabel?: string;
   tone?: "primary" | "danger";
@@ -27,6 +29,8 @@ function ConfirmDialogBody({
   description,
   details,
   reason,
+  children,
+  confirmDisabled = false,
   confirmLabel,
   cancelLabel = "Cancelar",
   tone = "primary",
@@ -77,6 +81,7 @@ function ConfirmDialogBody({
             ))}
           </dl>
         )}
+        {children}
         {reason && (
           <div className="confirm-reason">
             <label className="form-field-label" htmlFor={reasonId}>
@@ -113,7 +118,7 @@ function ConfirmDialogBody({
           <button
             className={`btn btn-md ${tone === "danger" ? "btn-danger" : "btn-primary"}`}
             type="button"
-            disabled={busy || !check.ok}
+            disabled={busy || confirmDisabled || !check.ok}
             onClick={(event) => {
               if (!event.nativeEvent.isTrusted) return;
               onConfirm(reasonText.trim());

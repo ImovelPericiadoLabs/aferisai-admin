@@ -118,9 +118,97 @@
     grid-template-columns: 34px minmax(0, 1fr);
   }
 
-  .people-list li .badge,
+  .people-status,
   .people-actions {
     grid-column: 2;
     justify-self: start;
   }
+}
+
+.role-picker {
+  min-width: 0;
+  margin: 0 0 var(--space-4);
+  padding: 0;
+  border: 0;
+}
+
+.role-picker legend {
+  margin: 0 0 var(--space-2);
+  padding: 0;
+}
+
+.role-picker-options {
+  display: grid;
+  gap: var(--space-2);
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+.role-option {
+  display: grid;
+  padding: var(--space-3);
+  gap: var(--space-3);
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  cursor: pointer;
+}
+
+.role-option.is-selected {
+  border-color: var(--primary);
+  background: var(--primary-faint);
+}
+
+.role-option:has(input:focus-visible) {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.role-option span {
+  display: grid;
+  gap: 2px;
+}
+
+.role-option small {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.role-picker:disabled .role-option {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.people-role {
+  white-space: nowrap;
+}
+
+.people-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.people-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+.people-invite {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+}
+
+.detail-panel .role-picker-options {
+  grid-template-columns: 1fr;
+}
+
+.people-invite .form-field {
+  margin-bottom: var(--space-4);
 }
