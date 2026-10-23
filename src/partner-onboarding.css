@@ -1,0 +1,108 @@
+.onboarding-back {
+  margin-bottom: var(--space-2);
+}
+
+.stepper {
+  display: flex;
+  margin: 0 0 var(--space-4);
+  padding: 0;
+  gap: var(--space-2);
+  list-style: none;
+}
+
+.stepper-step {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-2) var(--space-3);
+  gap: var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--text-muted);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+}
+
+.stepper-step:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.stepper-step span {
+  display: inline-grid;
+  width: 20px;
+  height: 20px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--surface-muted);
+  font-size: var(--text-caption);
+}
+
+.stepper-step[aria-current="step"] {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.stepper-step[aria-current="step"] span {
+  background: var(--primary);
+  color: var(--surface);
+}
+
+.stepper-step[data-done="true"] span {
+  background: var(--success);
+  color: var(--surface);
+}
+
+.onboarding-layout {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: minmax(0, 1fr) 320px;
+  align-items: start;
+}
+
+.onboarding-main,
+.onboarding-preview {
+  padding: var(--space-5);
+}
+
+.onboarding-identifier {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  font-size: var(--text-sm);
+}
+
+.onboarding-error {
+  color: var(--danger);
+}
+
+.onboarding-actions {
+  display: flex;
+  margin-top: var(--space-5);
+  gap: var(--space-2);
+  justify-content: flex-end;
+}
+
+.onboarding-preview h2 {
+  margin: 0 0 var(--space-1);
+  font-size: var(--text-lg);
+  overflow-wrap: anywhere;
+}
+
+.onboarding-preview-label {
+  margin: 0 0 var(--space-2);
+  color: var(--text-muted);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+@media (max-width: 860px) {
+  .onboarding-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
