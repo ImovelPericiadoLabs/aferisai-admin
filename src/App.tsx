@@ -994,7 +994,7 @@ function TeamApp() {
         ref={sidebarRef}
       >
         <div className="sidebar-head">
-          <Brand light compact={sidebarCollapsed && !menuOpen} />
+          <Brand compact={sidebarCollapsed && !menuOpen} />
           <button
             className="sidebar-toggle"
             type="button"
@@ -1034,9 +1034,7 @@ function TeamApp() {
                 className={`sidebar-nav-group${activeGroup ? " has-active" : ""}`}
                 key={group.title}
               >
-                {isPanel ? (
-                  <p className="nav-title">{group.title}</p>
-                ) : (
+                {isPanel ? null : (
                   <button
                     className={`nav-group-trigger${activeGroup ? " active" : ""}`}
                     type="button"

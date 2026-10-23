@@ -751,7 +751,17 @@ button.delivery-row:hover {
   padding: 1.3rem;
   background: #fff;
   box-shadow: -10px 0 28px #071a2b24;
-  animation: integration-rise 260ms ease both;
+  animation: delivery-enter 200ms ease-out both;
+}
+@keyframes delivery-enter {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 .delivery-drawer-head {
   display: flex;
@@ -800,6 +810,18 @@ button.delivery-row:hover {
   color: #65778d;
   font-size: 0.72rem;
   line-height: 1.5;
+}
+@media (max-width: 1100px) {
+  .delivery-row {
+    grid-template-columns: minmax(0, 2fr) minmax(88px, 1fr) minmax(
+        115px,
+        1.2fr
+      ) 14px;
+    gap: 0.55rem;
+  }
+  .delivery-row > span:nth-child(3) {
+    display: none;
+  }
 }
 @media (max-width: 520px) {
   .integration-permissions li {

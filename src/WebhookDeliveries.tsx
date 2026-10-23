@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   ApiError,
   getApplicationWebhookDelivery,
@@ -63,8 +64,54 @@ export function WebhookDeliveries({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [selected, setSelected] = useState<WebhookDelivery | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState("");
+  const detailRequestRef = useRef(0);
+  const detailTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const detailCloseRef = useRef<HTMLButtonElement>(null);
+  const detailDrawerRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    if (!detailOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    detailCloseRef.current?.focus();
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeDetail();
+      }
+      if (event.key !== "Tab") return;
+      const controls = detailDrawerRef.current?.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])',
+      );
+      if (!controls?.length) return;
+      const first = controls[0];
+      const last = controls[controls.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [detailOpen]);
+
+  function closeDetail() {
+    detailRequestRef.current += 1;
+    setDetailOpen(false);
+    setSelected(null);
+    setDetailLoading(false);
+    setDetailError("");
+    queueMicrotask(() => detailTriggerRef.current?.focus());
+  }
 
   useEffect(() => {
     let live = true;
@@ -133,18 +180,25 @@ export function WebhookDeliveries({
   }
 
   async function openDetail(id: string) {
+    const request = ++detailRequestRef.current;
+    detailTriggerRef.current = document.activeElement as HTMLButtonElement;
+    setDetailOpen(true);
     setDetailLoading(true);
     setDetailError("");
     setSelected(null);
     try {
-      setSelected(
-        await getApplicationWebhookDelivery(applicationId, id, channel),
+      const result = await getApplicationWebhookDelivery(
+        applicationId,
+        id,
+        channel,
       );
+      if (request === detailRequestRef.current) setSelected(result);
     } catch (cause) {
+      if (request !== detailRequestRef.current) return;
       if (cause instanceof ApiError && cause.status === 401) onUnauthorized();
       else setDetailError("Não foi possível abrir esta entrega.");
     } finally {
-      setDetailLoading(false);
+      if (request === detailRequestRef.current) setDetailLoading(false);
     }
   }
 
@@ -271,98 +325,99 @@ export function WebhookDeliveries({
           )}
         </>
       )}
-      {(selected || detailLoading || detailError) && (
-        <div className="delivery-scrim" onClick={() => setSelected(null)}>
-          <aside
-            className="delivery-drawer"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="delivery-detail-title"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="delivery-drawer-head">
-              <div>
-                <small>Entrega</small>
-                <h4 id="delivery-detail-title">
-                  {selected
-                    ? eventLabel(selected.event_type)
-                    : "Detalhe da entrega"}
-                </h4>
+      {detailOpen &&
+        createPortal(
+          <div className="delivery-scrim" onClick={closeDetail}>
+            <aside
+              ref={detailDrawerRef}
+              className="delivery-drawer"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="delivery-detail-title"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="delivery-drawer-head">
+                <div>
+                  <small>Entrega</small>
+                  <h4 id="delivery-detail-title">
+                    {selected
+                      ? eventLabel(selected.event_type)
+                      : "Detalhe da entrega"}
+                  </h4>
+                </div>
+                <button
+                  ref={detailCloseRef}
+                  type="button"
+                  aria-label="Fechar detalhe"
+                  onClick={closeDetail}
+                >
+                  ×
+                </button>
               </div>
-              <button
-                type="button"
-                aria-label="Fechar detalhe"
-                onClick={() => {
-                  setSelected(null);
-                  setDetailError("");
-                }}
-              >
-                ×
-              </button>
-            </div>
-            {detailLoading ? (
-              <div
-                className="integration-skeleton"
-                role="status"
-                aria-label="Carregando detalhe"
-              >
-                <i />
-                <i />
-              </div>
-            ) : detailError ? (
-              <p className="error" role="alert">
-                {detailError}
-              </p>
-            ) : (
-              selected && (
-                <>
-                  <span className={`delivery-badge state-${selected.status}`}>
-                    {deliveryLabel(selected.status)}
-                  </span>
-                  <dl className="delivery-detail-list">
-                    <div>
-                      <dt>Destino</dt>
-                      <dd>{selected.endpoint_url}</dd>
-                    </div>
-                    <div>
-                      <dt>Resposta</dt>
-                      <dd>
-                        {selected.http_status
-                          ? `HTTP ${selected.http_status}`
-                          : "Sem resposta confirmada"}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt>Duração</dt>
-                      <dd>
-                        {selected.duration_ms == null
-                          ? "Não medida"
-                          : `${selected.duration_ms} ms`}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt>Horário</dt>
-                      <dd>
-                        {dateLabel(
-                          selected.attempted_at || selected.created_at,
-                        )}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt>Identificador</dt>
-                      <dd>{selected.id}</dd>
-                    </div>
-                  </dl>
-                  <p className="delivery-safe-note">
-                    O detalhe técnico não expõe a chave de assinatura nem dados
-                    pessoais do evento.
-                  </p>
-                </>
-              )
-            )}
-          </aside>
-        </div>
-      )}
+              {detailLoading ? (
+                <div
+                  className="integration-skeleton"
+                  role="status"
+                  aria-label="Carregando detalhe"
+                >
+                  <i />
+                  <i />
+                </div>
+              ) : detailError ? (
+                <p className="error" role="alert">
+                  {detailError}
+                </p>
+              ) : (
+                selected && (
+                  <>
+                    <span className={`delivery-badge state-${selected.status}`}>
+                      {deliveryLabel(selected.status)}
+                    </span>
+                    <dl className="delivery-detail-list">
+                      <div>
+                        <dt>Destino</dt>
+                        <dd>{selected.endpoint_url}</dd>
+                      </div>
+                      <div>
+                        <dt>Resposta</dt>
+                        <dd>
+                          {selected.http_status
+                            ? `HTTP ${selected.http_status}`
+                            : "Sem resposta confirmada"}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>Duração</dt>
+                        <dd>
+                          {selected.duration_ms == null
+                            ? "Não medida"
+                            : `${selected.duration_ms} ms`}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>Horário</dt>
+                        <dd>
+                          {dateLabel(
+                            selected.attempted_at || selected.created_at,
+                          )}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>Identificador</dt>
+                        <dd>{selected.id}</dd>
+                      </div>
+                    </dl>
+                    <p className="delivery-safe-note">
+                      O detalhe técnico não expõe a chave de assinatura nem
+                      dados pessoais do evento.
+                    </p>
+                  </>
+                )
+              )}
+            </aside>
+          </div>,
+          document.body,
+        )}
     </section>
   );
 }
