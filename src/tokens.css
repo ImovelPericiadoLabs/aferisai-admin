@@ -39,6 +39,9 @@
   --code-comment: #8fa3bd;
   --code-flag: #f9a8d4;
 
+  --font-mono:
+    ui-monospace, "SFMono-Regular", "JetBrains Mono", Menlo, Consolas, monospace;
+
   --text-label: calc(11rem / var(--rem-px));
   --text-caption: calc(12rem / var(--rem-px));
   --text-sm: calc(13rem / var(--rem-px));

@@ -97,7 +97,7 @@
 .access-code {
   display: block;
   color: var(--text-subtle);
-  font-family: ui-monospace, monospace;
+  font-family: var(--font-mono);
   font-size: var(--text-label);
   font-weight: var(--weight-normal);
   letter-spacing: 0;

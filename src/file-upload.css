@@ -196,14 +196,14 @@
   margin-top: var(--space-3);
 }
 
-.fp figure {
+.fp .fp-image {
   display: grid;
   gap: var(--space-2);
   justify-items: start;
   margin: 0;
 }
 
-.fp figcaption,
+.fp .fp-image figcaption,
 .fp-note {
   color: var(--text-muted);
   font-size: var(--text-caption);
@@ -274,20 +274,6 @@
   color: var(--danger);
 }
 
-.fp-text {
-  margin: 0;
-  padding: var(--space-3) var(--space-4);
-  overflow-x: auto;
-  border-radius: var(--radius-md);
-  background: var(--surface-muted);
-  color: var(--text);
-  font-family: ui-monospace, monospace;
-  font-size: var(--text-caption);
-  line-height: 1.5;
-  white-space: pre-wrap;
-  animation: fp-in 240ms ease both;
-}
-
 .fp-generic {
   display: flex;
   align-items: center;
@@ -351,8 +337,7 @@
   .dz-check path,
   .fp-image img,
   .fp-pdf-canvas,
-  .fp-fields,
-  .fp-text {
+  .fp-fields {
     animation: none;
   }
 

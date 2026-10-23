@@ -38,6 +38,14 @@ describe("highlight keeps the text intact", () => {
   });
 });
 
+describe("text", () => {
+  it("is shown as written: no token is coloured", () => {
+    const code = 'linha com "aspas", 123 e {chaves}\n// não é comentário';
+    expect(join(code, "text")).toBe(code);
+    expect(kinds(code, "text")).toEqual([]);
+  });
+});
+
 describe("json", () => {
   it("tells keys from string values and marks numbers and literals", () => {
     expect(

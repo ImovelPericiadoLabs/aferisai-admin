@@ -78,8 +78,7 @@
 .directory-row small {
   color: var(--muted);
   font:
-    400 0.65rem ui-monospace,
-    monospace;
+    400 0.65rem var(--font-mono);
   overflow-wrap: anywhere;
   margin-top: 0.2rem;
 }

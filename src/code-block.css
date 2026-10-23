@@ -53,8 +53,7 @@
   padding: var(--space-3) var(--space-4);
   overflow: auto;
   color: var(--code-text);
-  font-family:
-    ui-monospace, "SFMono-Regular", "JetBrains Mono", Menlo, Consolas, monospace;
+  font-family: var(--font-mono);
   font-size: var(--text-sm);
   line-height: 1.6;
   tab-size: 2;

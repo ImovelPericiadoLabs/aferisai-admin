@@ -182,10 +182,7 @@ export function RegistryRequestDirectory({
               {items.map((item) => (
                 <li key={item.id}>
                   <div className="commercial-list-head">
-                    <span
-                      className="muted"
-                      style={{ fontFamily: "monospace", fontSize: 12 }}
-                    >
+                    <span className="muted code-id">
                       {item.id.slice(0, 8)}…
                     </span>
                     <span className={statusClass(item.status)}>

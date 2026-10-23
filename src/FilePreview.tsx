@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import workerUrl from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+import { CodeBlock } from "./CodeBlock";
 import { FileGlyph } from "./FileDropzone";
 import { describeFile } from "./file-rules";
 import { summarizeServiceAccount, textPreview } from "./file-preview-model";
@@ -202,9 +203,11 @@ function TextPreview({ file }: { file: File }) {
     return <p className="fp-note">Não foi possível ler o arquivo.</p>;
   const preview = textPreview(state.text);
   return (
-    <pre className="fp-text">
-      {preview.text}
-      {preview.truncated ? "\n…" : ""}
-    </pre>
+    <CodeBlock
+      language="text"
+      label="Prévia do texto"
+      code={`${preview.text}${preview.truncated ? "\n…" : ""}`}
+      maxHeight={280}
+    />
   );
 }

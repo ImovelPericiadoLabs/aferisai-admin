@@ -310,37 +310,13 @@ export function Connections({
               {items.map((item) => (
                 <tr key={item.id}>
                   <td>
-                    <code
-                      style={{
-                        fontSize: "0.75rem",
-                        fontFamily: "ui-monospace, monospace",
-                        overflowWrap: "anywhere",
-                      }}
-                    >
-                      {item.id}
-                    </code>
+                    <code className="code-id">{item.id}</code>
                   </td>
                   <td>
-                    <code
-                      style={{
-                        fontSize: "0.75rem",
-                        fontFamily: "ui-monospace, monospace",
-                        overflowWrap: "anywhere",
-                      }}
-                    >
-                      {item.user_id}
-                    </code>
+                    <code className="code-id">{item.user_id}</code>
                   </td>
                   <td>
-                    <code
-                      style={{
-                        fontSize: "0.75rem",
-                        fontFamily: "ui-monospace, monospace",
-                        overflowWrap: "anywhere",
-                      }}
-                    >
-                      {item.application_id}
-                    </code>
+                    <code className="code-id">{item.application_id}</code>
                   </td>
                   <td>
                     <div

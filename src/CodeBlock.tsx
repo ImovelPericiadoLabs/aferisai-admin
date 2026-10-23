@@ -8,6 +8,7 @@ const LANGUAGE_LABELS: Record<CodeLanguage, string> = {
   python: "Python",
   shell: "cURL",
   http: "Cabeçalhos",
+  text: "Texto",
 };
 
 /**

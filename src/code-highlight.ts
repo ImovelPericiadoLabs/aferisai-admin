@@ -3,7 +3,7 @@
  * Node.js and Python snippets, cURL commands and HTTP headers). It is a lexer, not a
  * parser: it never changes the text, so copying the rendered block copies the source.
  */
-export type CodeLanguage = "json" | "js" | "python" | "shell" | "http";
+export type CodeLanguage = "json" | "js" | "python" | "shell" | "http" | "text";
 export type TokenKind =
   | "plain"
   | "punct"

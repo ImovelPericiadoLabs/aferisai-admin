@@ -254,8 +254,7 @@
 .application-heading small {
   color: var(--muted);
   font:
-    400 0.65rem ui-monospace,
-    monospace;
+    400 0.65rem var(--font-mono);
   overflow-wrap: anywhere;
 }
 .application-item p {
@@ -277,8 +276,7 @@
   color: var(--text-muted);
   padding: 0.27rem 0.45rem;
   font:
-    700 0.67rem ui-monospace,
-    monospace;
+    700 0.67rem var(--font-mono);
 }
 .permission-actions {
   display: flex;
@@ -311,8 +309,7 @@
   border: 1px solid var(--line);
   border-radius: 6px;
   font:
-    0.72rem ui-monospace,
-    monospace;
+    0.72rem var(--font-mono);
   resize: vertical;
 }
 .credential-panel {

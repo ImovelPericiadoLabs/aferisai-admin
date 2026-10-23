@@ -238,7 +238,7 @@ export function OnrPreviewReview({ csrf }: { csrf: string }) {
             {inspection.coverage} · Páginas lidas: {inspection.pages_read}
             <br />
             SHA-256:{" "}
-            <code style={{ fontSize: "0.75rem" }}>
+            <code className="code-id">
               {inspection.listing_sha256.slice(0, 16)}…
             </code>
           </div>

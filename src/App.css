@@ -463,7 +463,7 @@ textarea:focus-visible {
 }
 .result dd {
   margin: 0;
-  font-family: ui-monospace, monospace;
+  font-family: var(--font-mono);
   overflow-wrap: anywhere;
 }
 .result .secret {
