@@ -1,411 +1,448 @@
-import { useEffect, useState, type FormEvent } from "react";
-import { decisionLabel, statusLabel } from "./display-labels";
+import { useCallback, useEffect, useState } from "react";
 import {
-  listOnrPreviewAttempts,
+  ApiError,
+  createOnrPreviewReview,
   getOnrOrdersInspection,
   getOnrPreviewReviews,
-  createOnrPreviewReview,
-  type OnrPreviewAttentionItem,
+  listOnrPreviewAttempts,
   type OnrPortalOrdersInspection,
+  type OnrPreviewAttentionItem,
   type OnrPreviewReviewHistory,
 } from "./api";
-import "./commercial-policies.css";
+import { ConfirmDialog } from "./ConfirmDialog";
+import { decisionLabel } from "./display-labels";
+import { OnrInspection } from "./OnrInspection";
+import { OnrVersionHistory } from "./OnrVersionHistory";
+import {
+  DECISION_OPTIONS,
+  latestReviewId,
+  shortId,
+  shortSha,
+  type ReviewDecision,
+} from "./onr-review-model";
+import { RolePicker } from "./RolePicker";
+import type { ToastKind } from "./useToast";
+import "./onr-review.css";
 
-type Stage = "list" | "inspect";
+const dateTime = new Intl.DateTimeFormat("pt-BR", {
+  dateStyle: "short",
+  timeStyle: "short",
+});
 
-const DECISIONS: { value: string; label: string }[] = [
-  {
-    value: "draft_absent",
-    label: "Rascunho ausente — pedido não aparece na lista do portal",
-  },
-  {
-    value: "draft_present",
-    label: "Rascunho presente — pedido aparece como rascunho",
-  },
-  {
-    value: "purchase_suspected",
-    label: "Compra suspeita — há indício de cobrança sem certeza",
-  },
-  {
-    value: "inconclusive",
-    label: "Inconclusivo — não é possível determinar o estado",
-  },
-];
-
-function fmtDate(iso: string) {
-  try {
-    return new Date(iso).toLocaleString("pt-BR");
-  } catch {
-    return iso;
-  }
+function problem(cause: unknown, fallback: string) {
+  return cause instanceof ApiError ? cause.detail : fallback;
 }
 
-export function OnrPreviewReview({ csrf }: { csrf: string }) {
-  const [stage, setStage] = useState<Stage>("list");
+/** Reads every page of the (ascending) version history of one attempt. */
+async function loadHistory(
+  attemptId: string,
+): Promise<OnrPreviewReviewHistory["items"]> {
+  const all: OnrPreviewReviewHistory["items"] = [];
+  let after = 0;
+  for (let guard = 0; guard < 20; guard += 1) {
+    const page = await getOnrPreviewReviews(attemptId, after);
+    all.push(...page.items);
+    if (page.next_version === null) break;
+    after = page.next_version;
+  }
+  return all;
+}
+
+export function OnrPreviewReview({
+  csrf,
+  onUnauthorized,
+  onToast,
+}: {
+  csrf: string;
+  onUnauthorized: () => void;
+  onToast: (message: string, kind: ToastKind) => void;
+}) {
   const [items, setItems] = useState<OnrPreviewAttentionItem[]>([]);
-  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [cursor, setCursor] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [listError, setListError] = useState("");
   const [selected, setSelected] = useState<OnrPreviewAttentionItem | null>(
     null,
   );
   const [inspection, setInspection] =
     useState<OnrPortalOrdersInspection | null>(null);
-  const [history, setHistory] = useState<OnrPreviewReviewHistory | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [listError, setListError] = useState("");
+  const [history, setHistory] = useState<
+    OnrPreviewReviewHistory["items"] | null
+  >(null);
   const [inspectError, setInspectError] = useState("");
-  const [decision, setDecision] = useState("draft_absent");
-  const [reason, setReason] = useState("");
+  const [decision, setDecision] = useState<ReviewDecision>("inconclusive");
+  const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [reviewError, setReviewError] = useState("");
-  const [resolvedIds, setResolvedIds] = useState<Set<string>>(new Set());
+  const [saveError, setSaveError] = useState("");
 
-  async function loadList(cursor?: string) {
-    setLoading(true);
-    setListError("");
-    try {
-      const page = await listOnrPreviewAttempts(cursor);
-      setItems((prev) => (cursor ? [...prev, ...page.items] : page.items));
-      setNextCursor(page.next_cursor);
-    } catch (e) {
-      setListError(e instanceof Error ? e.message : "Erro ao carregar lista.");
-    } finally {
-      setLoading(false);
-    }
-  }
+  const guard = useCallback(
+    (cause: unknown) => {
+      if (cause instanceof ApiError && cause.status === 401) {
+        onUnauthorized();
+        return true;
+      }
+      return false;
+    },
+    [onUnauthorized],
+  );
+
+  const loadList = useCallback(
+    async (next?: string) => {
+      setLoading(true);
+      try {
+        const page = await listOnrPreviewAttempts(next);
+        setItems((current) =>
+          next ? [...current, ...page.items] : page.items,
+        );
+        setCursor(page.next_cursor);
+        setListError("");
+      } catch (cause) {
+        if (!guard(cause))
+          setListError(problem(cause, "Não foi possível carregar a fila."));
+      } finally {
+        setLoading(false);
+      }
+    },
+    [guard],
+  );
 
   useEffect(() => {
-    void loadList();
-  }, []);
+    queueMicrotask(() => void loadList());
+  }, [loadList]);
 
-  async function openAttempt(item: OnrPreviewAttentionItem) {
+  const inspect = useCallback(
+    async (item: OnrPreviewAttentionItem) => {
+      setInspection(null);
+      setHistory(null);
+      setInspectError("");
+      const [ins, hist] = await Promise.allSettled([
+        getOnrOrdersInspection(item.attempt_id),
+        loadHistory(item.attempt_id),
+      ]);
+      if (ins.status === "fulfilled") setInspection(ins.value);
+      else if (!guard(ins.reason))
+        setInspectError(
+          problem(ins.reason, "Não foi possível ler a listagem do portal."),
+        );
+      if (hist.status === "fulfilled") setHistory(hist.value);
+      else if (!guard(hist.reason)) setHistory([]);
+    },
+    [guard],
+  );
+
+  function open(item: OnrPreviewAttentionItem) {
     setSelected(item);
+    setDecision("inconclusive");
+    setSaveError("");
+    void inspect(item);
+  }
+
+  function back() {
+    setSelected(null);
     setInspection(null);
     setHistory(null);
     setInspectError("");
-    setDecision("draft_absent");
-    setReason("");
-    setReviewError("");
-    setStage("inspect");
-    try {
-      const [ins, hist] = await Promise.all([
-        getOnrOrdersInspection(item.attempt_id),
-        getOnrPreviewReviews(item.attempt_id),
-      ]);
-      setInspection(ins);
-      setHistory(hist);
-    } catch (e) {
-      setInspectError(
-        e instanceof Error ? e.message : "Erro ao carregar inspeção.",
-      );
-    }
   }
 
-  async function submitReview(e: FormEvent) {
-    e.preventDefault();
-    if (!selected || !inspection) return;
-    const previousReviewId = history?.items[0]?.id ?? null;
+  async function confirm(reason: string) {
+    if (!selected || !inspection || history === null) return;
     setBusy(true);
-    setReviewError("");
+    setSaveError("");
     try {
       await createOnrPreviewReview(
         selected.attempt_id,
         decision,
         reason,
-        previousReviewId,
+        latestReviewId(history),
         inspection.listing_sha256,
         csrf,
       );
-      setResolvedIds((prev) => new Set([...prev, selected.attempt_id]));
-      backToList();
-    } catch (e) {
-      setReviewError(
-        e instanceof Error ? e.message : "Erro ao registrar revisão.",
+      setConfirming(false);
+      onToast("Revisão registrada. A tentativa continua aberta.", "success");
+      await Promise.all([inspect(selected), loadList()]);
+    } catch (cause) {
+      setConfirming(false);
+      if (guard(cause)) return;
+      const stale = cause instanceof ApiError && cause.status === 409;
+      setSaveError(
+        stale
+          ? "A listagem do portal mudou ou outra revisão foi registrada. A inspeção foi recarregada; confira e decida de novo."
+          : problem(cause, "Não foi possível registrar a revisão."),
       );
+      if (stale) await inspect(selected);
     } finally {
       setBusy(false);
     }
   }
 
-  function backToList() {
-    setStage("list");
-    setSelected(null);
-    setInspection(null);
-    setHistory(null);
-  }
-
-  const visible = items.filter((i) => !resolvedIds.has(i.attempt_id));
-
-  if (stage === "list") {
-    return (
-      <div className="content commercial-page">
-        <header className="page-head">
-          <div>
-            <p className="eyebrow">Aquisição registral</p>
-            <h1>Revisão de prévia ONR</h1>
-            <p className="muted">
-              Tentativas de prévia ONR que aguardam decisão da equipe. Cada
-              revisão requer inspeção visual dos pedidos no portal antes de
-              classificar.
-            </p>
-          </div>
-          <span className="pill">Gestor</span>
-        </header>
-        {listError && (
-          <p className="error" role="alert">
-            {listError}
-          </p>
-        )}
-        {loading && <p className="muted">Carregando…</p>}
-        {!loading && visible.length === 0 && !listError && (
-          <p className="muted">Nenhuma prévia aguardando revisão.</p>
-        )}
-        <ul className="commercial-list">
-          {visible.map((item) => (
-            <li key={item.attempt_id}>
-              <div className="commercial-list-head">
-                <div>
-                  <strong>Tentativa</strong> <code>{item.attempt_id}</code>
-                </div>
-                <div
-                  style={{
-                    display: "flex",
-                    gap: "1rem",
-                    alignItems: "center",
-                    flexWrap: "wrap",
-                    marginTop: "0.4rem",
-                  }}
-                >
-                  <small>Iniciada: {fmtDate(item.started_at)}</small>
-                  {item.latest_decision && (
-                    <span className="pill" style={{ fontSize: "0.75rem" }}>
-                      {item.latest_decision}
-                    </span>
-                  )}
-                </div>
-              </div>
-              <div style={{ marginTop: "0.8rem" }}>
-                <button
-                  type="button"
-                  className="button primary"
-                  onClick={() => void openAttempt(item)}
-                >
-                  Inspecionar e revisar
-                </button>
-              </div>
-            </li>
-          ))}
-        </ul>
-        {nextCursor && (
-          <button
-            type="button"
-            className="button secondary"
-            disabled={loading}
-            onClick={() => void loadList(nextCursor)}
-          >
-            Carregar mais
-          </button>
-        )}
-      </div>
-    );
-  }
+  const nextVersion =
+    (history ? Math.max(0, ...history.map((h) => h.version)) : 0) + 1;
 
   return (
-    <div className="content commercial-page">
-      <header className="page-head">
+    <section className="page onr-rv" aria-labelledby="onr-rv-title">
+      <header className="page-header">
         <div>
-          <p className="eyebrow">Aquisição registral</p>
-          <h1>Prévia ONR — inspeção e revisão</h1>
-          <p className="muted">
-            <code>{selected?.attempt_id}</code>
+          <p className="onr-rv-eyebrow">Aquisição registral</p>
+          <h1 className="page-title" id="onr-rv-title">
+            Prévia ONR
+          </h1>
+          <p className="page-subtitle">
+            Tentativas de prévia sem resultado certo. A equipe confere o portal
+            e registra uma decisão auditada; isso não libera compra nem
+            cobrança.
           </p>
         </div>
-        <button type="button" className="button secondary" onClick={backToList}>
-          ← Voltar à lista
+        <button
+          type="button"
+          className="btn btn-secondary btn-md"
+          disabled={loading}
+          onClick={() => void loadList()}
+        >
+          Atualizar fila
         </button>
       </header>
-      {inspectError && (
-        <p className="error" role="alert">
-          {inspectError}
-        </p>
-      )}
-      {!inspection && !inspectError && (
-        <p className="muted">Carregando inspeção do portal…</p>
-      )}
-      {inspection && (
-        <>
-          <div className="notice" role="note">
-            Observado em: {fmtDate(inspection.observed_at)} · Cobertura:{" "}
-            {inspection.coverage} · Páginas lidas: {inspection.pages_read}
-            <br />
-            SHA-256:{" "}
-            <code className="code-id">
-              {inspection.listing_sha256.slice(0, 16)}…
-            </code>
-          </div>
-          {inspection.orders.length === 0 ? (
-            <p className="muted">
-              Nenhum pedido encontrado na listagem do portal.
-            </p>
-          ) : (
-            <table
-              className="onr-orders-table"
-              style={{
-                width: "100%",
-                borderCollapse: "collapse",
-                marginTop: "1rem",
-                fontSize: "0.875rem",
-              }}
-            >
-              <thead>
-                <tr>
-                  <th
-                    style={{
-                      textAlign: "left",
-                      padding: "0.5rem",
-                      borderBottom: "1px solid var(--line)",
-                    }}
-                  >
-                    Protocolo
-                  </th>
-                  <th
-                    style={{
-                      textAlign: "left",
-                      padding: "0.5rem",
-                      borderBottom: "1px solid var(--line)",
-                    }}
-                  >
-                    Data
-                  </th>
-                  <th
-                    style={{
-                      textAlign: "left",
-                      padding: "0.5rem",
-                      borderBottom: "1px solid var(--line)",
-                    }}
-                  >
-                    Status
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {inspection.orders.map((o) => (
-                  <tr key={o.protocol}>
-                    <td
-                      style={{
-                        padding: "0.5rem",
-                        borderBottom: "1px solid var(--line)",
-                      }}
-                    >
-                      <code>{o.protocol}</code>
-                    </td>
-                    <td
-                      style={{
-                        padding: "0.5rem",
-                        borderBottom: "1px solid var(--line)",
-                      }}
-                    >
-                      {o.date}
-                    </td>
-                    <td
-                      style={{
-                        padding: "0.5rem",
-                        borderBottom: "1px solid var(--line)",
-                      }}
-                    >
-                      {statusLabel(o.status)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+
+      <div className={`onr-rv-grid${selected ? " has-selection" : ""}`}>
+        <aside className="onr-rv-queue" aria-label="Fila de tentativas">
+          {listError && (
+            <div className="error-state" role="alert">
+              <strong>Não foi possível carregar a fila</strong>
+              <span>{listError}</span>
+              <button
+                className="btn btn-secondary btn-sm"
+                type="button"
+                onClick={() => void loadList()}
+              >
+                Tentar novamente
+              </button>
+            </div>
           )}
-        </>
-      )}
-      {history && history.items.length > 0 && (
-        <details style={{ marginTop: "1.2rem" }}>
-          <summary style={{ cursor: "pointer", fontWeight: 700 }}>
-            Histórico de revisões ({history.items.length})
-          </summary>
-          <ul className="commercial-list" style={{ marginTop: "0.8rem" }}>
-            {history.items.map((r) => (
-              <li key={r.id}>
-                <div className="commercial-list-head">
-                  <span className="pill" style={{ fontSize: "0.75rem" }}>
-                    {decisionLabel(r.decision)}
+          {loading && items.length === 0 && !listError && (
+            <div
+              className="rules-skeleton"
+              role="status"
+              aria-label="Carregando fila"
+            >
+              <span className="skeleton" />
+              <span className="skeleton" />
+            </div>
+          )}
+          {!loading && items.length === 0 && !listError && (
+            <div className="empty-state" role="status">
+              <strong>Nenhuma prévia aguardando revisão</strong>
+              <span>
+                As tentativas incertas aparecem aqui assim que existirem.
+              </span>
+            </div>
+          )}
+          <ul className="onr-rv-cards">
+            {items.map((item) => (
+              <li key={item.attempt_id}>
+                <button
+                  type="button"
+                  className="onr-rv-card"
+                  aria-pressed={selected?.attempt_id === item.attempt_id}
+                  onClick={() => open(item)}
+                >
+                  <span className="onr-rv-card-top">
+                    <strong>
+                      {dateTime.format(new Date(item.started_at))}
+                    </strong>
+                    <span
+                      className={`badge ${item.latest_decision ? "badge-info" : "badge-warning"}`}
+                    >
+                      {item.latest_decision
+                        ? decisionLabel(item.latest_decision)
+                        : "Sem revisão"}
+                    </span>
                   </span>
-                  <small style={{ marginLeft: "0.7rem" }}>
-                    {fmtDate(r.created_at)}
-                  </small>
-                </div>
-                <p>{r.reason}</p>
+                  <span className="onr-rv-card-sub">
+                    Tentativa <code>{shortId(item.attempt_id)}</code>
+                    {item.review_version
+                      ? ` · versão ${item.review_version}`
+                      : ""}
+                  </span>
+                  <span className="onr-rv-card-sub">
+                    Pedido <code>{shortId(item.operation_id)}</code>
+                  </span>
+                </button>
               </li>
             ))}
           </ul>
-        </details>
-      )}
-      {inspection && (
-        <form
-          onSubmit={(e) => void submitReview(e)}
-          style={{
-            marginTop: "1.5rem",
-            display: "grid",
-            gap: "0.8rem",
-            maxWidth: "600px",
-          }}
-        >
-          <h2>Registrar decisão de revisão</h2>
-          <p className="muted">
-            A decisão usa o SHA-256 da listagem carregada acima como âncora de
-            integridade. Verifique os pedidos antes de classificar.
-          </p>
-          <label style={{ display: "grid", gap: "0.35rem" }}>
-            Decisão
-            <select
-              value={decision}
-              onChange={(e) => setDecision(e.target.value)}
-            >
-              {DECISIONS.map((d) => (
-                <option key={d.value} value={d.value}>
-                  {d.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label style={{ display: "grid", gap: "0.35rem" }}>
-            Justificativa (20–2000 caracteres)
-            <textarea
-              required
-              minLength={20}
-              maxLength={2000}
-              rows={4}
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-            />
-          </label>
-          {reviewError && (
-            <p className="error" role="alert">
-              {reviewError}
-            </p>
-          )}
-          <div style={{ display: "flex", gap: "0.7rem", flexWrap: "wrap" }}>
-            <button
-              type="submit"
-              className="button primary"
-              disabled={busy || !inspection}
-            >
-              {busy ? "Registrando…" : "Confirmar revisão"}
-            </button>
+          {cursor && (
             <button
               type="button"
-              className="button secondary"
-              onClick={backToList}
-              disabled={busy}
+              className="btn btn-secondary btn-md"
+              disabled={loading}
+              onClick={() => void loadList(cursor)}
             >
-              Cancelar
+              Carregar mais
             </button>
-          </div>
-        </form>
-      )}
-    </div>
+          )}
+        </aside>
+
+        <div className="onr-rv-detail">
+          {!selected ? (
+            <div className="empty-state" role="status">
+              <strong>Escolha uma tentativa</strong>
+              <span>
+                Selecione na fila para ver a listagem do portal e as revisões
+                anteriores.
+              </span>
+            </div>
+          ) : (
+            <>
+              <div className="onr-rv-detail-head">
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm onr-rv-back"
+                  onClick={back}
+                >
+                  ← Voltar à fila
+                </button>
+                <h2 className="onr-rv-title">
+                  Tentativa <code>{shortId(selected.attempt_id)}</code>
+                </h2>
+                <p className="onr-rv-muted">
+                  Iniciada em {dateTime.format(new Date(selected.started_at))} ·
+                  pedido <code>{selected.operation_id}</code>
+                </p>
+              </div>
+
+              {inspectError && (
+                <div className="error-state" role="alert">
+                  <strong>Não foi possível ler o portal</strong>
+                  <span>{inspectError}</span>
+                  <button
+                    className="btn btn-secondary btn-sm"
+                    type="button"
+                    onClick={() => void inspect(selected)}
+                  >
+                    Tentar novamente
+                  </button>
+                </div>
+              )}
+              {!inspection && !inspectError && (
+                <div
+                  className="rules-skeleton"
+                  role="status"
+                  aria-label="Lendo o portal"
+                >
+                  <span className="skeleton" />
+                  <span className="skeleton" />
+                  <span className="skeleton" />
+                </div>
+              )}
+              {inspection && (
+                <OnrInspection
+                  key={inspection.listing_sha256}
+                  attemptId={selected.attempt_id}
+                  inspection={inspection}
+                  onStale={() => {
+                    onToast(
+                      "A listagem do portal mudou. A inspeção foi recarregada.",
+                      "error",
+                    );
+                    void inspect(selected);
+                  }}
+                  onCopy={(text) => {
+                    void navigator.clipboard?.writeText(text).then(
+                      () => onToast("SHA-256 copiado.", "success"),
+                      () => onToast("Não foi possível copiar.", "error"),
+                    );
+                  }}
+                />
+              )}
+
+              <section
+                className="onr-rv-block"
+                aria-labelledby="onr-history-title"
+              >
+                <h3 className="onr-rv-title" id="onr-history-title">
+                  Versões da revisão
+                </h3>
+                {history === null ? (
+                  <div
+                    className="rules-skeleton"
+                    role="status"
+                    aria-label="Carregando versões"
+                  >
+                    <span className="skeleton" />
+                  </div>
+                ) : (
+                  <OnrVersionHistory
+                    items={history}
+                    currentSha={inspection?.listing_sha256 ?? null}
+                  />
+                )}
+              </section>
+
+              {inspection && history !== null && (
+                <section
+                  className="onr-rv-block"
+                  aria-labelledby="onr-decide-title"
+                >
+                  <h3 className="onr-rv-title" id="onr-decide-title">
+                    {history.length
+                      ? "Corrigir a decisão"
+                      : "Registrar a decisão"}
+                  </h3>
+                  {saveError && (
+                    <p className="alert alert-danger" role="alert">
+                      {saveError}
+                    </p>
+                  )}
+                  <RolePicker<ReviewDecision>
+                    label="O que você viu no portal"
+                    value={decision}
+                    options={DECISION_OPTIONS}
+                    disabled={busy}
+                    onChange={setDecision}
+                  />
+                  <div className="onr-rv-actions">
+                    <button
+                      type="button"
+                      className="btn btn-primary btn-md"
+                      aria-haspopup="dialog"
+                      disabled={busy}
+                      onClick={() => setConfirming(true)}
+                    >
+                      Revisar e registrar
+                    </button>
+                  </div>
+                </section>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+
+      <ConfirmDialog
+        open={confirming && selected !== null && inspection !== null}
+        title={`Registrar versão ${nextVersion}?`}
+        description="A decisão é imutável e fica na trilha de auditoria. Ela não reabre a prévia, não libera compra e não gera cobrança."
+        details={
+          selected && inspection
+            ? [
+                { label: "Tentativa", value: shortId(selected.attempt_id) },
+                { label: "Decisão", value: decisionLabel(decision) },
+                {
+                  label: "Listagem",
+                  value: shortSha(inspection.listing_sha256),
+                },
+              ]
+            : []
+        }
+        reason={{
+          label: "Justificativa (sem dados pessoais do pedido)",
+          min: 20,
+          max: 2000,
+        }}
+        confirmLabel="Registrar revisão"
+        busy={busy}
+        onConfirm={(reason) => void confirm(reason)}
+        onCancel={() => !busy && setConfirming(false)}
+      />
+    </section>
   );
 }

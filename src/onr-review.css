@@ -1,0 +1,240 @@
+.onr-rv-eyebrow {
+  margin: 0 0 var(--space-1);
+  color: var(--primary);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.onr-rv-grid {
+  display: grid;
+  grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
+  gap: var(--space-5);
+  align-items: start;
+}
+
+.onr-rv-queue {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.onr-rv-cards {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.onr-rv-card {
+  display: grid;
+  gap: var(--space-1);
+  width: 100%;
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.onr-rv-card:hover {
+  border-color: var(--border-strong);
+}
+.onr-rv-card[aria-pressed="true"] {
+  border-color: var(--primary);
+  background: var(--primary-faint);
+}
+.onr-rv-card:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+.onr-rv-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.onr-rv-card-sub {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.onr-rv-detail {
+  display: grid;
+  gap: var(--space-5);
+  min-width: 0;
+}
+
+.onr-rv-detail-head .onr-rv-title {
+  margin: var(--space-2) 0 var(--space-1);
+}
+.onr-rv-back {
+  display: none;
+}
+
+.onr-rv-block {
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  min-width: 0;
+  display: grid;
+  gap: var(--space-4);
+}
+
+.onr-rv-block-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.onr-rv-title {
+  margin: 0;
+  font-size: var(--text-md, 1rem);
+}
+.onr-rv-muted {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.onr-rv-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3) var(--space-5);
+  margin: 0;
+}
+.onr-rv-facts dt {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+.onr-rv-facts dd {
+  margin: var(--space-1) 0 0;
+  overflow-wrap: anywhere;
+}
+
+.onr-rv-search {
+  display: grid;
+  gap: var(--space-1);
+  max-width: 420px;
+}
+.onr-rv-search .input {
+  width: 100%;
+}
+
+.onr-rv-orders {
+  position: relative;
+  max-height: 420px;
+  overflow: auto;
+}
+.onr-rv-detail-row td {
+  background: var(--surface-muted);
+}
+.onr-rv-solicitations {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.onr-rv-solicitations li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--text-sm);
+}
+
+.onr-rv-versions {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.onr-rv-versions > li {
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.onr-rv-versions > li[data-current="true"] {
+  border-color: var(--primary);
+}
+.onr-rv-version-head,
+.onr-rv-version-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+.onr-rv-version-foot {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+.onr-rv-reason {
+  margin: var(--space-2) 0;
+  overflow-wrap: anywhere;
+}
+
+.onr-rv-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+@media (max-width: 900px) {
+  .onr-rv-grid {
+    grid-template-columns: 1fr;
+  }
+  .onr-rv-grid.has-selection .onr-rv-queue {
+    display: none;
+  }
+  .onr-rv-back {
+    display: inline-flex;
+  }
+}
+
+@media (max-width: 520px) {
+  .onr-rv-facts {
+    grid-template-columns: 1fr;
+  }
+  .onr-rv-block {
+    padding: var(--space-3);
+  }
+}
+
+@media (max-width: 640px) {
+  .onr-rv-table thead {
+    display: none;
+  }
+  .onr-rv-table,
+  .onr-rv-table tbody,
+  .onr-rv-table tr,
+  .onr-rv-table td {
+    display: block;
+  }
+  .onr-rv-table tbody tr {
+    padding: var(--space-3) var(--space-4);
+    border-bottom: 1px solid var(--border);
+  }
+  .onr-rv-table tbody td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: var(--space-1) 0;
+    border: 0;
+    text-align: right;
+  }
+  .onr-rv-table tbody td[data-label]::before {
+    content: attr(data-label);
+    color: var(--text-muted);
+    font-size: var(--text-caption);
+    text-align: left;
+  }
+  .onr-rv-table .onr-rv-detail-row {
+    padding: 0;
+  }
+}

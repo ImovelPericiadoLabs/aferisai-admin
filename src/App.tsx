@@ -1010,7 +1010,11 @@ function TeamApp() {
           ) : currentPage === "reconciliation" && canReview ? (
             <RegistryReconciliation csrf={session.csrf} />
           ) : currentPage === "onr-review" && canReview ? (
-            <OnrPreviewReview csrf={session.csrf} />
+            <OnrPreviewReview
+              csrf={session.csrf}
+              onUnauthorized={unauthorize}
+              onToast={showToast}
+            />
           ) : currentPage === "registry-requests" && canReview ? (
             <RegistryRequestDirectory onUnauthorized={unauthorize} />
           ) : currentPage === "connections" && canReview ? (

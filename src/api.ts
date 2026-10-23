@@ -1694,7 +1694,7 @@ export type OnrPreviewAttentionItem = {
   started_at: string;
   latest_review_id: string | null;
   latest_decision: string | null;
-  review_version: number;
+  review_version: number | null;
 };
 
 export type OnrPreviewAttentionPage = {
@@ -1720,10 +1720,30 @@ export type OnrPortalOrdersInspection = {
 export type OnrPreviewReviewHistory = {
   items: {
     id: string;
+    version: number;
     decision: string;
     reason: string;
-    created_at: string;
+    portal_orders_sha256: string;
+    observed_at: string;
+    actor_team_member_id: string;
+    previous_review_id: string | null;
   }[];
+  next_version: number | null;
+};
+
+export type OnrPortalSolicitation = {
+  protocol: string;
+  office: string;
+  product: string;
+  status: string;
+};
+
+export type OnrPortalOrderDetail = {
+  order_protocol: string;
+  listing_sha256: string;
+  observed_at: string;
+  coverage: string;
+  solicitations: OnrPortalSolicitation[];
 };
 
 export type OnrPreviewReviewResult = { id: string };
@@ -1740,9 +1760,20 @@ export const getOnrOrdersInspection = (attemptId: string) =>
     { method: "GET" },
   );
 
-export const getOnrPreviewReviews = (attemptId: string) =>
+export const getOnrPreviewReviews = (attemptId: string, afterVersion = 0) =>
   request<OnrPreviewReviewHistory>(
-    `/v1/team/onr-preview-attempts/${encodeURIComponent(attemptId)}/reviews`,
+    `/v1/team/onr-preview-attempts/${encodeURIComponent(attemptId)}/reviews?limit=50&after_version=${afterVersion}`,
+    { method: "GET" },
+  );
+
+/** Opens one order of the observed listing; the server re-reads the portal and checks the digest. */
+export const getOnrOrderDetail = (
+  attemptId: string,
+  protocol: string,
+  expectedListingSha256: string,
+) =>
+  request<OnrPortalOrderDetail>(
+    `/v1/team/onr-preview-attempts/${encodeURIComponent(attemptId)}/orders/${encodeURIComponent(protocol)}?expected_listing_sha256=${expectedListingSha256}`,
     { method: "GET" },
   );
 
