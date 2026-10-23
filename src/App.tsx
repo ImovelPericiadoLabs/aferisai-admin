@@ -39,6 +39,7 @@ import { RegistryRequestDirectory } from "./RegistryRequestDirectory";
 import { Connections } from "./Connections";
 import { Users } from "./Users";
 import { TeamMembers } from "./TeamMembers";
+import type { PeopleTab } from "./people-model";
 import { AnalysisProviders } from "./AnalysisProviders";
 import { Passkeys } from "./Passkeys";
 import { ShellIcon } from "./ShellIcon";
@@ -1221,6 +1222,12 @@ function TeamApp() {
       ? "financial"
       : "overview";
   const currentItem = nav.find((item) => item.page === currentPage);
+  const peopleTabs: PeopleTab[] = [
+    ...(canReview ? [{ page: "users" as const, label: "Usuários" }] : []),
+    ...(session.member.role === "administrator"
+      ? [{ page: "team-members" as const, label: "Equipe" }]
+      : []),
+  ];
   const mobileItems: Page[] = isFinancial
     ? ["overview", "reports", "financial", "commissions"]
     : canReview
@@ -1551,11 +1558,18 @@ function TeamApp() {
               onToast={showToast}
             />
           ) : currentPage === "users" && canReview ? (
-            <Users canRead={canReview} onUnauthorized={unauthorize} />
+            <Users
+              canRead={canReview}
+              tabs={peopleTabs}
+              onTab={navigate}
+              onUnauthorized={unauthorize}
+            />
           ) : currentPage === "team-members" &&
             session.member.role === "administrator" ? (
             <TeamMembers
               isAdmin={session.member.role === "administrator"}
+              tabs={peopleTabs}
+              onTab={navigate}
               onUnauthorized={unauthorize}
             />
           ) : currentPage === "analysis-providers" &&

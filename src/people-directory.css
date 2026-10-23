@@ -1,0 +1,228 @@
+.people-tabs {
+  display: flex;
+  gap: var(--space-1);
+  margin-bottom: var(--space-4);
+  border-bottom: 1px solid var(--border);
+}
+
+.people-tab {
+  margin-bottom: -1px;
+  padding: var(--space-2) var(--space-4);
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+}
+
+.people-tab:hover {
+  color: var(--text);
+}
+
+.people-tab.active {
+  border-bottom-color: var(--primary);
+  color: var(--primary);
+  font-weight: var(--weight-semibold);
+}
+
+.people-tab:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+}
+
+.people-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.people-search {
+  position: relative;
+  flex: 1 1 280px;
+  max-width: 420px;
+}
+
+.people-search svg {
+  position: absolute;
+  top: 50%;
+  left: var(--space-3);
+  width: 16px;
+  height: 16px;
+  color: var(--text-subtle);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.people .people-search input.input {
+  width: 100%;
+  padding-left: calc(var(--space-3) + 24px);
+}
+
+.people .people-filter select.input {
+  min-width: 160px;
+}
+
+.people-count {
+  margin-left: auto;
+  color: var(--text-muted);
+  font-size: var(--text-caption);
+}
+
+.people-skeleton {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.people-skeleton .skeleton {
+  display: block;
+  height: 48px;
+}
+
+.people-name {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.people-name:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 4px;
+  border-radius: var(--radius-sm);
+}
+
+.people-avatar {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  background: var(--primary-faint);
+  color: var(--primary);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-bold);
+}
+
+.people-avatar-lg {
+  width: 40px;
+  height: 40px;
+  font-size: var(--text-sm);
+}
+
+.people-date {
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.people-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4) 0;
+  color: var(--text-muted);
+  font-size: var(--text-caption);
+}
+
+.people-detail-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.people-detail-title {
+  margin: 0 0 var(--space-1);
+  color: var(--text);
+  font-size: var(--text-md);
+  font-weight: var(--weight-bold);
+  overflow-wrap: anywhere;
+}
+
+.people-detail-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.people-id {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.people-id code {
+  color: var(--text);
+  font-family: ui-monospace, monospace;
+  font-size: var(--text-caption);
+  overflow-wrap: anywhere;
+}
+
+.people-note {
+  margin: 0;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--surface-muted);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+
+@media (max-width: 760px) {
+  .people-count {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .people-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .people-table,
+  .people-table tbody,
+  .people-table tr {
+    display: block;
+  }
+
+  .people-table tbody tr {
+    padding: var(--space-3) var(--space-4);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .people-table tbody tr:last-child {
+    border-bottom: 0;
+  }
+
+  .people-table tbody td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: var(--space-1) 0;
+    border: 0;
+  }
+
+  .people-table tbody td[data-label]:not([data-label="Conta"])::before {
+    content: attr(data-label);
+    color: var(--text-muted);
+    font-size: var(--text-caption);
+  }
+}
