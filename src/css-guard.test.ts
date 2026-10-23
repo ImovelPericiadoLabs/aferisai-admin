@@ -1,10 +1,12 @@
+/// <reference types="node" />
+import { readdirSync, readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
-const stylesheets = import.meta.glob("./*.css", {
-  query: "?raw",
-  import: "default",
-  eager: true,
-}) as Record<string, string>;
+const SRC = fileURLToPath(new URL(".", import.meta.url));
+const stylesheets: [string, string][] = readdirSync(SRC)
+  .filter((name) => name.endsWith(".css"))
+  .map((name) => [name, readFileSync(SRC + name, "utf8")]);
 
 // Bottom alignment is intentional for titles beside actions and for charts.
 // Controls that share a row with a labelled field must use `.field-action`
@@ -41,9 +43,14 @@ function bottomAlignedSelectors(css: string): string[] {
 }
 
 describe("css layout guard", () => {
+  it("actually reads the stylesheets", () => {
+    expect(stylesheets.length).toBeGreaterThan(20);
+    expect(stylesheets.every(([, css]) => css.length > 0)).toBe(true);
+  });
+
   it("does not bottom-align flex rows outside the allowlist", () => {
     const offenders: string[] = [];
-    for (const [file, css] of Object.entries(stylesheets))
+    for (const [file, css] of stylesheets)
       for (const selector of bottomAlignedSelectors(css))
         if (!ALLOWED_BOTTOM_ALIGNED.has(selector))
           offenders.push(`${file}: ${selector}`);
