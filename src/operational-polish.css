@@ -103,9 +103,9 @@
 }
 
 .main-area:where(:not(:has(.page)))
-  :is(input, select, textarea):not([type="checkbox"]):not([type="radio"]):not(
-    [type="file"]
-  ) {
+  :is(input, select, textarea):not(.picker-input):not([type="checkbox"]):not(
+    [type="radio"]
+  ):not([type="file"]) {
   min-height: 42px;
   max-width: 100%;
   background: #fff;
@@ -120,11 +120,13 @@
   padding: 0.75rem 0.85rem;
 }
 
-.main-area:where(:not(:has(.page))) :is(input, select, textarea)::placeholder {
+.main-area:where(:not(:has(.page)))
+  :is(input, select, textarea):not(.picker-input)::placeholder {
   color: #60738c;
 }
 
-.main-area:where(:not(:has(.page))) :is(input, select, textarea):focus-visible,
+.main-area:where(:not(:has(.page)))
+  :is(input, select, textarea):not(.picker-input):focus-visible,
 .main-area:where(:not(:has(.page))) :is(button, a, [role="tab"]):focus-visible {
   outline: 3px solid rgb(7 91 255 / 26%);
   outline-offset: 2px;

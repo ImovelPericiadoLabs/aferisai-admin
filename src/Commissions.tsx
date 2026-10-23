@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import {
   ApiError,
   createCommissionSettlement,
@@ -9,6 +9,13 @@ import {
   type CommissionSettlement,
   type CreateSettlementBody,
 } from "./api";
+import { EntityPicker } from "./EntityPicker";
+import {
+  LIMIT_NOTES,
+  resolveOrganization,
+  searchCommissionEntries,
+  searchOrganizations,
+} from "./lookups";
 import "./commercial-policies.css";
 import { itemLabel, statusLabel as genericStatusLabel } from "./display-labels";
 
@@ -160,12 +167,14 @@ function EntriesTab({
             setRevision((v) => v + 1);
           }}
         >
-          <label htmlFor="entry-org">UUID da organização (opcional)</label>
-          <input
+          <EntityPicker
             id="entry-org"
+            label="Organização (opcional)"
+            placeholder="Todas as organizações"
             value={orgFilter}
-            onChange={(event) => setOrgFilter(event.target.value)}
-            placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+            search={searchOrganizations}
+            resolve={resolveOrganization}
+            onChange={setOrgFilter}
           />
           <label htmlFor="entry-status">Estado</label>
           <select
@@ -341,6 +350,14 @@ function SettlementsTab({
     settledAt: "",
     entryIds: "",
   });
+  const entryIdList = useMemo(
+    () => form.entryIds.split(/[\s,]+/).filter(Boolean),
+    [form.entryIds],
+  );
+  const entriesSearch = useMemo(
+    () => searchCommissionEntries(form.organizationId, "owed"),
+    [form.organizationId],
+  );
 
   useEffect(() => {
     let live = true;
@@ -444,15 +461,17 @@ function SettlementsTab({
           className="form commercial-form"
           onSubmit={(event) => void submit(event)}
         >
-          <label htmlFor="set-org">UUID da organização beneficiária</label>
-          <input
+          <EntityPicker
             id="set-org"
-            value={form.organizationId}
-            onChange={(event) =>
-              setForm((f) => ({ ...f, organizationId: event.target.value }))
-            }
-            placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+            label="Organização beneficiária"
+            placeholder="Buscar organização pelo nome"
             required
+            value={form.organizationId}
+            search={searchOrganizations}
+            resolve={resolveOrganization}
+            onChange={(id) =>
+              setForm((f) => ({ ...f, organizationId: id, entryIds: "" }))
+            }
           />
           <label htmlFor="set-ref">Referência externa (comprovante)</label>
           <input
@@ -498,17 +517,25 @@ function SettlementsTab({
             }
             required
           />
-          <label htmlFor="set-entries">
-            IDs das obrigações (um por linha ou separados por vírgula)
-          </label>
-          <textarea
+          <EntityPicker
+            multiple
             id="set-entries"
-            value={form.entryIds}
-            onChange={(event) =>
-              setForm((f) => ({ ...f, entryIds: event.target.value }))
+            label="Obrigações incluídas no repasse"
+            placeholder={
+              form.organizationId
+                ? "Buscar obrigações devidas"
+                : "Escolha a organização primeiro"
             }
-            placeholder="UUID1&#10;UUID2"
             required
+            disabled={!form.organizationId}
+            value={entryIdList}
+            search={entriesSearch}
+            cacheKey={form.organizationId}
+            limitNote={LIMIT_NOTES.entries}
+            hint="Mostra as obrigações com estado Devido da organização escolhida."
+            onChange={(ids) =>
+              setForm((f) => ({ ...f, entryIds: ids.join("\n") }))
+            }
           />
           <button className="button primary" disabled={busy}>
             Registrar repasse
@@ -525,12 +552,14 @@ function SettlementsTab({
               setRevision((v) => v + 1);
             }}
           >
-            <label htmlFor="set-org-filter">Filtrar por organização</label>
-            <input
+            <EntityPicker
               id="set-org-filter"
+              label="Filtrar por organização"
+              placeholder="Todas as organizações"
               value={orgFilter}
-              onChange={(event) => setOrgFilter(event.target.value)}
-              placeholder="UUID opcional"
+              search={searchOrganizations}
+              resolve={resolveOrganization}
+              onChange={setOrgFilter}
             />
             <button type="submit" className="button secondary" disabled={busy}>
               Filtrar

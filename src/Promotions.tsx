@@ -8,6 +8,13 @@ import {
   type PromotionAsset,
   type PromotionCreateResult,
 } from "./api";
+import { EntityPicker } from "./EntityPicker";
+import {
+  LIMIT_NOTES,
+  resolveOrganization,
+  searchOrganizations,
+  searchPromotionPolicies,
+} from "./lookups";
 import "./commercial-policies.css";
 import {
   promotionKindLabel,
@@ -217,21 +224,25 @@ export function Promotions({
             className="form commercial-form"
             onSubmit={(event) => void submit(event)}
           >
-            <label htmlFor="promo-policy">UUID da versão de regra</label>
-            <input
+            <EntityPicker
               id="promo-policy"
+              label="Versão de regra publicada"
+              placeholder="Buscar regra de promoção publicada"
+              required
               value={form.policyVersionId}
-              onChange={(event) => set("policyVersionId", event.target.value)}
-              placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-              required
+              search={searchPromotionPolicies}
+              limitNote={LIMIT_NOTES.policies}
+              onChange={(id) => set("policyVersionId", id)}
             />
-            <label htmlFor="promo-org">UUID da organização</label>
-            <input
+            <EntityPicker
               id="promo-org"
-              value={form.organizationId}
-              onChange={(event) => set("organizationId", event.target.value)}
-              placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+              label="Organização"
+              placeholder="Buscar organização pelo nome"
               required
+              value={form.organizationId}
+              search={searchOrganizations}
+              resolve={resolveOrganization}
+              onChange={(id) => set("organizationId", id)}
             />
             <label htmlFor="promo-kind">Tipo</label>
             <select

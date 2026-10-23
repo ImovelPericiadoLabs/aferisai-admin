@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import {
   ApiError,
   listTeamConnections,
@@ -7,6 +7,13 @@ import {
 } from "./api";
 import type { ToastKind } from "./useToast";
 import { scopeLabel } from "./display-labels";
+import { EntityPicker } from "./EntityPicker";
+import {
+  resolveApplication,
+  resolveOrganization,
+  searchApplications,
+  searchOrganizations,
+} from "./lookups";
 
 function ScopeBadge({ scope }: { scope: string }) {
   const isAnalysis = scope.startsWith("analysis:");
@@ -43,6 +50,15 @@ export function Connections({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [appFilter, setAppFilter] = useState("");
+  const [orgFilter, setOrgFilter] = useState("");
+  const applicationsSearch = useMemo(
+    () => searchApplications(orgFilter),
+    [orgFilter],
+  );
+  const applicationResolver = useMemo(
+    () => resolveApplication(orgFilter),
+    [orgFilter],
+  );
   const [activeFilter, setActiveFilter] = useState("");
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [revokingId, setRevokingId] = useState<string | null>(null);
@@ -170,20 +186,38 @@ export function Connections({
           gap: "0.6rem",
           marginBottom: "1.5rem",
           flexWrap: "wrap",
+          alignItems: "flex-end",
         }}
       >
-        <label htmlFor="app-filter" style={{ display: "none" }}>
-          Filtrar por ID da aplicação
-        </label>
-        <input
-          id="app-filter"
-          className="input"
-          style={{ maxWidth: "420px", flex: "1 1 200px" }}
-          placeholder="ID da aplicação (UUID)"
-          value={appFilter}
-          onChange={(e) => setAppFilter(e.target.value)}
-          maxLength={36}
-        />
+        <div style={{ flex: "1 1 240px", maxWidth: "320px" }}>
+          <EntityPicker
+            id="org-filter"
+            label="Organização"
+            placeholder="Buscar organização"
+            value={orgFilter}
+            search={searchOrganizations}
+            resolve={resolveOrganization}
+            onChange={(id) => {
+              setOrgFilter(id);
+              setAppFilter("");
+            }}
+          />
+        </div>
+        <div style={{ flex: "1 1 240px", maxWidth: "320px" }}>
+          <EntityPicker
+            id="app-filter"
+            label="Aplicação"
+            placeholder={
+              orgFilter ? "Buscar aplicação" : "Escolha a organização primeiro"
+            }
+            disabled={!orgFilter}
+            value={appFilter}
+            search={applicationsSearch}
+            resolve={applicationResolver}
+            cacheKey={orgFilter}
+            onChange={setAppFilter}
+          />
+        </div>
         <button type="submit" className="button secondary" disabled={loading}>
           Filtrar
         </button>
@@ -193,6 +227,7 @@ export function Connections({
             className="button secondary"
             onClick={() => {
               setAppFilter("");
+              setOrgFilter("");
               setActiveFilter("");
               void load(undefined, "");
             }}

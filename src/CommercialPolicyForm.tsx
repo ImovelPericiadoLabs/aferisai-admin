@@ -1,10 +1,16 @@
-import { useEffect, useState } from "react";
-import { getOrganization } from "./api";
+import { useMemo } from "react";
 import {
   itemOptions,
   type FormState,
   type PolicyChannel,
 } from "./commercial-model";
+import { EntityPicker } from "./EntityPicker";
+import {
+  resolveApplication,
+  resolveOrganization,
+  searchApplications,
+  searchOrganizations,
+} from "./lookups";
 
 export type OrganizationOption = { id: string; name: string };
 
@@ -18,18 +24,11 @@ type Props = {
   onClose: () => void;
 };
 
-type ApplicationsState = {
-  organizationId: string;
-  applications: { id: string; name: string }[] | null;
-};
-
 const channels: { value: PolicyChannel; title: string; hint: string }[] = [
   { value: "site", title: "Site direto", hint: "Clientes sem parceiro" },
   { value: "integration", title: "Integração", hint: "Via API de um parceiro" },
   { value: "promotion", title: "Promoção", hint: "Cupom ou link" },
 ];
-
-const MANUAL = "__manual__";
 
 export function CommercialPolicyForm({
   form,
@@ -40,56 +39,17 @@ export function CommercialPolicyForm({
   onSubmit,
   onClose,
 }: Props) {
-  const [manualOrg, setManualOrg] = useState(
-    () =>
-      Boolean(form.organizationId) &&
-      !organizations.some((org) => org.id === form.organizationId),
-  );
-  const [manualApp, setManualApp] = useState(false);
-  const [appsState, setAppsState] = useState<ApplicationsState | null>(null);
-
   const needsOrganization = form.channel !== "site";
   const needsApplication = form.channel === "integration";
   const organizationId = form.organizationId.trim();
-
-  useEffect(() => {
-    if (!needsApplication || !organizationId) return;
-    let live = true;
-    getOrganization(organizationId)
-      .then((detail) => {
-        if (live)
-          setAppsState({
-            organizationId,
-            applications: detail.applications.map((app) => ({
-              id: app.id,
-              name: app.name,
-            })),
-          });
-      })
-      .catch(() => {
-        if (live) setAppsState({ organizationId, applications: null });
-      });
-    return () => {
-      live = false;
-    };
-  }, [needsApplication, organizationId]);
-
-  const applications =
-    appsState?.organizationId === organizationId
-      ? appsState.applications
-      : null;
-  const appsLoading =
-    needsApplication &&
-    Boolean(organizationId) &&
-    appsState?.organizationId !== organizationId;
-  const showManualOrg = manualOrg || organizations.length === 0;
-  const showManualApp =
-    manualApp ||
-    (Boolean(organizationId) &&
-      !appsLoading &&
-      (applications === null ||
-        (Boolean(form.applicationId) &&
-          !applications.some((app) => app.id === form.applicationId))));
+  const applicationsSearch = useMemo(
+    () => searchApplications(organizationId),
+    [organizationId],
+  );
+  const applicationResolver = useMemo(
+    () => resolveApplication(organizationId),
+    [organizationId],
+  );
 
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
     onChange({ ...form, [key]: value });
@@ -163,95 +123,40 @@ export function CommercialPolicyForm({
             ))}
           </div>
           {needsOrganization && (
-            <div className="form-field">
-              <label className="form-field-label" htmlFor="policy-organization">
-                Organização
-              </label>
-              {showManualOrg ? (
-                <input
-                  id="policy-organization"
-                  className="input"
-                  value={form.organizationId}
-                  placeholder="UUID da organização"
-                  onChange={(event) =>
-                    set("organizationId", event.target.value)
-                  }
-                  required
-                />
-              ) : (
-                <select
-                  id="policy-organization"
-                  className="input"
-                  value={form.organizationId}
-                  required
-                  onChange={(event) => {
-                    if (event.target.value === MANUAL) {
-                      setManualOrg(true);
-                      set("organizationId", "");
-                    } else {
-                      onChange({
-                        ...form,
-                        organizationId: event.target.value,
-                        applicationId: "",
-                      });
-                    }
-                  }}
-                >
-                  <option value="">Selecione uma organização</option>
-                  {organizations.map((org) => (
-                    <option key={org.id} value={org.id}>
-                      {org.name}
-                    </option>
-                  ))}
-                  <option value={MANUAL}>Outra (informar UUID)</option>
-                </select>
-              )}
-            </div>
+            <EntityPicker
+              id="policy-organization"
+              label="Organização"
+              placeholder="Buscar organização pelo nome"
+              required
+              value={form.organizationId}
+              search={searchOrganizations}
+              resolve={resolveOrganization}
+              knownOptions={organizations.map((org) => ({
+                id: org.id,
+                label: org.name,
+              }))}
+              onChange={(id) =>
+                onChange({ ...form, organizationId: id, applicationId: "" })
+              }
+            />
           )}
           {needsApplication && (
-            <div className="form-field">
-              <label className="form-field-label" htmlFor="policy-application">
-                Aplicação
-              </label>
-              {showManualApp ? (
-                <input
-                  id="policy-application"
-                  className="input"
-                  value={form.applicationId}
-                  placeholder="UUID da aplicação"
-                  onChange={(event) => set("applicationId", event.target.value)}
-                  required
-                />
-              ) : (
-                <select
-                  id="policy-application"
-                  className="input"
-                  value={form.applicationId}
-                  required
-                  disabled={appsLoading || !organizationId}
-                  onChange={(event) => {
-                    if (event.target.value === MANUAL) {
-                      setManualApp(true);
-                      set("applicationId", "");
-                    } else set("applicationId", event.target.value);
-                  }}
-                >
-                  <option value="">
-                    {!organizationId
-                      ? "Escolha a organização primeiro"
-                      : appsLoading
-                        ? "Carregando aplicações…"
-                        : "Selecione uma aplicação"}
-                  </option>
-                  {(applications ?? []).map((app) => (
-                    <option key={app.id} value={app.id}>
-                      {app.name}
-                    </option>
-                  ))}
-                  <option value={MANUAL}>Outra (informar UUID)</option>
-                </select>
-              )}
-            </div>
+            <EntityPicker
+              id="policy-application"
+              label="Aplicação"
+              placeholder={
+                organizationId
+                  ? "Buscar aplicação"
+                  : "Escolha a organização primeiro"
+              }
+              required
+              disabled={!organizationId}
+              value={form.applicationId}
+              search={applicationsSearch}
+              resolve={applicationResolver}
+              cacheKey={organizationId}
+              onChange={(id) => set("applicationId", id)}
+            />
           )}
           {form.channel === "promotion" && (
             <div className="form-field">

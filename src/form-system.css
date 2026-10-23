@@ -69,9 +69,11 @@
 .main-area
   main
   > :not(.dash-page, .page, :has(> .page))
-  :is(input, select, textarea):not([type="checkbox"]):not([type="radio"]):not(
-    [type="file"]
-  ):not([type="hidden"]):not([type="button"]):not([type="submit"]) {
+  :is(input, select, textarea):not(.picker-input):not([type="checkbox"]):not(
+    [type="radio"]
+  ):not([type="file"]):not([type="hidden"]):not([type="button"]):not(
+    [type="submit"]
+  ) {
   display: block;
   box-sizing: border-box;
   width: 100%;
@@ -119,18 +121,18 @@
 .main-area
   main
   > :not(.dash-page, .page, :has(> .page))
-  :is(input, select, textarea):not([type="checkbox"]):not([type="radio"]):not(
-    [type="file"]
-  ):not(:disabled):hover {
+  :is(input, select, textarea):not(.picker-input):not([type="checkbox"]):not(
+    [type="radio"]
+  ):not([type="file"]):not(:disabled):hover {
   border-color: var(--form-hover);
 }
 
 .main-area
   main
   > :not(.dash-page, .page, :has(> .page))
-  :is(input, select, textarea):not([type="checkbox"]):not([type="radio"]):not(
-    [type="file"]
-  ):focus-visible {
+  :is(input, select, textarea):not(.picker-input):not([type="checkbox"]):not(
+    [type="radio"]
+  ):not([type="file"]):focus-visible {
   border-color: var(--form-focus);
   outline: 0;
   box-shadow: 0 0 0 3px rgb(11 105 245 / 17%);
@@ -139,35 +141,38 @@
 .main-area
   main
   > :not(.dash-page, .page, :has(> .page))
-  :is(input, select, textarea):is([aria-invalid="true"], :user-invalid):not(
-    [type="checkbox"]
-  ):not([type="radio"]),
+  :is(input, select, textarea):not(.picker-input):is(
+    [aria-invalid="true"],
+    :user-invalid
+  ):not([type="checkbox"]):not([type="radio"]),
 .main-area
   main
   > :not(.dash-page, .page, :has(> .page))
-  :is(input, select, textarea):is([aria-invalid="true"], :user-invalid):not(
-    [type="checkbox"]
-  ):not([type="radio"]):hover {
+  :is(input, select, textarea):not(.picker-input):is(
+    [aria-invalid="true"],
+    :user-invalid
+  ):not([type="checkbox"]):not([type="radio"]):hover {
   border-color: var(--form-error);
 }
 
 .main-area
   main
   > :not(.dash-page, .page, :has(> .page))
-  :is(input, select, textarea):is([aria-invalid="true"], :user-invalid):not(
-    [type="checkbox"]
-  ):not([type="radio"]):focus-visible {
+  :is(input, select, textarea):not(.picker-input):is(
+    [aria-invalid="true"],
+    :user-invalid
+  ):not([type="checkbox"]):not([type="radio"]):focus-visible {
   box-shadow: 0 0 0 3px rgb(180 35 53 / 16%);
 }
 
 .main-area
   main
   > :not(.dash-page, .page, :has(> .page))
-  :is(input, select, textarea):disabled,
+  :is(input, select, textarea):not(.picker-input):disabled,
 .main-area
   main
   > :not(.dash-page, .page, :has(> .page))
-  :is(input, select, textarea)[aria-disabled="true"] {
+  :is(input, select, textarea):not(.picker-input)[aria-disabled="true"] {
   cursor: not-allowed;
   background-color: #f5f8fa;
   color: #71849a;
@@ -350,9 +355,11 @@
   .main-area
     main
     > :not(.dash-page, .page, :has(> .page))
-    :is(input, select, textarea):not([type="checkbox"]):not([type="radio"]):not(
-      [type="file"]
-    ):not([type="hidden"]):not([type="button"]):not([type="submit"]) {
+    :is(input, select, textarea):not(.picker-input):not([type="checkbox"]):not(
+      [type="radio"]
+    ):not([type="file"]):not([type="hidden"]):not([type="button"]):not(
+      [type="submit"]
+    ) {
     height: 44px;
     min-height: 44px;
     font-size: 1rem;
