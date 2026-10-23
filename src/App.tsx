@@ -1035,7 +1035,7 @@ function TeamApp() {
     string | null
   >(null);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(
     () => {
@@ -1346,113 +1346,6 @@ function TeamApp() {
             );
           })}
         </nav>
-        <div className="sidebar-foot">
-          <div className="account-shell" ref={accountMenuRef}>
-            {accountMenuOpen && (
-              <div className="account-menu" aria-label="Menu da conta">
-                <div className="account-menu-heading">
-                  <strong>{session.member.email}</strong>
-                  <span>{teamRoleLabel(session.member.role)}</span>
-                </div>
-                <p>Minha conta</p>
-                <button
-                  ref={accountActionRef}
-                  type="button"
-                  aria-current={currentPage === "passkeys" ? "page" : undefined}
-                  onClick={() => {
-                    navigate("passkeys");
-                    closeMenu();
-                  }}
-                >
-                  <ShellIcon name="passkeys" size={17} /> Minhas chaves
-                </button>
-                {visibleNav.some((item) =>
-                  ["team-members", "analysis-providers", "access"].includes(
-                    item.page,
-                  ),
-                ) && <p>Configurações</p>}
-                {visibleNav
-                  .filter((item) =>
-                    ["team-members", "analysis-providers", "access"].includes(
-                      item.page,
-                    ),
-                  )
-                  .map((item) => (
-                    <button
-                      key={item.page}
-                      type="button"
-                      aria-current={
-                        currentPage === item.page ? "page" : undefined
-                      }
-                      onClick={() => {
-                        navigate(item.page);
-                        closeMenu();
-                      }}
-                    >
-                      <ShellIcon name={item.page} size={17} /> {item.label}
-                    </button>
-                  ))}
-                <div className="account-menu-divider" />
-                <button
-                  type="button"
-                  onClick={() => void logout()}
-                  className="account-signout"
-                >
-                  <ShellIcon name="logout" size={17} /> Sair da conta
-                </button>
-              </div>
-            )}
-            <div className="account-actions">
-              <button
-                type="button"
-                className="account-trigger"
-                onClick={() => {
-                  if (sidebarCollapsed && !menuOpen) setSidebarCollapsed(false);
-                  setAccountMenuOpen((open) => !open);
-                }}
-                aria-expanded={accountMenuOpen}
-                aria-label={`Conta de ${session.member.email}, ${teamRoleLabel(session.member.role)}`}
-                title={sidebarCollapsed ? session.member.email : undefined}
-              >
-                <span className="account-avatar" aria-hidden="true">
-                  {session.member.email.slice(0, 2).toUpperCase()}
-                </span>
-                <span className="account-meta">
-                  <strong>{session.member.email}</strong>
-                  <small>{teamRoleLabel(session.member.role)}</small>
-                  <small className="account-scope">
-                    {session.member.role === "administrator"
-                      ? "Gestão da plataforma"
-                      : session.member.role === "manager"
-                        ? "Operação e revisão"
-                        : session.member.role === "financial"
-                          ? "Pagamentos e repasses"
-                          : "Acompanhamento"}
-                  </small>
-                </span>
-                <ShellIcon name="chevron" size={16} />
-              </button>
-              <button
-                type="button"
-                className={`account-settings${["team-members", "analysis-providers", "access"].includes(currentPage) ? " active" : ""}`}
-                aria-label="Abrir configurações"
-                aria-expanded={accountMenuOpen}
-                title="Configurações"
-                onClick={() => {
-                  if (sidebarCollapsed && !menuOpen) setSidebarCollapsed(false);
-                  setAccountMenuOpen((open) => !open);
-                }}
-              >
-                <ShellIcon name="settings" size={18} />
-              </button>
-            </div>
-          </div>
-          {logoutError && (
-            <p className="error" role="alert">
-              {logoutError}
-            </p>
-          )}
-        </div>
       </aside>
       {menuOpen && (
         <button
@@ -1477,6 +1370,101 @@ function TeamApp() {
             <span>AferisAI</span>
             <ShellIcon name="chevron" size={15} />
             <strong>{currentItem?.label}</strong>
+          </div>
+          <div className="topbar-account">
+            <div className="account-shell" ref={accountMenuRef}>
+              {accountMenuOpen && (
+                <div className="account-menu" aria-label="Menu da conta">
+                  <div className="account-menu-heading">
+                    <strong>{session.member.email}</strong>
+                    <span>{teamRoleLabel(session.member.role)}</span>
+                  </div>
+                  <p>Minha conta</p>
+                  <button
+                    ref={accountActionRef}
+                    type="button"
+                    aria-current={
+                      currentPage === "passkeys" ? "page" : undefined
+                    }
+                    onClick={() => {
+                      navigate("passkeys");
+                      closeMenu();
+                    }}
+                  >
+                    <ShellIcon name="passkeys" size={17} /> Minhas chaves
+                  </button>
+                  {visibleNav.some((item) =>
+                    ["team-members", "analysis-providers", "access"].includes(
+                      item.page,
+                    ),
+                  ) && <p>Configurações</p>}
+                  {visibleNav
+                    .filter((item) =>
+                      ["team-members", "analysis-providers", "access"].includes(
+                        item.page,
+                      ),
+                    )
+                    .map((item) => (
+                      <button
+                        key={item.page}
+                        type="button"
+                        aria-current={
+                          currentPage === item.page ? "page" : undefined
+                        }
+                        onClick={() => {
+                          navigate(item.page);
+                          closeMenu();
+                        }}
+                      >
+                        <ShellIcon name={item.page} size={17} /> {item.label}
+                      </button>
+                    ))}
+                  <div className="account-menu-divider" />
+                  <button
+                    type="button"
+                    onClick={() => void logout()}
+                    className="account-signout"
+                  >
+                    <ShellIcon name="logout" size={17} /> Sair da conta
+                  </button>
+                </div>
+              )}
+              <div className="account-actions">
+                <button
+                  type="button"
+                  className="account-trigger"
+                  onClick={() => {
+                    setAccountMenuOpen((open) => !open);
+                  }}
+                  aria-expanded={accountMenuOpen}
+                  aria-label={`Conta de ${session.member.email}, ${teamRoleLabel(session.member.role)}`}
+                  title={session.member.email}
+                >
+                  <span className="account-avatar" aria-hidden="true">
+                    {session.member.email.slice(0, 2).toUpperCase()}
+                  </span>
+                  <span className="account-meta">
+                    <strong>{session.member.email}</strong>
+                    <small>{teamRoleLabel(session.member.role)}</small>
+                    <small className="account-scope">
+                      {session.member.role === "administrator"
+                        ? "Gestão da plataforma"
+                        : session.member.role === "manager"
+                          ? "Operação e revisão"
+                          : session.member.role === "financial"
+                            ? "Pagamentos e repasses"
+                            : "Acompanhamento"}
+                    </small>
+                  </span>
+                  <ShellIcon name="chevron" size={16} />
+                </button>
+              </div>
+            </div>
+            {logoutError && (
+              <p className="error" role="alert">
+                {logoutError}
+              </p>
+            )}
           </div>
           {currentPage === "organizations" && (
             <OrganizationContextSwitcher
