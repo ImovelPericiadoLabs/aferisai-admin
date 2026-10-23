@@ -478,6 +478,11 @@ export function ExecutiveDashboard({
           description="Do pedido à entrega, no período."
         >
           <FunnelChart rows={steps} />
+          <p className="xe-sub xe-note">
+            Cada etapa conta os eventos que aconteceram dentro do período, pela
+            data da própria etapa. Não é uma coorte: um pedido criado antes pode
+            ser pago ou entregue agora.
+          </p>
         </Section>
         <Section
           id="xe-breakdown"
@@ -604,6 +609,10 @@ export function ExecutiveDashboard({
               },
             ]}
           />
+          <p className="xe-sub xe-note">
+            Considera as comissões criadas no período, na situação de hoje. O
+            histórico de situações anteriores não é reconstruído.
+          </p>
           <h3 className="xe-h3">Maiores saldos a repassar</h3>
           <RankedBars
             label="Saldo a repassar por parceiro"

@@ -253,7 +253,18 @@ export function ReportsHub({ role, navigate, onUnauthorized }: Props) {
                   Do pedido à entrega
                 </h2>
                 <FunnelChart rows={conversionSteps(data.funnel)} />
+                <p className="xe-sub xe-note">
+                  Cada etapa conta os eventos que aconteceram dentro do período,
+                  pela data da própria etapa. Não é uma coorte: um pedido criado
+                  antes pode ser pago ou entregue agora.
+                </p>
               </section>
+            )}
+            {current.id === "parceiros" && (
+              <p className="xe-sub xe-note">
+                As comissões consideram as criadas no período, na situação de
+                hoje. O histórico de situações anteriores não é reconstruído.
+              </p>
             )}
             {current.id === "parceiros" && (
               <section className="card xe-section" aria-labelledby="rp-chart">

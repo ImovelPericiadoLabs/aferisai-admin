@@ -500,3 +500,7 @@
     display: none !important;
   }
 }
+
+.xe-note {
+  margin: var(--space-3) 0 0;
+}
