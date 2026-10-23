@@ -506,12 +506,12 @@
     width: min(272px, 86vw);
     padding: var(--space-2) var(--space-2)
       calc(var(--space-2) + env(safe-area-inset-bottom));
-    box-shadow: 16px 0 40px rgba(15, 23, 42, 0.16);
     transform: translateX(-100%);
     transition: transform 220ms ease;
   }
 
   .sidebar.open {
+    box-shadow: 16px 0 40px rgba(15, 23, 42, 0.16);
     transform: translateX(0);
   }
 
@@ -574,6 +574,11 @@
 
   .topbar {
     padding: 0 var(--space-4);
+  }
+
+  .topbar-breadcrumb > span,
+  .topbar-breadcrumb > svg {
+    display: none;
   }
 
   .account-meta,

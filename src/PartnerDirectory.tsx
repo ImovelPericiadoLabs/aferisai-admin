@@ -1,5 +1,12 @@
-import { useEffect, useState, type FormEvent } from "react";
-import { ApiError, listOrganizations, type OrganizationListItem } from "./api";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import { createPortal } from "react-dom";
+import {
+  ApiError,
+  getOrganization,
+  listOrganizations,
+  type OrganizationDetail,
+  type OrganizationListItem,
+} from "./api";
 import "./partner-directory.css";
 
 type Props = {
@@ -17,15 +24,20 @@ function statusLabel(status: string): string {
 }
 
 function DirectoryStatus({ status }: { status: string }) {
-  return (
-    <span
-      className={`partner-directory-status partner-directory-status--${status === "active" || status === "suspended" ? status : "unknown"}`}
-    >
-      <span aria-hidden="true" className="partner-directory-status-dot" />
-      {statusLabel(status)}
-    </span>
-  );
+  const tone =
+    status === "active"
+      ? "badge-success"
+      : status === "suspended"
+        ? "badge-warning"
+        : "badge-neutral";
+  return <span className={`badge ${tone}`}>{statusLabel(status)}</span>;
 }
+
+type DetailState = {
+  id: string;
+  data?: OrganizationDetail;
+  error?: string;
+};
 
 export function PartnerDirectory({
   onSelect,
@@ -41,6 +53,10 @@ export function PartnerDirectory({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [revision, setRevision] = useState(0);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [detailState, setDetailState] = useState<DetailState | null>(null);
+  const [detailRevision, setDetailRevision] = useState(0);
+  const closeRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     let active = true;
@@ -75,6 +91,51 @@ export function PartnerDirectory({
     };
   }, [query, cursor, revision, statusFilter, onUnauthorized]);
 
+  useEffect(() => {
+    if (!selectedId) return;
+    let active = true;
+    getOrganization(selectedId)
+      .then((data) => {
+        if (active) setDetailState({ id: selectedId, data });
+      })
+      .catch((cause: unknown) => {
+        if (!active) return;
+        if (cause instanceof ApiError && cause.status === 401) onUnauthorized();
+        else
+          setDetailState({
+            id: selectedId,
+            error:
+              cause instanceof ApiError
+                ? cause.detail
+                : "Não foi possível carregar o resumo do parceiro.",
+          });
+      });
+    return () => {
+      active = false;
+    };
+  }, [selectedId, detailRevision, onUnauthorized]);
+
+  useEffect(() => {
+    if (!selectedId) return;
+    closeRef.current?.focus();
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setSelectedId(null);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [selectedId]);
+
+  const selectedItem = items.find((item) => item.id === selectedId) ?? null;
+  const detail = detailState?.id === selectedId ? detailState : null;
+  const activeApplications =
+    detail?.data?.applications.filter((app) => app.status === "active")
+      .length ?? 0;
+
+  function openSummary(id: string) {
+    setDetailState(null);
+    setSelectedId(id);
+  }
+
   function changeStatus(value: StatusFilter) {
     setItems([]);
     setNextCursor(null);
@@ -105,18 +166,21 @@ export function PartnerDirectory({
 
   return (
     <section
-      className="partner-directory"
+      className="partner-dir page"
       aria-labelledby="partner-directory-title"
     >
-      <header className="partner-directory-heading">
+      <header className="page-header">
         <div>
-          <p className="eyebrow">Comercial / Parceiros</p>
-          <h1 id="partner-directory-title">Parceiros</h1>
-          <p>Consulte parcerias e abra as aplicações vinculadas.</p>
+          <h1 className="page-title" id="partner-directory-title">
+            Parceiros
+          </h1>
+          <p className="page-subtitle">
+            Consulte parcerias, veja um resumo e abra as aplicações vinculadas.
+          </p>
         </div>
         {onCreate && (
           <button
-            className="button primary partner-directory-create"
+            className="btn btn-primary btn-md"
             type="button"
             onClick={onCreate}
           >
@@ -125,9 +189,9 @@ export function PartnerDirectory({
         )}
       </header>
 
-      <div className="partner-directory-toolbar">
+      <div className="partner-dir-toolbar">
         <form
-          className="partner-directory-search"
+          className="partner-dir-search"
           role="search"
           onSubmit={submitSearch}
         >
@@ -146,19 +210,25 @@ export function PartnerDirectory({
           </svg>
           <input
             id="partner-directory-query"
+            className="input"
             type="search"
             maxLength={100}
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Buscar parceiro"
+            placeholder="Buscar parceiro pelo nome"
           />
-          <button type="submit" disabled={loading && items.length === 0}>
+          <button
+            className="btn btn-secondary btn-md"
+            type="submit"
+            disabled={loading && items.length === 0}
+          >
             Buscar
           </button>
         </form>
-        <label className="partner-directory-filter">
-          <span>Estado</span>
+        <label className="partner-dir-filter">
+          <span className="sr-only">Estado</span>
           <select
+            className="input"
             value={statusFilter}
             onChange={(event) =>
               changeStatus(event.target.value as StatusFilter)
@@ -169,10 +239,7 @@ export function PartnerDirectory({
             <option value="suspended">Suspensos</option>
           </select>
         </label>
-      </div>
-
-      <div className="partner-directory-caption" aria-live="polite">
-        <span>
+        <span className="partner-dir-count" aria-live="polite">
           {loading && items.length === 0
             ? "Carregando parceiros…"
             : `${items.length} ${items.length === 1 ? "parceiro exibido" : "parceiros exibidos"}`}
@@ -180,9 +247,11 @@ export function PartnerDirectory({
       </div>
 
       {error && (
-        <div className="partner-directory-error" role="alert">
+        <div className="error-state" role="alert">
+          <strong>Não foi possível carregar os parceiros</strong>
           <span>{error}</span>
           <button
+            className="btn btn-secondary btn-sm"
             type="button"
             onClick={() => {
               setLoading(true);
@@ -196,78 +265,86 @@ export function PartnerDirectory({
 
       {loading && items.length === 0 ? (
         <div
-          className="partner-directory-skeleton"
+          className="partner-dir-skeleton"
           role="status"
           aria-label="Carregando parceiros"
         >
           {Array.from({ length: 6 }, (_, index) => (
-            <span key={index} />
+            <span className="skeleton" key={index} />
           ))}
         </div>
       ) : items.length === 0 && !error ? (
-        <div className="partner-directory-empty" role="status">
-          <h2>Nenhum parceiro encontrado</h2>
-          <p>
+        <div className="empty-state" role="status">
+          <strong>Nenhum parceiro encontrado</strong>
+          <span>
             {query || statusFilter !== "all"
               ? "Altere a busca ou o estado para tentar novamente."
               : "As parcerias cadastradas aparecerão aqui."}
-          </p>
+          </span>
           {statusFilter !== "all" && (
             <button
               type="button"
-              className="button secondary"
+              className="btn btn-secondary btn-sm"
               onClick={() => changeStatus("all")}
             >
               Ver todos os estados
             </button>
           )}
         </div>
-      ) : (
-        <div className="partner-directory-table-wrap">
-          <table className="partner-directory-table">
+      ) : items.length > 0 ? (
+        <div className="data-table-wrap">
+          <table className="data-table partner-dir-table">
             <thead>
               <tr>
                 <th scope="col">Parceiro</th>
                 <th scope="col">Aplicações</th>
                 <th scope="col">Estado</th>
-                <th scope="col">Ações</th>
+                <th scope="col">
+                  <span className="sr-only">Ações</span>
+                </th>
               </tr>
             </thead>
             <tbody>
               {items.map((item) => (
-                <tr key={item.id}>
+                <tr
+                  key={item.id}
+                  data-clickable
+                  className={item.id === selectedId ? "selected" : undefined}
+                  onClick={() => openSummary(item.id)}
+                >
                   <td data-label="Parceiro">
                     <button
-                      className="partner-directory-name"
+                      className="partner-dir-name"
                       type="button"
-                      onClick={() => onSelect(item.id)}
+                      aria-haspopup="dialog"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        openSummary(item.id);
+                      }}
                     >
-                      <span
-                        className="partner-directory-avatar"
-                        aria-hidden="true"
-                      >
+                      <span className="partner-dir-avatar" aria-hidden="true">
                         {item.name.slice(0, 1).toLocaleUpperCase("pt-BR")}
                       </span>
-                      <span>
+                      <span className="partner-dir-name-text">
                         <strong>{item.name}</strong>
+                        <small>{item.slug}</small>
                       </span>
                     </button>
                   </td>
-                  <td data-label="Aplicações">
-                    <span className="partner-directory-count">
-                      {item.applications_count}
-                    </span>
-                  </td>
+                  <td data-label="Aplicações">{item.applications_count}</td>
                   <td data-label="Estado">
                     <DirectoryStatus status={item.status} />
                   </td>
-                  <td data-label="Ações">
+                  <td data-label="Ações" className="partner-dir-actions">
                     <button
-                      className="partner-directory-open"
+                      className="btn btn-ghost btn-sm"
                       type="button"
-                      onClick={() => onSelect(item.id)}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onSelect(item.id);
+                      }}
                     >
-                      Abrir <span aria-hidden="true">→</span>
+                      Gerenciar <span aria-hidden="true">→</span>
                     </button>
                   </td>
                 </tr>
@@ -275,13 +352,13 @@ export function PartnerDirectory({
             </tbody>
           </table>
         </div>
-      )}
+      ) : null}
 
       {nextCursor && (
-        <footer className="partner-directory-footer">
-          <span>Exibindo {items.length} registros carregados</span>
+        <footer className="partner-dir-footer">
+          <span>{items.length} registros carregados</span>
           <button
-            className="button secondary"
+            className="btn btn-secondary btn-md"
             type="button"
             onClick={loadMore}
             disabled={loading}
@@ -289,6 +366,155 @@ export function PartnerDirectory({
             {loading ? "Carregando…" : "Carregar mais"}
           </button>
         </footer>
+      )}
+
+      {createPortal(
+        <>
+          {selectedId && (
+            <div
+              className="detail-panel-overlay"
+              onClick={() => setSelectedId(null)}
+            />
+          )}
+          <aside
+            className={`detail-panel${selectedId ? " open" : ""}`}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="partner-summary-title"
+            aria-hidden={!selectedId}
+          >
+            <div className="detail-panel-header">
+              <div className="partner-dir-summary-head">
+                <span className="partner-dir-avatar" aria-hidden="true">
+                  {(selectedItem?.name ?? "?")
+                    .slice(0, 1)
+                    .toLocaleUpperCase("pt-BR")}
+                </span>
+                <div>
+                  <h2
+                    className="partner-dir-summary-title"
+                    id="partner-summary-title"
+                  >
+                    {selectedItem?.name}
+                  </h2>
+                  <p className="partner-dir-summary-slug">
+                    {selectedItem?.slug}
+                  </p>
+                </div>
+              </div>
+              <button
+                ref={closeRef}
+                className="btn btn-ghost btn-sm"
+                type="button"
+                aria-label="Fechar resumo"
+                onClick={() => setSelectedId(null)}
+              >
+                ✕
+              </button>
+            </div>
+            <div className="detail-panel-body">
+              {selectedItem && (
+                <section className="detail-panel-section">
+                  <h3 className="detail-panel-section-title">Resumo</h3>
+                  <dl className="detail-panel-field">
+                    <dt>Estado</dt>
+                    <dd>
+                      <DirectoryStatus status={selectedItem.status} />
+                    </dd>
+                    <dt>Aplicações</dt>
+                    <dd>{selectedItem.applications_count}</dd>
+                    {detail?.data && (
+                      <>
+                        <dt>Aplicações ativas</dt>
+                        <dd>{activeApplications}</dd>
+                        <dt>Ações no catálogo</dt>
+                        <dd>{detail.data.permissions.length}</dd>
+                      </>
+                    )}
+                  </dl>
+                </section>
+              )}
+              {selectedId && !detail && (
+                <div
+                  className="partner-dir-skeleton"
+                  role="status"
+                  aria-label="Carregando resumo"
+                >
+                  <span className="skeleton" />
+                  <span className="skeleton" />
+                </div>
+              )}
+              {detail?.error && (
+                <div className="error-state" role="alert">
+                  <span>{detail.error}</span>
+                  <button
+                    className="btn btn-secondary btn-sm"
+                    type="button"
+                    onClick={() => {
+                      setDetailState(null);
+                      setDetailRevision((value) => value + 1);
+                    }}
+                  >
+                    Tentar novamente
+                  </button>
+                </div>
+              )}
+              {detail?.data && (
+                <>
+                  <section className="detail-panel-section">
+                    <h3 className="detail-panel-section-title">Descrição</h3>
+                    <p className="partner-dir-description">
+                      {detail.data.description || "Sem descrição cadastrada."}
+                    </p>
+                  </section>
+                  <section className="detail-panel-section">
+                    <h3 className="detail-panel-section-title">Aplicações</h3>
+                    {detail.data.applications.length === 0 ? (
+                      <p className="partner-dir-description">
+                        Nenhuma aplicação vinculada.
+                      </p>
+                    ) : (
+                      <ul className="partner-dir-apps">
+                        {detail.data.applications.map((app) => (
+                          <li key={app.id}>
+                            <span>
+                              <strong>{app.name}</strong>
+                              <small>
+                                {app.permissions.length}{" "}
+                                {app.permissions.length === 1
+                                  ? "permissão"
+                                  : "permissões"}
+                              </small>
+                            </span>
+                            <DirectoryStatus status={app.status} />
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </section>
+                </>
+              )}
+            </div>
+            <div className="detail-panel-footer">
+              <button
+                className="btn btn-primary btn-md"
+                type="button"
+                disabled={!selectedId}
+                onClick={() => selectedId && onSelect(selectedId)}
+              >
+                Gerenciar parceiro
+              </button>
+              <button
+                className="btn btn-ghost btn-md"
+                type="button"
+                onClick={() => setSelectedId(null)}
+              >
+                Fechar
+              </button>
+            </div>
+          </aside>
+        </>,
+        document.body,
       )}
     </section>
   );
