@@ -335,16 +335,16 @@ export const metrics: MetricEntry[] = [
 export const gaps: GapEntry[] = [
   {
     id: "connected-never-applied",
-    title: "Política integration/connected nunca é aplicada",
+    title: "Política integration/connected só vale na cotação de arquivo",
     effect:
-      "Regras de integração podem ser publicadas sem efeito algum. O PR #35 (rascunho, sem deploy) passa a aplicá-las na cotação de arquivo.",
+      "Desde o PR #35 a cotação de arquivo aplica a política da aplicação conectada; a cotação registral ainda não, e depende da rota delegada e da origem da operação.",
     source: "app/pricing/repo/registry.py:283",
   },
   {
     id: "coupon-count",
-    title: "Uso do cupom conta na cotação, não no pagamento",
+    title: "Cupom: falta código na cotação registral e captura de link",
     effect:
-      "Cotação abandonada consome o limite; cotação de registro não aceita código. O PR #35 (rascunho, sem deploy) move a contagem para o pagamento na cotação de arquivo.",
+      "Desde o PR #35 o uso conta no pagamento, uma vez por intenção. Cotação de registro ainda não aceita código, não gera comissão registral e não há captura de link.",
     source: "app/pricing/repo/commercial.py:518",
   },
   {
