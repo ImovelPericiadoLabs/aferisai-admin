@@ -13,6 +13,7 @@ import {
   teamPeopleApi,
   type OrganizationDetail as Detail,
 } from "./api";
+import { PermissionRegistration } from "./PermissionRegistration";
 import type { ToastKind } from "./useToast";
 import "./partner-detail.css";
 import "./commercial-rules.css";
@@ -629,9 +630,23 @@ export function OrganizationDetail({
                     <h2 className="card-title" id="catalog-title">
                       Catálogo de ações
                     </h2>
-                    <span className="badge badge-neutral">
-                      {detail.permissions.length}
-                    </span>
+                    <div className="people-header-actions">
+                      <span className="badge badge-neutral">
+                        {detail.permissions.length}
+                      </span>
+                      {canManage && (
+                        <PermissionRegistration
+                          organizationId={organizationId}
+                          csrfToken={csrfToken}
+                          registered={detail.permissions.map((p) => p.code)}
+                          onRegistered={async () =>
+                            setDetail(await getOrganization(organizationId))
+                          }
+                          onUnauthorized={onUnauthorized}
+                          onToast={onToast}
+                        />
+                      )}
+                    </div>
                   </div>
                   <div className="card-body">
                     <p className="form-hint">

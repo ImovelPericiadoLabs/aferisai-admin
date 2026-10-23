@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ownerPeopleApi, teamPeopleApi } from "./api";
+import {
+  ownerPeopleApi,
+  registerOrganizationPermission,
+  teamPeopleApi,
+} from "./api";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -89,6 +93,24 @@ describe("teamPeopleApi", () => {
       method: "PUT",
       headers: { "X-CSRF-Token": "csrf-2" },
       body: { role: "developer", reason: "Responsável técnico" },
+    });
+  });
+});
+
+describe("registerOrganizationPermission", () => {
+  it("posts the code and description with CSRF to the organization catalog", async () => {
+    const fetchMock = stubFetch();
+    await registerOrganizationPermission(
+      "o1",
+      "events:analysis",
+      "Receber eventos",
+      "csrf-3",
+    );
+    expect(lastCall(fetchMock)).toMatchObject({
+      path: "/v1/team/organizations/o1/permissions",
+      method: "POST",
+      headers: { "X-CSRF-Token": "csrf-3" },
+      body: { code: "events:analysis", description: "Receber eventos" },
     });
   });
 });

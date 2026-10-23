@@ -70,7 +70,8 @@ export const modes: IntegrationMode[] = [
     name: "OAuth delegado (PKCE)",
     actor: "Aplicação em nome do titular",
     auth: "Código + PKCE S256, token de 15 min, sem refresh",
-    permissions: "analysis:read, analysis:submit:upload",
+    permissions:
+      "analysis:read, analysis:submit:upload, events:analysis, registry:submit, registry:read",
     status: "implemented",
     note: "Fora do OpenAPI público. URIs de retorno só pela equipe. Cada análise registra a aplicação e a conexão de origem.",
     source: "app/integrations/routes.py:73",
@@ -185,22 +186,24 @@ export const permissions: PermissionEntry[] = [
     source: "docs/partner-connection-blueprint.md:32",
   },
   {
-    code: "registry:create:number",
-    title: "Pedir matrícula por número",
-    status: "proposed",
+    code: "registry:submit",
+    title: "Solicitar documento registral",
+    status: "implemented",
     grantedByDefault: false,
-    unlocks: "Operação registral por número",
+    unlocks:
+      "Criar pedido por número, CNM ou endereço em nome do titular; não autoriza cotação, pagamento nem compra automática",
     sensitive: true,
-    source: "docs/registry-execution-plan.md:59",
+    source: "app/integrations/scopes.py:14",
   },
   {
     code: "registry:read",
-    title: "Consultar pedidos de matrícula",
-    status: "proposed",
+    title: "Consultar pedidos registrais",
+    status: "implemented",
     grantedByDefault: false,
-    unlocks: "Estado e resultado dos pedidos registrais",
+    unlocks:
+      "Consultar só os pedidos registrais iniciados por esta aplicação em nome do titular, sem documento original nem dados de pagamento",
     sensitive: false,
-    source: "docs/registry-execution-plan.md:59",
+    source: "app/integrations/scopes.py:18",
   },
   {
     code: "analysis:original:read",
@@ -214,11 +217,12 @@ export const permissions: PermissionEntry[] = [
   {
     code: "events:analysis",
     title: "Receber eventos de análise",
-    status: "proposed",
+    status: "implemented",
     grantedByDefault: false,
-    unlocks: "Assinar eventos separadamente de analysis:read",
+    unlocks:
+      "Receber no endpoint da aplicação os eventos das análises que ela iniciou, sem consultar resultado ou documento",
     sensitive: false,
-    source: "docs/partner-connection-blueprint.md:35",
+    source: "app/integrations/scopes.py:10",
   },
   {
     code: "metrics:read",

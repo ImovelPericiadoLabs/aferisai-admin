@@ -217,3 +217,9 @@
 .partner-detail .appws-tabs {
   margin-bottom: var(--space-4);
 }
+
+.perm-reg {
+  display: grid;
+  margin-bottom: var(--space-4);
+  gap: var(--space-2);
+}

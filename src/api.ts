@@ -1379,6 +1379,21 @@ export const describeOrganizationPermission = (
     },
   );
 
+export const registerOrganizationPermission = (
+  organizationId: string,
+  code: string,
+  description: string,
+  csrfToken: string,
+) =>
+  request<{ code: string; description: string }>(
+    `/v1/team/organizations/${encodeURIComponent(organizationId)}/permissions`,
+    {
+      method: "POST",
+      headers: { "X-CSRF-Token": csrfToken },
+      body: JSON.stringify({ code, description }),
+    },
+  );
+
 export const grantApplicationPermission = (
   applicationId: string,
   code: string,

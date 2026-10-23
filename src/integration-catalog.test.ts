@@ -20,10 +20,22 @@ describe("integration catalog", () => {
     expect(unique(events.map((e) => e.name))).toBe(true);
     expect(unique(gaps.map((g) => g.id))).toBe(true);
   });
-  it("lists exactly the three codes that exist in the backend as implemented", () => {
+  it("lists exactly the codes the backend supports (SUPPORTED_PERMISSION_CODES) as implemented", () => {
     expect(
-      permissions.filter((p) => p.status === "implemented").map((p) => p.code),
-    ).toEqual(["application:read", "analysis:read", "analysis:submit:upload"]);
+      permissions
+        .filter((p) => p.status === "implemented")
+        .map((p) => p.code)
+        .sort(),
+    ).toEqual(
+      [
+        "analysis:read",
+        "analysis:submit:upload",
+        "application:read",
+        "events:analysis",
+        "registry:read",
+        "registry:submit",
+      ].sort(),
+    );
   });
   it("grants only application:read by default", () => {
     expect(
@@ -55,7 +67,6 @@ describe("integration catalog", () => {
       "analysis:create",
       "analysis:write",
       "registry:create",
-      "registry:read",
       "registry:write",
     ]);
   });
