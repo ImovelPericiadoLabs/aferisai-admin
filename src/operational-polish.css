@@ -426,15 +426,6 @@
   .main-area:where(:not(:has(.page))) .directory-row {
     padding: 0.9rem 1rem;
   }
-  .main-area:where(:not(:has(.page))) .financial-exceptions {
-    padding: 1.25rem 1rem;
-  }
-  .main-area:where(:not(:has(.page))) .financial-grid {
-    gap: 1rem;
-  }
-  .main-area:where(:not(:has(.page))) .financial-detail {
-    padding: 1rem;
-  }
   .main-area:where(:not(:has(.page))) .analyses-tabs {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -513,8 +504,7 @@
 
 /* The operational workspace follows Vextor's tighter editorial rhythm. */
 @media (min-width: 761px) {
-  .main-area:where(:not(:has(.page))) .content,
-  .main-area:where(:not(:has(.page))) .financial-exceptions {
+  .main-area:where(:not(:has(.page))) .content {
     max-width: var(--content-max);
     padding: 1.35rem clamp(1.35rem, 2.2vw, 2.25rem) 2.5rem;
   }
@@ -547,8 +537,7 @@
 
 .main-area:where(:not(:has(.page)))
   :is(.page-head, .review-heading, .directory-head, .detail-intro)
-  h1,
-.main-area:where(:not(:has(.page))) .financial-exceptions > header h1 {
+  h1 {
   font-size: clamp(1.45rem, 1.8vw, 1.8rem);
   letter-spacing: -0.035em;
   line-height: 1.2;
@@ -579,8 +568,7 @@
   :is(.data-table, .analyses-table)
   tbody
   tr:hover
-  td,
-.main-area:where(:not(:has(.page))) .financial-item:hover {
+  td {
   background: #f5f8fa;
 }
 
@@ -600,9 +588,7 @@
     .result,
     .detail-card,
     .review-card,
-    .directory,
-    .financial-item,
-    .financial-detail
+    .directory
   ) {
   border-color: #dce5ed;
   border-radius: 6px;
@@ -704,8 +690,7 @@
 }
 
 @media (max-width: 760px) {
-  .main-area:where(:not(:has(.page))) .content,
-  .main-area:where(:not(:has(.page))) .financial-exceptions {
+  .main-area:where(:not(:has(.page))) .content {
     padding: 1rem 1rem calc(5rem + env(safe-area-inset-bottom));
   }
 

@@ -133,8 +133,7 @@ export function ExceptionPanel({
   ] as const;
 
   async function finish(run: () => Promise<boolean>) {
-    await run();
-    setAsking(null);
+    if (await run()) setAsking(null);
   }
 
   return (

@@ -70,11 +70,12 @@ export function nextAction(
     return { kind: "verify-correction" };
   }
   if (role === "financial") {
-    if (!item.latest_proposal_id) return wait("Aguardando proposta do gestor.");
     if (!item.financial_assignee_id) return { kind: "claim" };
-    return item.financial_assignee_id === memberId
+    if (item.financial_assignee_id !== memberId)
+      return wait("O caso foi atribuído a outra pessoa do seu papel.");
+    return item.latest_proposal_id
       ? { kind: "confirm" }
-      : wait("O caso foi atribuído a outra pessoa do seu papel.");
+      : wait("Aguardando proposta do gestor.");
   }
   if (!item.manager_assignee_id) return { kind: "claim" };
   return item.manager_assignee_id === memberId

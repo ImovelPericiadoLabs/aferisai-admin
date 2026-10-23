@@ -206,6 +206,7 @@ export function Promotions({
     setSelectedId(id);
     setNotice("");
     setError("");
+    setFormError("");
     setDrawer("view");
   }
 
@@ -242,7 +243,7 @@ export function Promotions({
     } catch (cause) {
       setAskSuspend(false);
       if (cause instanceof ApiError && cause.status === 401) onUnauthorized();
-      else setError(errorMessage(cause));
+      else setFormError(errorMessage(cause));
     } finally {
       setBusy(false);
     }
@@ -525,6 +526,11 @@ export function Promotions({
                   </button>
                 </div>
                 <div className="detail-panel-body">
+                  {formError && (
+                    <div className="alert alert-danger form-alert" role="alert">
+                      {formError}
+                    </div>
+                  )}
                   <section className="detail-panel-section">
                     <h3 className="detail-panel-section-title">Quem recebe</h3>
                     <dl className="detail-panel-field">

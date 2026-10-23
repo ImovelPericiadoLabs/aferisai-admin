@@ -105,14 +105,17 @@ describe("nextAction", () => {
       reason: "O caso foi atribuído a outra pessoa do seu papel.",
     });
   });
-  it("makes the financial role wait for a proposal, then claim, then confirm", () => {
-    expect(nextAction(kase(), "financial", "f1")).toEqual({
-      kind: "wait",
-      reason: "Aguardando proposta do gestor.",
-    });
+  it("lets the financial role claim early, then wait for a proposal, then confirm", () => {
+    expect(nextAction(kase(), "financial", "f1")).toEqual({ kind: "claim" });
     expect(
-      nextAction(kase({ latest_proposal_id: "p" }), "financial", "f1"),
-    ).toEqual({ kind: "claim" });
+      nextAction(kase({ financial_assignee_id: "f1" }), "financial", "f1"),
+    ).toEqual({ kind: "wait", reason: "Aguardando proposta do gestor." });
+    expect(
+      nextAction(kase({ financial_assignee_id: "f2" }), "financial", "f1"),
+    ).toEqual({
+      kind: "wait",
+      reason: "O caso foi atribuído a outra pessoa do seu papel.",
+    });
     expect(
       nextAction(
         kase({ latest_proposal_id: "p", financial_assignee_id: "f1" }),

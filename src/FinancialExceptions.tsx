@@ -73,14 +73,21 @@ export function FinancialExceptions({
   const [notice, setNotice] = useState("");
   const [names, setNames] = useState<Record<string, string>>({});
   const panelRef = useRef<HTMLElement>(null);
+  const pagesLoaded = useRef(1);
 
   const load = useCallback(
-    async (cursor?: string) => {
+    async (cursor?: string, keepPages = 1) => {
       try {
-        const page = await listPaymentExceptions(cursor);
-        setCases((current) =>
-          cursor ? [...current, ...page.items] : page.items,
-        );
+        let page = await listPaymentExceptions(cursor);
+        let items = page.items;
+        let loaded = 1;
+        while (!cursor && page.next_cursor && loaded < keepPages) {
+          page = await listPaymentExceptions(page.next_cursor);
+          items = [...items, ...page.items];
+          loaded += 1;
+        }
+        pagesLoaded.current = cursor ? pagesLoaded.current + 1 : loaded;
+        setCases((current) => (cursor ? [...current, ...items] : items));
         setNextCursor(page.next_cursor);
         setNow(Date.now());
         setLoadFailed(false);
@@ -111,12 +118,21 @@ export function FinancialExceptions({
   useEffect(() => {
     if (role !== "administrator") return;
     let live = true;
-    listTeamMembers()
-      .then((page) => {
-        if (live)
-          setNames(Object.fromEntries(page.items.map((m) => [m.id, m.email])));
-      })
-      .catch(() => undefined);
+    void (async () => {
+      const found: Record<string, string> = {};
+      let cursor: string | undefined;
+      try {
+        for (let pageCount = 0; pageCount < 10; pageCount += 1) {
+          const page = await listTeamMembers(cursor);
+          for (const member of page.items) found[member.id] = member.email;
+          if (!page.next_cursor) break;
+          cursor = page.next_cursor;
+        }
+      } catch {
+        /* names are a convenience; the list still works without them */
+      }
+      if (live) setNames(found);
+    })();
     return () => {
       live = false;
     };
@@ -174,13 +190,16 @@ export function FinancialExceptions({
     setNotice("");
     try {
       const result = await work();
-      await load();
+      await load(undefined, pagesLoaded.current);
       setNotice(typeof result === "string" ? result : success);
       return true;
     } catch (cause) {
-      if (cause instanceof ApiError && cause.status === 401) onUnauthorized();
-      else setPanelError(errorMessage(cause, fallback));
-      await load();
+      if (cause instanceof ApiError && cause.status === 401) {
+        onUnauthorized();
+        return false;
+      }
+      setPanelError(errorMessage(cause, fallback));
+      await load(undefined, pagesLoaded.current);
       return false;
     } finally {
       setBusy(false);
