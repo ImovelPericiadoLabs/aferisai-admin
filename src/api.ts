@@ -426,6 +426,28 @@ export const updateAnalysisProviderLimits = (
     },
   );
 
+export type ActivateProviderBody = {
+  expected_version: number;
+  model: string;
+  expected_profile_sha256: string;
+  external_reserved: number;
+  reason: string;
+};
+
+export const activateAnalysisProviderAccount = (
+  id: string,
+  body: ActivateProviderBody,
+  csrfToken: string,
+) =>
+  request<AnalysisProviderAccount>(
+    `/v1/team/analysis-provider-accounts/${encodeURIComponent(id)}/activate`,
+    {
+      method: "POST",
+      headers: { "X-CSRF-Token": csrfToken },
+      body: JSON.stringify(body),
+    },
+  );
+
 export const suspendAnalysisProviderAccount = (
   id: string,
   expectedVersion: number,

@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   ApiError,
+  activateAnalysisProviderAccount,
   applyApplicationBulkChange,
   beginPasskeyLogin,
   beginPasskeyRegistration,
@@ -574,5 +575,31 @@ describe("cliente da API interna", () => {
       expect(options.credentials).toBe("include");
       expect(options.cache).toBe("no-store");
     }
+  });
+});
+
+describe("ativação de conta de provedor", () => {
+  it("envia versão, modelo, hash do perfil, reserva e motivo com CSRF", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ id: "p1" }), { status: 200 }),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+    const body = {
+      expected_version: 3,
+      model: "gemini-3.5-flash-lite",
+      expected_profile_sha256: "a".repeat(64),
+      external_reserved: 2,
+      reason: "ativar conta aprovada",
+    };
+    await activateAnalysisProviderAccount("p1", body, "csrf-token");
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(String(url)).toContain(
+      "/v1/team/analysis-provider-accounts/p1/activate",
+    );
+    expect(init.method).toBe("POST");
+    expect(init.headers["X-CSRF-Token"]).toBe("csrf-token");
+    expect(JSON.parse(init.body as string)).toEqual(body);
   });
 });
