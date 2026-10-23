@@ -24,9 +24,18 @@ export type PartnerMember = {
   email: string;
   organization_id: string | null;
   organization_name: string | null;
+  organization_slug?: string | null;
+  /** Relative path of the private logo (needs the partner session cookie). */
+  organization_logo_url?: string | null;
   role?: PartnerRole | null;
 };
-export type PartnerOrganization = { id: string; name: string; active: boolean };
+export type PartnerOrganization = {
+  id: string;
+  name: string;
+  active: boolean;
+  slug?: string;
+  logo_url?: string | null;
+};
 export type PartnerOrganizationList = {
   items: PartnerOrganization[];
   next_cursor: string | null;

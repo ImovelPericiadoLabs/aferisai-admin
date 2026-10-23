@@ -73,7 +73,8 @@
 }
 .partner-context-options button {
   display: flex;
-  justify-content: space-between;
+  gap: var(--space-2);
+  justify-content: flex-start;
   align-items: center;
   width: 100%;
   min-height: 36px;
@@ -94,9 +95,17 @@
 .partner-context-options
   button[aria-pressed="true"]
   span:last-child:not(:first-child) {
+  margin-left: auto;
   color: var(--primary-hover);
   font-size: var(--text-base);
   font-weight: 800;
+}
+
+.partner-context .partner-dir-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-caption);
 }
 .partner-context-menu p {
   margin: 0.45rem 0.3rem;

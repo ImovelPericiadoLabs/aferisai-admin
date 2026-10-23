@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { organizationLogos } from "./organization-logos";
+import type { LogoLoader } from "./logo-loader";
 
 /**
  * Logo (or initial) for an organization. Loads only when scrolled into view and
@@ -9,11 +10,13 @@ export function OrganizationAvatar({
   id,
   name,
   logoUrl,
+  loader = organizationLogos,
 }: {
   id: string;
   name: string;
   /** From the list when the API provides it; undefined asks the detail instead. */
   logoUrl?: string | null;
+  loader?: LogoLoader;
 }) {
   const ref = useRef<HTMLSpanElement>(null);
   const [visible, setVisible] = useState(false);
@@ -39,13 +42,13 @@ export function OrganizationAvatar({
   useEffect(() => {
     if (!visible) return;
     let live = true;
-    void organizationLogos(id, logoUrl).then((url) => {
+    void loader(id, logoUrl).then((url) => {
       if (live && url) setSrc({ id, url });
     });
     return () => {
       live = false;
     };
-  }, [visible, id, logoUrl]);
+  }, [visible, id, logoUrl, loader]);
 
   return (
     <span ref={ref} className="partner-dir-avatar" aria-hidden="true">

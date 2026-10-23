@@ -547,6 +547,7 @@ export function PartnerPortal() {
         <PartnerOrganizationSwitcher
           activeId={session.member.organization_id}
           activeName={session.member.organization_name}
+          activeLogoUrl={session.member.organization_logo_url}
           disabled={switching}
           onSelect={changeOrganization}
           onUnauthorized={unauthorize}

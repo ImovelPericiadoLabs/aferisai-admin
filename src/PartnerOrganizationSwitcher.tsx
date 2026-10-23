@@ -4,17 +4,21 @@ import {
   listPartnerOrganizations,
   type PartnerOrganization,
 } from "./api";
+import { OrganizationAvatar } from "./OrganizationAvatar";
+import { partnerOrganizationLogos } from "./organization-logos";
 import "./partner-organization-switcher.css";
 
 export function PartnerOrganizationSwitcher({
   activeName,
   activeId,
+  activeLogoUrl,
   disabled,
   onSelect,
   onUnauthorized,
 }: {
   activeName: string | null;
   activeId: string | null;
+  activeLogoUrl?: string | null;
   disabled: boolean;
   onSelect: (organizationId: string) => Promise<void>;
   onUnauthorized: () => void;
@@ -125,20 +129,18 @@ export function PartnerOrganizationSwitcher({
           setOpen((current) => !current);
         }}
       >
-        <span className="partner-context-mark" aria-hidden="true">
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M4 21V5l8-2v18M12 7l8 2v12M2 21h20M7 8h2m-2 4h2m-2 4h2m6-4h2m-2 4h2" />
-          </svg>
-        </span>
+        {activeId ? (
+          <OrganizationAvatar
+            id={activeId}
+            name={activeName || "Empresa"}
+            logoUrl={activeLogoUrl ?? null}
+            loader={partnerOrganizationLogos}
+          />
+        ) : (
+          <span className="partner-context-mark" aria-hidden="true">
+            ▣
+          </span>
+        )}
         <span className="partner-context-name">
           {activeName || "Selecionar empresa"}
         </span>
@@ -160,6 +162,12 @@ export function PartnerOrganizationSwitcher({
                 aria-pressed={item.id === activeId}
                 onClick={() => void choose(item)}
               >
+                <OrganizationAvatar
+                  id={item.id}
+                  name={item.name}
+                  logoUrl={item.logo_url ?? null}
+                  loader={partnerOrganizationLogos}
+                />
                 <span>{item.name}</span>
                 {item.id === activeId && <span aria-hidden="true">✓</span>}
               </button>
