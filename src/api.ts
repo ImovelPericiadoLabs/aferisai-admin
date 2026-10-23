@@ -1172,6 +1172,62 @@ export const putOrganizationLogo = (
     },
   );
 
+export function uploadWithProgress<T>(
+  path: string,
+  file: Blob,
+  headers: Record<string, string>,
+  onProgress: (fraction: number) => void,
+): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("PUT", `${base}${path}`);
+    xhr.withCredentials = true;
+    for (const [name, value] of Object.entries(headers))
+      xhr.setRequestHeader(name, value);
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable) onProgress(event.loaded / event.total);
+    };
+    xhr.onload = () => {
+      let body: unknown;
+      try {
+        body = xhr.responseText ? JSON.parse(xhr.responseText) : undefined;
+      } catch {
+        body = undefined;
+      }
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve(body as T);
+        return;
+      }
+      const problem = (body ?? {}) as Problem;
+      reject(
+        new ApiError(
+          xhr.status,
+          problem.code || "REQUEST_FAILED",
+          problem.detail || "Não foi possível concluir a solicitação.",
+        ),
+      );
+    };
+    xhr.onerror = () =>
+      reject(
+        new ApiError(0, "NETWORK_ERROR", "Falha de rede durante o envio."),
+      );
+    xhr.send(file);
+  });
+}
+
+export const putOrganizationLogoWithProgress = (
+  organizationId: string,
+  file: Blob,
+  csrfToken: string,
+  onProgress: (fraction: number) => void,
+) =>
+  uploadWithProgress<{ logo_url: string; width: number; height: number }>(
+    `/v1/team/organizations/${encodeURIComponent(organizationId)}/logo`,
+    file,
+    { "Content-Type": file.type, "X-CSRF-Token": csrfToken },
+    onProgress,
+  );
+
 export const deleteOrganizationLogo = (
   organizationId: string,
   csrfToken: string,
