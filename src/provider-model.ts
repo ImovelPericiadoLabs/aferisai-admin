@@ -110,16 +110,51 @@ export function validateExternalReserved(text: string): {
   return { ok: true, value, message: "" };
 }
 
+export function validateProfileHash(text: string): {
+  ok: boolean;
+  value: string;
+  message: string;
+} {
+  const value = text.trim().toLowerCase();
+  if (!/^[0-9a-f]{64}$/.test(value))
+    return {
+      ok: false,
+      value,
+      message: "Informe os 64 caracteres hexadecimais do perfil medido.",
+    };
+  return { ok: true, value, message: "" };
+}
+
+export function canActivate(account: AnalysisProviderAccount): {
+  ok: boolean;
+  reason: string;
+} {
+  if (account.status !== "draft")
+    return { ok: false, reason: "Só contas em rascunho podem ser ativadas." };
+  if (account.kind !== "vertex_service_account")
+    return {
+      ok: false,
+      reason:
+        "Hoje só a conta de serviço Vertex medida pode ser ativada pelo backend.",
+    };
+  if (account.location !== "global")
+    return {
+      ok: false,
+      reason: "A ativação exige a região global nesta versão do backend.",
+    };
+  return { ok: true, reason: "" };
+}
+
 export function activationBody(
   account: AnalysisProviderAccount,
   externalReserved: number,
   reason: string,
-): ActivateProviderBody | null {
-  if (account.execution_profile_sha256 === null) return null;
+  profileSha256: string,
+): ActivateProviderBody {
   return {
     expected_version: account.version,
     model: ACTIVATION_MODEL,
-    expected_profile_sha256: account.execution_profile_sha256,
+    expected_profile_sha256: profileSha256,
     external_reserved: externalReserved,
     reason,
   };

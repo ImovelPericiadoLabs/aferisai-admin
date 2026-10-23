@@ -200,3 +200,8 @@
     text-align: left;
   }
 }
+
+.prov-mono {
+  font-family: ui-monospace, monospace;
+  font-size: var(--text-caption);
+}

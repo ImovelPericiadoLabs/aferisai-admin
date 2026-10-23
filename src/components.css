@@ -737,7 +737,7 @@ textarea.input {
 }
 
 /* ── Tabs ────────────────────────────────────────────────── */
-.tabs {
+.seg-tabs {
   display: flex;
   gap: var(--space-1);
   margin-bottom: var(--space-4);
@@ -745,7 +745,7 @@ textarea.input {
   overflow-x: auto;
 }
 
-.tab {
+.seg-tab {
   flex: none;
   margin-bottom: -1px;
   padding: var(--space-2) var(--space-4);
@@ -759,17 +759,17 @@ textarea.input {
   cursor: pointer;
 }
 
-.tab:hover {
+.seg-tab:hover {
   color: var(--text);
 }
 
-.tab.active {
+.seg-tab.active {
   border-bottom-color: var(--primary);
   color: var(--primary);
   font-weight: var(--weight-semibold);
 }
 
-.tab:focus-visible {
+.seg-tab:focus-visible {
   outline: 2px solid var(--primary);
   outline-offset: -2px;
 }

@@ -58,6 +58,7 @@ export function AnalysisProviderForm({
   const [limits, setLimits] = useState<LimitsForm>(initialLimits);
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
+  const [fileKey, setFileKey] = useState(0);
   const [error, setError] = useState("");
   const reasonCheck = validateReason(reason, 10, 500);
 
@@ -109,6 +110,7 @@ export function AnalysisProviderForm({
       await onCreated();
     } catch (cause) {
       setCredential("");
+      setFileKey((value) => value + 1);
       if (cause instanceof ApiError && cause.status === 401) onUnauthorized();
       else {
         await onReload();
@@ -271,6 +273,7 @@ export function AnalysisProviderForm({
               </label>
               <input
                 id="prov-file"
+                key={fileKey}
                 type="file"
                 accept=".json,application/json"
                 required={!credential}

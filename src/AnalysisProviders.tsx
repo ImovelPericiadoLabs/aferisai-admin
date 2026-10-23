@@ -360,7 +360,7 @@ export function AnalysisProviders({
             )}
             {drawer === "view" && selected && (
               <AnalysisProviderPanel
-                key={`${selected.id}:${selected.version}`}
+                key={selected.id}
                 account={selected}
                 csrf={csrf}
                 onUnauthorized={onUnauthorized}

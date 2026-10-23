@@ -150,3 +150,11 @@
     grid-template-columns: 1fr;
   }
 }
+
+.access-locked {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-muted);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-normal);
+}

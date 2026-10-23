@@ -59,12 +59,12 @@ export function Access({
           </p>
         </div>
       </header>
-      <div className="tabs" role="tablist" aria-label="Permissões">
+      <div className="seg-tabs" role="tablist" aria-label="Permissões">
         {tabs.map((item) => (
           <button
             key={item.id}
             id={`access-tab-${item.id}`}
-            className={`tab${tab === item.id ? " active" : ""}`}
+            className={`seg-tab${tab === item.id ? " active" : ""}`}
             type="button"
             role="tab"
             aria-selected={tab === item.id}
@@ -375,7 +375,15 @@ function ApplicationPermissions({
               <tbody>
                 {matrix.rows.map((row) => (
                   <tr key={row.id}>
-                    <th scope="row">{row.name}</th>
+                    <th scope="row">
+                      {row.name}
+                      {(row.lockedReason || !mayEdit) && (
+                        <span className="access-locked">
+                          {row.lockedReason ??
+                            "Somente leitura para o seu papel."}
+                        </span>
+                      )}
+                    </th>
                     {matrix.codes.map((item) => {
                       const granted = row.granted[item.code];
                       const allowed = mayEdit && row.editable;

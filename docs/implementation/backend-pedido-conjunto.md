@@ -15,6 +15,8 @@ Busca e filtros em listas (usuários, membros, regras, comissões, aplicações,
 
 **Provedores de IA**
 - Reativar conta suspensa; rotação de segredo; detalhe e histórico (`/events`) por conta.
+- Endpoint que **meça/inspecione** o perfil Vertex de um rascunho e devolva o hash candidato (`POST /analysis-provider-accounts/{id}/inspect`): hoje `expected_profile_sha256` só é conhecido pelo servidor durante a ativação, então o admin precisa que o operador cole o hash medido.
+- Documentar (ou ampliar) a regra de ativação: hoje só `vertex_service_account` na região `global`; os demais tipos recebem erro 422.
 
 **Promoções e exceções**
 - `reason` e auditoria em criar/suspender promoção; reativar; histórico de resgates.

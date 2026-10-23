@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import { ApiError, type AnalysisProviderAccount } from "./api";
 import {
   activationBody,
+  canActivate,
+  validateProfileHash,
   formToLimits,
   formatCostPerDay,
   isVersionConflict,
@@ -116,25 +118,54 @@ describe("validateExternalReserved", () => {
   });
 });
 
+describe("validateProfileHash", () => {
+  it("accepts 64 hex characters, trims and lowercases", () => {
+    const result = validateProfileHash(`  ${"AB".repeat(32)}  `);
+    expect(result).toMatchObject({ ok: true, value: "ab".repeat(32) });
+  });
+
+  it("rejects wrong length and non-hex input", () => {
+    for (const bad of ["", "a".repeat(63), "a".repeat(65), "g".repeat(64)]) {
+      expect(validateProfileHash(bad).ok).toBe(false);
+    }
+  });
+});
+
+describe("canActivate", () => {
+  it("allows a draft global Vertex account", () => {
+    expect(canActivate(account())).toEqual({ ok: true, reason: "" });
+  });
+
+  it("explains why a non-draft account cannot be activated", () => {
+    const result = canActivate(account({ status: "active" }));
+    expect(result.ok).toBe(false);
+    expect(result.reason).toContain("rascunho");
+  });
+
+  it("only allows Vertex service accounts", () => {
+    const result = canActivate(account({ kind: "openai_api_key" }));
+    expect(result.ok).toBe(false);
+    expect(result.reason).toContain("Vertex");
+  });
+
+  it("only allows the global location", () => {
+    const result = canActivate(account({ location: "us-central1" }));
+    expect(result.ok).toBe(false);
+    expect(result.reason).toContain("global");
+  });
+});
+
 describe("activationBody", () => {
-  it("builds the five fields the backend expects", () => {
-    expect(activationBody(account(), 2, "ativar conta aprovada")).toEqual({
+  it("sends the measured profile hash the operator provided", () => {
+    expect(
+      activationBody(account(), 2, "ativar conta aprovada", "c".repeat(64)),
+    ).toEqual({
       expected_version: 3,
       model: "gemini-3.5-flash-lite",
-      expected_profile_sha256: "a".repeat(64),
+      expected_profile_sha256: "c".repeat(64),
       external_reserved: 2,
       reason: "ativar conta aprovada",
     });
-  });
-
-  it("returns null when the execution profile is not ready", () => {
-    expect(
-      activationBody(
-        account({ execution_profile_sha256: null }),
-        0,
-        "motivo válido",
-      ),
-    ).toBeNull();
   });
 });
 

@@ -11,12 +11,14 @@ import { ConfirmDialog } from "./ConfirmDialog";
 import { statusLabel } from "./display-labels";
 import {
   activationBody,
+  canActivate,
   formToLimits,
   formatCostPerDay,
   isVersionConflict,
   limitsToForm,
   shortHash,
   validateExternalReserved,
+  validateProfileHash,
   type LimitsForm,
 } from "./provider-model";
 import { providerStatusTone } from "./status-tones";
@@ -61,29 +63,41 @@ export function AnalysisProviderPanel({
   onClose: () => void;
 }) {
   const [form, setForm] = useState<LimitsForm>(() => limitsToForm(account));
+  const [seenVersion, setSeenVersion] = useState(account.version);
   const [reserved, setReserved] = useState("0");
+  const [profile, setProfile] = useState("");
+  const [notice, setNotice] = useState("");
   const [ask, setAsk] = useState<Ask>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
 
+  if (account.version !== seenVersion) {
+    setSeenVersion(account.version);
+    setForm(limitsToForm(account));
+  }
+
   const editable = account.status !== "suspended";
   const reservedCheck = validateExternalReserved(reserved);
+  const profileCheck = validateProfileHash(profile);
+  const activation = canActivate(account);
 
-  async function run(task: () => Promise<unknown>) {
+  async function run(task: () => Promise<unknown>, success: string) {
     setBusy(true);
     setError("");
+    setNotice("");
     try {
       await task();
       setAsk(null);
       await onChanged();
+      setNotice(success);
     } catch (cause) {
       setAsk(null);
       if (cause instanceof ApiError && cause.status === 401) onUnauthorized();
       else if (isVersionConflict(cause)) {
         await onChanged();
         setError(
-          "A conta mudou enquanto você editava. Os dados foram recarregados.",
+          "A conta mudou ou o estado dela já não permite esta ação. Os dados foram recarregados.",
         );
       } else
         setError(
@@ -148,6 +162,11 @@ export function AnalysisProviderPanel({
         {error && (
           <div className="alert alert-danger form-alert" role="alert">
             {error}
+          </div>
+        )}
+        {notice && (
+          <div className="alert alert-success form-alert" role="status">
+            {notice}
           </div>
         )}
         <section className="detail-panel-section">
@@ -243,11 +262,8 @@ export function AnalysisProviderPanel({
         {account.status === "draft" && (
           <section className="detail-panel-section">
             <h3 className="detail-panel-section-title">Ativar conta</h3>
-            {account.execution_profile_sha256 === null ? (
-              <p className="prov-note">
-                O perfil de execução desta conta ainda não foi concluído no
-                backend. Sem ele não é possível ativar.
-              </p>
+            {!activation.ok ? (
+              <p className="prov-note">{activation.reason}</p>
             ) : (
               <>
                 <div className="form-field prov-reserved">
@@ -271,10 +287,29 @@ export function AnalysisProviderPanel({
                       : reservedCheck.message}
                   </span>
                 </div>
+                <div className="form-field">
+                  <label className="form-field-label" htmlFor="prov-profile">
+                    Perfil medido (SHA-256)
+                  </label>
+                  <input
+                    id="prov-profile"
+                    className="input prov-mono"
+                    value={profile}
+                    maxLength={80}
+                    spellCheck={false}
+                    aria-invalid={profile !== "" && !profileCheck.ok}
+                    onChange={(event) => setProfile(event.target.value)}
+                  />
+                  <span className="form-hint">
+                    {profile !== "" && !profileCheck.ok
+                      ? profileCheck.message
+                      : "Hash do perfil medido para esta conta, gerado na medição do backend. O servidor confere o valor antes de ativar."}
+                  </span>
+                </div>
                 <button
                   className="btn btn-primary btn-md prov-action"
                   type="button"
-                  disabled={busy || !reservedCheck.ok}
+                  disabled={busy || !reservedCheck.ok || !profileCheck.ok}
                   onClick={() => setAsk("activate")}
                 >
                   Ativar conta
@@ -331,14 +366,16 @@ export function AnalysisProviderPanel({
         onConfirm={(reason) => {
           const result = formToLimits(form);
           if (result.ok)
-            void run(() =>
-              updateAnalysisProviderLimits(
-                account.id,
-                result.limits,
-                account.version,
-                reason,
-                csrf,
-              ),
+            void run(
+              () =>
+                updateAnalysisProviderLimits(
+                  account.id,
+                  result.limits,
+                  account.version,
+                  reason,
+                  csrf,
+                ),
+              "Limites salvos.",
             );
         }}
         onCancel={() => setAsk(null)}
@@ -360,11 +397,16 @@ export function AnalysisProviderPanel({
         confirmLabel="Ativar conta"
         busy={busy}
         onConfirm={(reason) => {
-          const body = activationBody(account, reservedCheck.value, reason);
-          if (body)
-            void run(() =>
-              activateAnalysisProviderAccount(account.id, body, csrf),
-            );
+          const body = activationBody(
+            account,
+            reservedCheck.value,
+            reason,
+            profileCheck.value,
+          );
+          void run(
+            () => activateAnalysisProviderAccount(account.id, body, csrf),
+            "Conta ativada.",
+          );
         }}
         onCancel={() => setAsk(null)}
       />
@@ -378,13 +420,15 @@ export function AnalysisProviderPanel({
         confirmLabel="Suspender conta"
         busy={busy}
         onConfirm={(reason) =>
-          void run(() =>
-            suspendAnalysisProviderAccount(
-              account.id,
-              account.version,
-              reason,
-              csrf,
-            ),
+          void run(
+            () =>
+              suspendAnalysisProviderAccount(
+                account.id,
+                account.version,
+                reason,
+                csrf,
+              ),
+            "Conta suspensa.",
           )
         }
         onCancel={() => setAsk(null)}
