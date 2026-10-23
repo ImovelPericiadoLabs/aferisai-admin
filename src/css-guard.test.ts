@@ -17,7 +17,6 @@ const components: [string, string][] = readdirSync(SRC)
 const INTENTIONAL = [
   ".page-header",
   ".directory-head",
-  ".organization-applications-heading",
   ".dash-series-heading",
   ".dash-section-heading",
   ".dash-report-heading",

@@ -1,0 +1,153 @@
+.appdir {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.appdir > .btn {
+  justify-self: start;
+}
+
+.appdir-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.appdir-title {
+  margin: 0;
+  font-size: var(--text-xl);
+  font-weight: var(--weight-semibold);
+}
+
+.appdir-head .page-subtitle {
+  margin: var(--space-1) 0 0;
+}
+
+.appdir-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.appdir-toolbar .form-field {
+  min-width: 220px;
+}
+
+.appdir-toolbar .form-field:first-child {
+  flex: 1 1 280px;
+  max-width: 360px;
+}
+
+.appdir-check {
+  width: 40px;
+}
+
+.appdir-check input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--primary);
+}
+
+.appdir-open {
+  text-align: right;
+}
+
+.appdir-selection {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  gap: var(--space-4);
+}
+
+.appdir-selection small {
+  display: block;
+  color: var(--text-muted);
+}
+
+.appdir-actions {
+  display: flex;
+  gap: var(--space-2);
+  justify-content: flex-end;
+}
+
+.appdir-bulk-head h3 {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+}
+
+.appdir-block {
+  display: grid;
+  padding: var(--space-5);
+  gap: var(--space-4);
+}
+
+.appdir-block h4 {
+  margin: 0;
+  font-size: var(--text-base);
+  font-weight: var(--weight-semibold);
+}
+
+.appdir-status-field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.appdir-status-field .input {
+  width: 180px;
+}
+
+.appdir-permissions {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  gap: var(--space-3);
+  border: 0;
+}
+
+.appdir-permission-row {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: 32px minmax(0, 1fr) 180px;
+  align-items: center;
+}
+
+.appdir-permission-row small {
+  display: block;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.appdir-permission-icon {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border-radius: var(--radius-md);
+  background: var(--primary-faint);
+  color: var(--primary);
+}
+
+.appdir-permission-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+@media (max-width: 720px) {
+  .appdir-head,
+  .appdir-selection {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .appdir-permission-row {
+    grid-template-columns: 32px minmax(0, 1fr);
+  }
+
+  .appdir-permission-row .input {
+    grid-column: 1 / -1;
+  }
+}

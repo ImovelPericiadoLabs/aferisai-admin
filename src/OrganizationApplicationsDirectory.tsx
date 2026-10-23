@@ -11,8 +11,9 @@ import {
   applicationPermissionDescription,
   applicationPermissionLabel,
 } from "./display-labels";
+import { Checkbox } from "./controls";
 import { uuidv7 } from "./uuidv7";
-import "./organization-applications-directory.css";
+import "./application-directory.css";
 
 type Application = {
   id: string;
@@ -141,10 +142,7 @@ function PermissionIcon({ code }: { code: string }) {
     ),
   };
   return (
-    <span
-      className="organization-applications-permission-icon"
-      aria-hidden="true"
-    >
+    <span className="appdir-permission-icon" aria-hidden="true">
       <svg
         viewBox="0 0 24 24"
         fill="none"
@@ -331,59 +329,74 @@ export function OrganizationApplicationsDirectory({
 
   if (mode === "create") {
     return (
-      <section className="organization-applications-directory">
+      <section className="appdir">
         <button
           type="button"
-          className="back-link"
+          className="btn btn-ghost btn-sm"
           onClick={() => setMode("list")}
         >
-          ← Voltar às aplicações
+          ← Aplicações
         </button>
         {createForm}
       </section>
     );
   }
 
+  const backToList = () => {
+    setMode("list");
+    setPreview(null);
+    setResult(null);
+    setError("");
+  };
+
   return (
-    <section
-      className="organization-applications-directory"
-      aria-labelledby="organization-applications-title"
-    >
-      <header className="organization-applications-heading">
-        <div>
-          <p className="eyebrow">{organizationName}</p>
-          <h3 id="organization-applications-title">Aplicações</h3>
-          <p>
-            Abra uma integração para configurar webhooks, entregas e
-            credenciais.
-          </p>
-        </div>
-        {canManage && createForm && mode === "list" && (
-          <button
-            type="button"
-            className="button primary"
-            onClick={() => setMode("create")}
-          >
-            ＋ Nova aplicação
-          </button>
-        )}
-      </header>
+    <section className="appdir" aria-labelledby="appdir-title">
+      {mode === "list" && (
+        <header className="appdir-head">
+          <div>
+            <h2 className="appdir-title" id="appdir-title">
+              Aplicações
+            </h2>
+            <p className="page-subtitle">
+              Abra uma integração de {organizationName} para configurar
+              webhooks, entregas e credenciais.
+            </p>
+          </div>
+          {canManage && createForm && mode === "list" && (
+            <button
+              type="button"
+              className="btn btn-primary btn-md"
+              onClick={() => setMode("create")}
+            >
+              <span aria-hidden="true">＋</span> Nova aplicação
+            </button>
+          )}
+        </header>
+      )}
 
       {mode === "list" ? (
         <>
-          <div className="organization-applications-toolbar">
-            <label>
-              <span>Buscar aplicação</span>
+          <div className="appdir-toolbar">
+            <div className="form-field">
+              <label className="form-field-label" htmlFor="appdir-query">
+                Buscar aplicação
+              </label>
               <input
+                id="appdir-query"
+                className="input"
                 type="search"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="Buscar pelo nome"
               />
-            </label>
-            <label>
-              <span>Estado</span>
+            </div>
+            <div className="form-field">
+              <label className="form-field-label" htmlFor="appdir-filter">
+                Estado
+              </label>
               <select
+                id="appdir-filter"
+                className="input"
                 value={filter}
                 onChange={(event) => setFilter(event.target.value)}
               >
@@ -391,38 +404,32 @@ export function OrganizationApplicationsDirectory({
                 <option value="active">Ativas</option>
                 <option value="suspended">Suspensas</option>
               </select>
-            </label>
+            </div>
           </div>
-          <p className="organization-applications-count">
+          <p className="form-hint" role="status">
             {visible.length}{" "}
             {visible.length === 1 ? "aplicação exibida" : "aplicações exibidas"}
             {selected.length > 0 ? ` · ${selected.length} selecionadas` : ""}
+            {canManage && !canSelectAllVisible && visible.length > 0
+              ? " · Para selecionar todas, refine a lista ou limpe a seleção. O lote aceita até 50 aplicações."
+              : ""}
           </p>
-          {canManage && !canSelectAllVisible && visible.length > 0 && (
-            <p className="organization-applications-selection-hint">
-              Para selecionar todas, refine a lista ou limpe a seleção. O lote
-              aceita até 50 aplicações.
-            </p>
-          )}
           {visible.length === 0 ? (
-            <div className="organization-applications-empty">
-              <h4>Nenhuma aplicação encontrada</h4>
-              <p>
+            <div className="empty-state" role="status">
+              <strong>Nenhuma aplicação encontrada</strong>
+              <span>
                 {applications.length
                   ? "Ajuste a busca ou o estado."
                   : "Cadastre a primeira aplicação desta parceria."}
-              </p>
+              </span>
             </div>
           ) : (
-            <div className="organization-applications-table-wrap">
-              <table className="organization-applications-table">
+            <div className="data-table-wrap">
+              <table className="data-table" aria-label="Aplicações">
                 <thead>
                   <tr>
                     {canManage && (
-                      <th
-                        scope="col"
-                        className="organization-applications-check"
-                      >
+                      <th scope="col" className="appdir-check">
                         <input
                           type="checkbox"
                           aria-label="Selecionar todas as aplicações exibidas"
@@ -437,14 +444,16 @@ export function OrganizationApplicationsDirectory({
                     <th scope="col">Aplicação</th>
                     <th scope="col">Permissões</th>
                     <th scope="col">Estado</th>
-                    <th scope="col">Ações</th>
+                    <th scope="col">
+                      <span className="sr-only">Ações</span>
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {visible.map((item) => (
                     <tr key={item.id}>
                       {canManage && (
-                        <td className="organization-applications-check">
+                        <td className="appdir-check">
                           <input
                             type="checkbox"
                             aria-label={`Selecionar ${item.name}`}
@@ -458,22 +467,16 @@ export function OrganizationApplicationsDirectory({
                           />
                         </td>
                       )}
-                      <td>
+                      <td data-label="Aplicação">
                         <button
                           type="button"
-                          className="organization-applications-name"
+                          className="rules-cell-button"
                           onClick={() => onOpen(item.id)}
                         >
-                          <span aria-hidden="true">
-                            {item.name.slice(0, 1).toLocaleUpperCase("pt-BR")}
-                          </span>
                           <strong>{item.name}</strong>
                         </button>
                       </td>
-                      <td
-                        className="organization-applications-permissions"
-                        data-label="Permissões"
-                      >
+                      <td data-label="Permissões">
                         {item.permissions.length}{" "}
                         {item.permissions.length === 1
                           ? "concedida"
@@ -481,18 +484,18 @@ export function OrganizationApplicationsDirectory({
                       </td>
                       <td data-label="Estado">
                         <span
-                          className={`organization-applications-status is-${item.status === "active" ? "active" : "suspended"}`}
+                          className={`badge ${item.status === "active" ? "badge-success" : "badge-warning"}`}
                         >
                           {statusLabel(item.status)}
                         </span>
                       </td>
-                      <td>
+                      <td className="appdir-open">
                         <button
                           type="button"
-                          className="organization-applications-open"
+                          className="btn btn-secondary btn-sm"
                           onClick={() => onOpen(item.id)}
                         >
-                          Abrir →
+                          Abrir
                         </button>
                       </td>
                     </tr>
@@ -502,7 +505,11 @@ export function OrganizationApplicationsDirectory({
             </div>
           )}
           {canManage && selected.length > 0 && (
-            <div className="organization-applications-selection">
+            <div
+              className="appdir-selection card"
+              role="region"
+              aria-label="Seleção"
+            >
               <span>
                 <strong>{selected.length}</strong> selecionadas · limite de 50
                 {hiddenSelectedCount > 0 && (
@@ -512,17 +519,17 @@ export function OrganizationApplicationsDirectory({
                   </small>
                 )}
               </span>
-              <div>
+              <div className="appdir-actions">
                 <button
                   type="button"
-                  className="button secondary"
+                  className="btn btn-ghost btn-md"
                   onClick={() => setSelected([])}
                 >
                   Limpar seleção
                 </button>
                 <button
                   type="button"
-                  className="button primary"
+                  className="btn btn-primary btn-md"
                   disabled={selected.length < 2}
                   onClick={() => {
                     setMode("bulk");
@@ -539,84 +546,91 @@ export function OrganizationApplicationsDirectory({
         <>
           <button
             type="button"
-            className="back-link"
-            onClick={() => {
-              setMode("list");
-              setPreview(null);
-              setResult(null);
-              setError("");
-            }}
+            className="btn btn-ghost btn-sm"
+            onClick={backToList}
           >
-            ← Voltar às aplicações
+            ← Aplicações
           </button>
-          <div className="organization-applications-bulk-head">
-            <h4>Edição em massa</h4>
-            <p>
+          <div className="appdir-bulk-head">
+            <h3>Edição em massa</h3>
+            <p className="page-subtitle">
               {selectedApps.length} aplicações selecionadas. Escolha somente os
               campos que deseja alterar.
             </p>
           </div>
           {result ? (
-            <div className="organization-applications-result" role="status">
-              <h5>Resultado por aplicação</h5>
-              <p className="organization-applications-result-summary">
+            <section className="card appdir-block" role="status">
+              <h4>Resultado por aplicação</h4>
+              <p className="form-hint">
                 {result.affected_count} de {result.selected_count} aplicações
                 alteradas. Confira o resultado individual abaixo.
               </p>
-              <ul>
-                {result.items.map((item) => (
-                  <li key={item.application_id}>
-                    <strong>
-                      {applications.find(
-                        (app) => app.id === item.application_id,
-                      )?.name ?? "Aplicação indisponível"}
-                    </strong>
-                    <span
-                      className={`organization-applications-outcome is-${item.outcome}`}
-                    >
-                      <span aria-hidden="true">
-                        {item.outcome === "applied"
-                          ? "✓"
-                          : item.outcome === "no_change"
-                            ? "−"
-                            : "!"}
-                      </span>
-                      {outcomeLabel(item.outcome)}
-                    </span>
-                    {reasonLabel(item.reason) && (
-                      <small>{reasonLabel(item.reason)}</small>
-                    )}
-                  </li>
-                ))}
-              </ul>
-              <button
-                type="button"
-                className="button primary"
-                onClick={() => {
-                  setMode("list");
-                  setSelected([]);
-                  setResult(null);
-                }}
-              >
-                Concluir
-              </button>
-            </div>
+              <div className="data-table-wrap">
+                <table className="data-table" aria-label="Resultado">
+                  <thead>
+                    <tr>
+                      <th scope="col">Aplicação</th>
+                      <th scope="col">Resultado</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {result.items.map((item) => (
+                      <tr key={item.application_id}>
+                        <td data-label="Aplicação">
+                          <strong>
+                            {applications.find(
+                              (app) => app.id === item.application_id,
+                            )?.name ?? "Aplicação indisponível"}
+                          </strong>
+                        </td>
+                        <td data-label="Resultado">
+                          <span
+                            className={`badge ${item.outcome === "applied" ? "badge-success" : item.outcome === "no_change" ? "badge-neutral" : "badge-warning"}`}
+                          >
+                            {outcomeLabel(item.outcome)}
+                          </span>
+                          {reasonLabel(item.reason) && (
+                            <small className="rules-cell-sub">
+                              {reasonLabel(item.reason)}
+                            </small>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="appdir-actions">
+                <button
+                  type="button"
+                  className="btn btn-primary btn-md"
+                  onClick={() => {
+                    setMode("list");
+                    setSelected([]);
+                    setResult(null);
+                  }}
+                >
+                  Concluir
+                </button>
+              </div>
+            </section>
           ) : (
             <>
-              <div className="organization-applications-bulk-fields">
-                <div className="organization-applications-status-field">
-                  <label>
-                    <input
-                      type="checkbox"
-                      checked={statusEnabled}
-                      onChange={(event) => {
-                        setStatusEnabled(event.target.checked);
-                        setPreview(null);
-                      }}
-                    />{" "}
-                    Alterar estado
-                  </label>
+              <section className="card appdir-block">
+                <h4>O que alterar</h4>
+                <div className="appdir-status-field">
+                  <Checkbox
+                    id="appdir-status-enabled"
+                    label="Alterar estado"
+                    checked={statusEnabled}
+                    onChange={(checked) => {
+                      setStatusEnabled(checked);
+                      setPreview(null);
+                    }}
+                  />
                   <select
+                    className="input"
+                    aria-label="Novo estado"
                     disabled={!statusEnabled}
                     value={nextStatus}
                     onChange={(event) => {
@@ -630,15 +644,15 @@ export function OrganizationApplicationsDirectory({
                     <option value="suspended">Suspensa</option>
                   </select>
                 </div>
-                <fieldset>
-                  <legend>Permissões</legend>
-                  <p>
+                <fieldset className="appdir-permissions">
+                  <legend className="form-section-title">Permissões</legend>
+                  <p className="form-hint">
                     Defina separadamente o que conceder ou revogar. “Não
                     alterar” mantém cada aplicação como está.
                   </p>
                   {permissions.map((permission) => (
                     <div
-                      className="organization-applications-permission-row"
+                      className="appdir-permission-row"
                       key={permission.code}
                     >
                       <PermissionIcon code={permission.code} />
@@ -654,6 +668,7 @@ export function OrganizationApplicationsDirectory({
                         </small>
                       </span>
                       <select
+                        className="input"
                         aria-label={`${applicationPermissionLabel(permission.code)}: ação`}
                         value={decisions[permission.code] ?? "none"}
                         onChange={(event) =>
@@ -670,97 +685,110 @@ export function OrganizationApplicationsDirectory({
                     </div>
                   ))}
                   {decisions["application:read"] === "revoke" && (
-                    <p className="organization-applications-access-warning">
+                    <div className="alert alert-warning" role="note">
                       Revogar “Consultar integração” impede que a credencial da
                       aplicação consulte seus próprios dados.
-                    </p>
+                    </div>
                   )}
                 </fieldset>
-              </div>
+              </section>
               {error && (
-                <p className="organization-applications-error" role="alert">
+                <div className="alert alert-danger" role="alert">
                   {error}
-                </p>
+                </div>
               )}
               {!preview ? (
-                <button
-                  type="button"
-                  className="button primary"
-                  disabled={busy}
-                  onClick={() => void requestPreview()}
-                >
-                  {busy ? "Preparando…" : "Revisar alterações"}
-                </button>
+                <div className="appdir-actions">
+                  <button
+                    type="button"
+                    className="btn btn-primary btn-md"
+                    disabled={busy}
+                    onClick={() => void requestPreview()}
+                  >
+                    {busy ? "Preparando…" : "Revisar alterações"}
+                  </button>
+                </div>
               ) : (
-                <div
-                  className="organization-applications-preview"
-                  aria-live="polite"
-                >
-                  <div className="organization-applications-preview-head">
-                    <h5>Confira antes de aplicar</h5>
-                    <p>
-                      {preview.selected_count} aplicações selecionadas ·{" "}
-                      {preview.affected_count} com mudanças · prévia válida até{" "}
-                      {new Date(preview.expires_at).toLocaleTimeString(
-                        "pt-BR",
-                        { hour: "2-digit", minute: "2-digit" },
-                      )}
-                    </p>
-                  </div>
-                  <p className="organization-applications-preview-summary">
-                    {preview.affected_count} com mudanças;{" "}
+                <section className="card appdir-block" aria-live="polite">
+                  <h4>Confira antes de aplicar</h4>
+                  <p className="form-hint">
+                    {preview.selected_count} aplicações selecionadas ·{" "}
+                    {preview.affected_count} com mudanças ·{" "}
                     {preview.items.filter((item) => !item.can_apply).length}{" "}
-                    exigem atenção;{" "}
+                    exigem atenção ·{" "}
                     {
                       preview.items.filter(
                         (item) => item.can_apply && !previewHasChange(item),
                       ).length
                     }{" "}
-                    sem alteração.
+                    sem alteração · prévia válida até{" "}
+                    {new Date(preview.expires_at).toLocaleTimeString("pt-BR", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
                   </p>
-                  <ul>
-                    {preview.items.map((item) => (
-                      <li key={item.application_id}>
-                        <strong>{item.name}</strong>
-                        <span>
-                          {item.current_status === item.next_status
-                            ? `Mantém ${statusLabel(item.current_status).toLowerCase()}`
-                            : `${statusLabel(item.current_status)} → ${statusLabel(item.next_status)}`}
-                        </span>
-                        <small>
-                          {permissionTransition(
-                            item.current_permissions,
-                            item.next_permissions,
-                          )}
-                        </small>
-                        <em>
-                          {item.can_apply
-                            ? previewHasChange(item)
-                              ? "✓ Pode aplicar"
-                              : "Sem alteração"
-                            : (reasonLabel(item.reason) ?? "Não pode aplicar")}
-                        </em>
-                      </li>
-                    ))}
-                  </ul>
-                  <div className="organization-applications-preview-actions">
+                  <div className="data-table-wrap">
+                    <table className="data-table" aria-label="Prévia">
+                      <thead>
+                        <tr>
+                          <th scope="col">Aplicação</th>
+                          <th scope="col">Estado</th>
+                          <th scope="col">Permissões</th>
+                          <th scope="col">Situação</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {preview.items.map((item) => (
+                          <tr key={item.application_id}>
+                            <td data-label="Aplicação">
+                              <strong>{item.name}</strong>
+                            </td>
+                            <td data-label="Estado">
+                              {item.current_status === item.next_status
+                                ? `Mantém ${statusLabel(item.current_status).toLowerCase()}`
+                                : `${statusLabel(item.current_status)} → ${statusLabel(item.next_status)}`}
+                            </td>
+                            <td data-label="Permissões">
+                              {permissionTransition(
+                                item.current_permissions,
+                                item.next_permissions,
+                              )}
+                            </td>
+                            <td data-label="Situação">
+                              <span
+                                className={`badge ${item.can_apply ? (previewHasChange(item) ? "badge-success" : "badge-neutral") : "badge-warning"}`}
+                              >
+                                {item.can_apply
+                                  ? previewHasChange(item)
+                                    ? "Pode aplicar"
+                                    : "Sem alteração"
+                                  : (reasonLabel(item.reason) ??
+                                    "Não pode aplicar")}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="appdir-actions">
                     <button
                       type="button"
-                      className="button secondary"
+                      className="btn btn-ghost btn-md"
                       onClick={() => setPreview(null)}
                     >
                       Revisar campos
                     </button>
                     <button
                       type="button"
-                      className="button primary"
+                      className="btn btn-primary btn-md"
                       disabled={busy || preview.affected_count === 0}
                       onClick={() => void applyChanges()}
                     >
                       {busy ? "Aplicando…" : "Confirmar alterações"}
                     </button>
                   </div>
-                </div>
+                </section>
               )}
             </>
           )}

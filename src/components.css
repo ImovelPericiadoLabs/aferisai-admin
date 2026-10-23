@@ -607,6 +607,11 @@ textarea.input {
   background: var(--danger-bg);
 }
 
+.alert-warning {
+  border-left-color: var(--warning);
+  background: var(--warning-bg);
+}
+
 .detail-panel-wide {
   width: 560px;
 }
