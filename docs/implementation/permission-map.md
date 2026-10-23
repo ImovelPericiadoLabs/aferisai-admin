@@ -2,6 +2,8 @@
 
 **Fonte:** leitura do `aferis-backend` (inventário completo com arquivo e linha em [`permission-inventory-backend.md`](./permission-inventory-backend.md)) e do admin. Data: 2026-10-23. Tudo abaixo é **fato verificado** salvo onde marcado **PROPOSTA**.
 
+> **2026-10-23 — Fase 1 entregue (release `8de00f4`, PRs #30 a #32).** O backend grava a aplicação e a conexão de origem de cada análise (`app/analyses/models.py:76-77`); o parceiro só lista e lê análises da própria aplicação (`app/analyses/partner_routes.py:257,291,367,404`); o webhook de conclusão vai só à conexão iniciadora (`app/integrations/repo/webhook_delivery.py:23-31`); o `Location` do envio delegado aponta para `/v1/partner/analyses/{id}` (`:227`). Os itens 1 e 5 da seção 7 abaixo estão resolvidos. Pendem: fases 2 a 5, rota registral delegada, entrega real validada e liberar as rotas parceiras públicas no Nginx (hoje 503).
+
 ## 1. Resumo em uma página
 - Existem **3 códigos de permissão** reais: `application:read`, `analysis:read`, `analysis:submit:upload`. Os outros códigos que o admin já rotulou (`analysis:create`, `analysis:write`, `registry:*`) **não existem no backend**; vêm do projeto antigo e só aparecem em citações de documentação.
 - Não há lista global: cada organização tem o seu catálogo (`organization_permissions`), preenchido no cadastro. **Nenhuma API cria código novo**; só muda a descrição de um existente.
@@ -12,7 +14,7 @@
 | Código | Concedida por padrão | Libera | Onde é aplicada |
 |---|---|---|---|
 | `application:read` | Sim (toda aplicação e credencial nova) | `GET /v1/applications/{id}` (só `id`, `name`, `status`) | `app/integrations/routes.py:284-291`, `svc/credentials.py:143` |
-| `analysis:read` | Não | Listar, ver estado, resultado e PDF das análises **do titular conectado** (`/v1/partner/analyses*`); também decide quem recebe o webhook `analysis.completed` | `app/integrations/deps.py:82-95`, `repo/webhook_delivery.py:30` |
+| `analysis:read` | Não | Listar, ver estado, resultado e PDF das análises **originadas pela própria aplicação** (`/v1/partner/analyses*`); também decide quem recebe o webhook `analysis.completed` (só a conexão iniciadora) | `app/integrations/deps.py:82-95`, `repo/webhook_delivery.py:30` |
 | `analysis:submit:upload` | Não | Enviar arquivo para análise em nome do titular (`POST /v1/partner/analyses`) | `app/integrations/deps.py:98-111` |
 
 Regras que valem para todas: o código precisa estar no escopo da credencial, concedido à aplicação e (no modo delegado) aprovado pelo titular; aplicação e organização ativas; credencial não expirada nem revogada.
@@ -51,7 +53,7 @@ Assinatura: cabeçalho `X-Aferis-Signature: sha256=<HMAC>` e `X-Aferis-Event-Id`
 | Contadores e séries do painel | Sim | **Globais**, não por organização ou aplicação |
 | Uso de cupom/link (`use_count`) | Sim | Conta cotações, não pagamentos; só administrador |
 | Comissões e repasses | Sim | Só financeiro |
-| Análises por aplicação ou conexão | **Não** | O backend não grava a aplicação de origem |
+| Análises por aplicação ou conexão | **Parcial** | A origem já é gravada (índice por origem); falta o endpoint de métrica |
 | Conversão paga de cupom/link, cliques, indicações | **Não** | |
 | Extrato de comissão para o parceiro | **Não** | Documentado como pendência |
 
@@ -59,11 +61,11 @@ Assinatura: cabeçalho `X-Aferis-Signature: sha256=<HMAC>` e `X-Aferis-Event-Id`
 Já existe (equipe): `GET /v1/team/organizations/{id}/partner-people` (gestor+), `.../partner-people/{member_id}/events` (gestor+), `POST .../partner-invitations` (com `reason` opcional), `.../partner-invitations/{id}/resend` e `/revoke`, `.../partner-people/{member_id}/suspend` e `/reactivate` (administrador; suspender encerra as sessões da pessoa). Estados do convite: `delivery_unconfirmed`, `smtp_accepted`, `accepted`, `expired`, `revoked`, `blocked`. O acesso continua **por organização**, não por aplicação.
 
 ## 7. Lacunas e riscos (fatos)
-1. A análise enviada pelo parceiro **não grava aplicação nem conexão de origem**: leituras delegadas e webhooks cobrem **todas** as análises do titular, inclusive as feitas no site ou por outros parceiros (`app/analyses/partner_routes.py:209,253`). Impede métrica por parceiro e comissão de integração.
+1. ~~A análise enviada pelo parceiro não grava aplicação nem conexão de origem~~ **Resolvido na fase 1.** Antes: a análise enviada pelo parceiro não gravava aplicação nem conexão de origem: leituras delegadas e webhooks cobrem **todas** as análises do titular, inclusive as feitas no site ou por outros parceiros (`app/analyses/partner_routes.py:209,253`). Impede métrica por parceiro e comissão de integração.
 2. A política comercial `integration/connected` pode ser criada e nunca é resolvida na cotação.
 3. `use_count` do cupom sobe ao criar a cotação, não ao pagar; cotação de registro não aceita código promocional; comissão só nasce para análise.
 4. Sem papéis para pessoas do parceiro.
-5. `Location` do envio delegado aponta para a rota do titular (cookie), não para `/v1/partner/analyses/{id}`.
+5. ~~`Location` do envio delegado aponta para a rota do titular~~ **Resolvido na fase 1.**
 6. `GET /v1/team/connections` e `/v1/team/registry-requests` não checam papel (o financeiro lê; a segunda expõe `owner_user_id`).
 7. Documentação desatualizada em cinco arquivos (lista em `permission-inventory-backend.md` §1.4).
 

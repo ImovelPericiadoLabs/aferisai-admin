@@ -72,7 +72,7 @@ export const modes: IntegrationMode[] = [
     auth: "Código + PKCE S256, token de 15 min, sem refresh",
     permissions: "analysis:read, analysis:submit:upload",
     status: "implemented",
-    note: "Fora do OpenAPI público. URIs de retorno só pela equipe.",
+    note: "Fora do OpenAPI público. URIs de retorno só pela equipe. Cada análise registra a aplicação e a conexão de origem.",
     source: "app/integrations/routes.py:73",
   },
   {
@@ -153,7 +153,7 @@ export const permissions: PermissionEntry[] = [
     status: "implemented",
     grantedByDefault: false,
     unlocks:
-      "Listar, estado, resultado e PDF do titular conectado; recebe analysis.completed",
+      "Listar, estado, resultado e PDF das análises originadas pela própria aplicação; recebe analysis.completed só da conexão iniciadora",
     sensitive: true,
     source: "app/integrations/deps.py:82",
   },
@@ -314,9 +314,9 @@ export const metrics: MetricEntry[] = [
   },
   {
     name: "Análises por aplicação ou conexão",
-    status: "proposed",
+    status: "partial",
     scope: "Parceiro",
-    note: "O backend não grava a aplicação de origem.",
+    note: "A origem já é gravada (release 8de00f4); falta o endpoint de métrica.",
   },
   {
     name: "Conversão paga de cupom e link",
@@ -333,13 +333,6 @@ export const metrics: MetricEntry[] = [
 ];
 
 export const gaps: GapEntry[] = [
-  {
-    id: "no-origin",
-    title: "Análise do parceiro não registra aplicação nem conexão de origem",
-    effect:
-      "Leituras e webhooks cobrem todas as análises do titular; impede métrica por parceiro e comissão de integração.",
-    source: "app/analyses/partner_routes.py:209",
-  },
   {
     id: "connected-never-applied",
     title: "Política integration/connected nunca é aplicada",
@@ -372,5 +365,26 @@ export const gaps: GapEntry[] = [
     effect:
       "O financeiro lê conexões e pedidos de registro (com owner_user_id).",
     source: "app/integrations/team_routes.py:54",
+  },
+  {
+    id: "registry-delegated-missing",
+    title: "Não existe rota registral delegada",
+    effect:
+      "O parceiro não consegue pedir matrícula nem certidão em nome do titular.",
+    source: "Informado pela sessão do backend (release 8de00f4)",
+  },
+  {
+    id: "partner-routes-503",
+    title: "Rotas parceiras públicas ainda respondem 503 no Nginx",
+    effect:
+      "A integração por parceiros externos não está liberada em produção.",
+    source: "Informado pela sessão do backend (release 8de00f4)",
+  },
+  {
+    id: "real-webhook-unvalidated",
+    title: "Entrega real a um endpoint de parceiro ainda não validada",
+    effect:
+      "O consumidor de webhooks sobe no deploy, mas falta uma entrega de ponta a ponta.",
+    source: "Informado pela sessão do backend (release 8de00f4)",
   },
 ];
