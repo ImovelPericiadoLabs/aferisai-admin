@@ -18,15 +18,11 @@ export function OrganizationContextSwitcher({
 }) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("Todas as parcerias");
-  const [search, setSearch] = useState("");
-  const [query, setQuery] = useState("");
   const [items, setItems] = useState<OrganizationListItem[]>([]);
-  const [nextCursor, setNextCursor] = useState<string | null>(null);
-  const [cursor, setCursor] = useState<string | undefined>();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const rootRef = useRef<HTMLDivElement>(null);
-  const searchRef = useRef<HTMLInputElement>(null);
+  const firstOptionRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!selectedId) return;
@@ -46,7 +42,7 @@ export function OrganizationContextSwitcher({
 
   useEffect(() => {
     if (!open) return;
-    searchRef.current?.focus();
+    firstOptionRef.current?.focus();
     const close = (event: KeyboardEvent | PointerEvent) => {
       if (event instanceof KeyboardEvent && event.key === "Escape")
         setOpen(false);
@@ -67,27 +63,34 @@ export function OrganizationContextSwitcher({
   useEffect(() => {
     if (!open) return;
     let live = true;
-    listOrganizations(query, cursor)
-      .then((page) => {
-        if (!live) return;
-        setItems((previous) =>
-          cursor ? [...previous, ...page.items] : page.items,
-        );
-        setNextCursor(page.next_cursor);
-        setError("");
-      })
-      .catch((cause) => {
+    async function loadAvailable() {
+      try {
+        const available: OrganizationListItem[] = [];
+        const seen = new Set<string>();
+        let cursor: string | undefined;
+        while (live) {
+          const page = await listOrganizations("", cursor);
+          if (!live) return;
+          available.push(...page.items);
+          setItems([...available]);
+          if (!page.next_cursor || seen.has(page.next_cursor)) break;
+          seen.add(page.next_cursor);
+          cursor = page.next_cursor;
+        }
+        if (live) setError("");
+      } catch (cause) {
         if (!live) return;
         if (cause instanceof ApiError && cause.status === 401) onUnauthorized();
         else setError("Não foi possível carregar as empresas autorizadas.");
-      })
-      .finally(() => {
+      } finally {
         if (live) setLoading(false);
-      });
+      }
+    }
+    void loadAvailable();
     return () => {
       live = false;
     };
-  }, [open, query, cursor, onUnauthorized]);
+  }, [open, onUnauthorized]);
 
   function choose(item: OrganizationListItem | null) {
     setName(item?.name ?? "Todas as parcerias");
@@ -103,8 +106,12 @@ export function OrganizationContextSwitcher({
         aria-expanded={open}
         aria-controls="organization-context-menu"
         onClick={() => {
+          if (!open) {
+            setItems([]);
+            setError("");
+            setLoading(true);
+          }
           setOpen((current) => !current);
-          setLoading(true);
         }}
       >
         <span className="organization-context-mark" aria-hidden="true">
@@ -131,63 +138,39 @@ export function OrganizationContextSwitcher({
           className="organization-context-menu"
           id="organization-context-menu"
         >
-          <label htmlFor="organization-context-search">Trocar empresa</label>
-          <input
-            ref={searchRef}
-            id="organization-context-search"
-            type="search"
-            value={search}
-            placeholder="Buscar empresa"
-            onChange={(event) => {
-              setSearch(event.target.value);
-              setQuery(event.target.value.trim());
-              setCursor(undefined);
-              setItems([]);
-              setLoading(true);
-            }}
-          />
-          <div className="organization-context-options">
-            {!query && (
-              <button
-                type="button"
-                aria-current={!selectedId ? "true" : undefined}
-                onClick={() => choose(null)}
-              >
-                Todas as parcerias
-              </button>
-            )}
+          <span className="organization-context-heading">
+            Selecionar empresa
+          </span>
+          <div
+            className="organization-context-options"
+            role="group"
+            aria-label="Empresas disponíveis"
+          >
+            <button
+              ref={firstOptionRef}
+              type="button"
+              aria-pressed={!selectedId}
+              onClick={() => choose(null)}
+            >
+              <span>Todas as parcerias</span>
+              {!selectedId && <span aria-hidden="true">✓</span>}
+            </button>
             {items.map((item) => (
               <button
                 type="button"
                 key={item.id}
-                aria-current={selectedId === item.id ? "true" : undefined}
+                aria-pressed={selectedId === item.id}
                 onClick={() => choose(item)}
               >
-                <strong>{item.name}</strong>
-                <small>
-                  {item.applications_count}{" "}
-                  {item.applications_count === 1 ? "aplicação" : "aplicações"}
-                </small>
+                <span>{item.name}</span>
+                {selectedId === item.id && <span aria-hidden="true">✓</span>}
               </button>
             ))}
           </div>
           {loading && <p role="status">Carregando empresas…</p>}
           {error && <p role="alert">{error}</p>}
           {!loading && !error && items.length === 0 && (
-            <p>Nenhuma empresa encontrada.</p>
-          )}
-          {nextCursor && (
-            <button
-              type="button"
-              className="organization-context-more"
-              disabled={loading}
-              onClick={() => {
-                setCursor(nextCursor);
-                setLoading(true);
-              }}
-            >
-              Carregar mais
-            </button>
+            <p>Nenhuma empresa disponível.</p>
           )}
         </div>
       )}

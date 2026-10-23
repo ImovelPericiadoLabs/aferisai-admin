@@ -1238,9 +1238,6 @@ function TeamApp() {
               onUnauthorized={unauthorize}
             />
           )}
-          <span className="topbar-label">
-            <span className="topbar-status" /> Conectado
-          </span>
         </header>
         <main key={currentPage} className="page-fade-in">
           {currentPage === "overview" ? (

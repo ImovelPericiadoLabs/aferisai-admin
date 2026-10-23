@@ -20,18 +20,13 @@ export function PartnerOrganizationSwitcher({
   onUnauthorized: () => void;
 }) {
   const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState("");
-  const [cursor, setCursor] = useState<string | undefined>();
-  const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [items, setItems] = useState<PartnerOrganization[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const rootRef = useRef<HTMLDivElement>(null);
-  const searchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!open) return;
-    searchRef.current?.focus();
     const close = (event: KeyboardEvent | PointerEvent) => {
       if (event instanceof KeyboardEvent && event.key === "Escape")
         setOpen(false);
@@ -52,27 +47,34 @@ export function PartnerOrganizationSwitcher({
   useEffect(() => {
     if (!open) return;
     let live = true;
-    listPartnerOrganizations(query, cursor)
-      .then((page) => {
-        if (!live) return;
-        setItems((previous) =>
-          cursor ? [...previous, ...page.items] : page.items,
-        );
-        setNextCursor(page.next_cursor);
-        setError("");
-      })
-      .catch((cause) => {
+    async function loadAvailable() {
+      try {
+        const available: PartnerOrganization[] = [];
+        const seen = new Set<string>();
+        let cursor: string | undefined;
+        while (live) {
+          const page = await listPartnerOrganizations("", cursor);
+          if (!live) return;
+          available.push(...page.items);
+          setItems([...available]);
+          if (!page.next_cursor || seen.has(page.next_cursor)) break;
+          seen.add(page.next_cursor);
+          cursor = page.next_cursor;
+        }
+        if (live) setError("");
+      } catch (cause) {
         if (!live) return;
         if (cause instanceof ApiError && cause.status === 401) onUnauthorized();
         else setError("Não foi possível carregar suas empresas.");
-      })
-      .finally(() => {
+      } finally {
         if (live) setLoading(false);
-      });
+      }
+    }
+    void loadAvailable();
     return () => {
       live = false;
     };
-  }, [open, query, cursor, activeId, onUnauthorized]);
+  }, [open, activeId, onUnauthorized]);
 
   async function choose(item: PartnerOrganization) {
     if (item.id === activeId) {
@@ -101,7 +103,11 @@ export function PartnerOrganizationSwitcher({
         aria-controls="partner-context-menu"
         disabled={disabled}
         onClick={() => {
-          if (!open) setLoading(true);
+          if (!open) {
+            setItems([]);
+            setError("");
+            setLoading(true);
+          }
           setOpen((current) => !current);
         }}
       >
@@ -126,30 +132,21 @@ export function PartnerOrganizationSwitcher({
       </button>
       {open && (
         <div className="partner-context-menu" id="partner-context-menu">
-          <label htmlFor="partner-context-search">Suas empresas</label>
-          <input
-            id="partner-context-search"
-            ref={searchRef}
-            type="search"
-            value={query}
-            placeholder="Buscar empresa"
-            onChange={(event) => {
-              setQuery(event.target.value.trimStart());
-              setCursor(undefined);
-              setItems([]);
-              setLoading(true);
-            }}
-          />
-          <div className="partner-context-options">
+          <span className="partner-context-heading">Selecionar empresa</span>
+          <div
+            className="partner-context-options"
+            role="group"
+            aria-label="Empresas disponíveis"
+          >
             {items.map((item) => (
               <button
                 key={item.id}
                 type="button"
-                aria-current={item.id === activeId ? "true" : undefined}
+                aria-pressed={item.id === activeId}
                 onClick={() => void choose(item)}
               >
                 <span>{item.name}</span>
-                {item.id === activeId && <small>Atual</small>}
+                {item.id === activeId && <span aria-hidden="true">✓</span>}
               </button>
             ))}
           </div>
@@ -160,20 +157,7 @@ export function PartnerOrganizationSwitcher({
             </p>
           )}
           {!loading && !error && items.length === 0 && (
-            <p>Nenhuma empresa encontrada.</p>
-          )}
-          {nextCursor && (
-            <button
-              type="button"
-              className="partner-context-more"
-              disabled={loading}
-              onClick={() => {
-                setCursor(nextCursor);
-                setLoading(true);
-              }}
-            >
-              Carregar mais
-            </button>
+            <p>Nenhuma empresa disponível.</p>
           )}
         </div>
       )}

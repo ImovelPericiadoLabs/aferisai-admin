@@ -285,10 +285,6 @@ textarea:focus-visible {
   color: #aab6c6;
   padding: 0 0.5rem;
 }
-.topbar-label {
-  color: #8190a5;
-  font-size: 0.69rem;
-}
 .content {
   width: 100%;
   padding: clamp(1.25rem, 3vw, 3rem);
@@ -819,9 +815,6 @@ textarea:focus-visible {
   .topbar {
     height: 62px;
     justify-content: start;
-  }
-  .topbar-label {
-    display: none;
   }
   .workspace {
     grid-template-columns: 1fr;
@@ -1383,18 +1376,6 @@ textarea:focus-visible {
   flex: none;
   color: #a5b4c5;
 }
-.topbar-label {
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-  color: #536984;
-}
-.topbar-status {
-  width: 0.45rem;
-  height: 0.45rem;
-  border-radius: 50%;
-  background: #15946c;
-}
 .content {
   max-width: 1600px;
   margin: 0 auto;
@@ -1610,8 +1591,7 @@ textarea:focus-visible {
     font-size: 0.9rem;
   }
   .topbar-breadcrumb > span,
-  .topbar-breadcrumb > svg,
-  .topbar-label {
+  .topbar-breadcrumb > svg {
     display: none;
   }
   .topbar-breadcrumb strong {
