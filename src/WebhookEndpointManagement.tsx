@@ -18,6 +18,7 @@ import { webhookStep } from "./webhook-setup-model";
 import { IntegrationIcon } from "./IntegrationIcon";
 import { webhookHost } from "./application-overview-model";
 import { WebhookFlow } from "./WebhookFlow";
+import { WebhookPayloads } from "./WebhookPayloads";
 import "./partner-onboarding.css";
 
 type Props = {
@@ -408,6 +409,8 @@ export function WebhookEndpointManagement({
           )}
         </>
       )}
+
+      <WebhookPayloads endpointUrl={endpoint?.url ?? null} />
 
       {createPortal(
         <>
