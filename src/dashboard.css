@@ -6,9 +6,9 @@
   --dash-blue: #075bff;
   --dash-blue-soft: #eaf1ff;
   color: var(--dash-ink);
-  width: min(100%, 1420px);
+  width: min(100%, 1380px);
   margin: 0 auto;
-  padding: clamp(1rem, 2.4vw, 2.5rem);
+  padding: clamp(0.875rem, 1.8vw, 1.5rem);
 }
 
 .dash-page *,
@@ -32,28 +32,28 @@
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
-  gap: 1.5rem;
-  margin-bottom: 1.75rem;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
 }
 .dash-eyebrow {
-  margin: 0 0 0.5rem;
+  margin: 0 0 0.3rem;
   color: #3464a5;
-  font-size: 0.8rem;
+  font-size: 0.68rem;
   font-weight: 800;
   letter-spacing: 0.12em;
 }
 .dash-page-intro h1 {
   margin: 0;
   color: #09244a;
-  font-size: clamp(1.8rem, 2.4vw, 2.5rem);
+  font-size: clamp(1.4rem, 2vw, 1.85rem);
   letter-spacing: -0.045em;
   line-height: 1.12;
 }
 .dash-intro-copy {
-  margin: 0.65rem 0 0;
+  margin: 0.4rem 0 0;
   max-width: 48rem;
   color: var(--dash-muted);
-  font-size: 0.94rem;
+  font-size: 0.83rem;
   line-height: 1.5;
 }
 .dash-intro-actions {
@@ -76,8 +76,8 @@
 .dash-icon-button {
   display: grid;
   place-items: center;
-  width: 2.75rem;
-  height: 2.75rem;
+  width: 2.25rem;
+  height: 2.25rem;
   border: 1px solid var(--dash-border);
   border-radius: 0.5rem;
   background: #fff;
@@ -91,8 +91,8 @@
   background: #f3f7ff;
 }
 .dash-attention {
-  margin-bottom: 1.25rem;
-  padding: 1.2rem;
+  margin-bottom: 1rem;
+  padding: 0.9rem 1rem;
   border: 1px solid #eadcc8;
   border-left: 3px solid #c58b37;
   border-radius: 0.375rem;
@@ -169,8 +169,8 @@ button.dash-attention-item:hover {
   font-size: 0.78rem;
 }
 .dash-overview-trend {
-  margin-bottom: 1.5rem;
-  padding: 1.25rem 1.35rem;
+  margin-bottom: 1.1rem;
+  padding: 1rem 1.1rem;
   border: 1px solid #dfe7f1;
   border-radius: 0.375rem;
   background: #fff;
@@ -185,7 +185,7 @@ button.dash-attention-item:hover {
 .dash-overview-trend-head h2 {
   margin: 0;
   color: #102f53;
-  font-size: 1.15rem;
+  font-size: 1rem;
   letter-spacing: -0.025em;
 }
 .dash-overview-trend-head p:last-child {
@@ -221,7 +221,7 @@ button.dash-attention-item:hover {
   align-items: end;
   flex-wrap: wrap;
   gap: 0.75rem;
-  margin-bottom: 0.85rem;
+  margin-bottom: 0.65rem;
 }
 .dash-section-heading h2 {
   margin: 0;
@@ -283,13 +283,31 @@ button.dash-attention-item:hover {
 .dash-groups {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1rem;
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid var(--dash-border);
+  border-radius: 0.25rem;
+}
+.dash-groups > .dash-group-card {
+  border: 0;
+  border-radius: 0;
+  border-bottom: 1px solid var(--dash-border);
+}
+.dash-groups > .dash-group-card:nth-child(odd) {
+  border-right: 1px solid var(--dash-border);
+}
+.dash-groups > .dash-group-card:last-child,
+.dash-groups > .dash-group-card:nth-last-child(2):nth-child(odd) {
+  border-bottom: 0;
+}
+.dash-groups > .dash-group-card:nth-child(odd):last-child {
+  border-right: 0;
 }
 .dash-group-card,
 .dash-report-card {
   min-width: 0;
   border: 1px solid var(--dash-border);
-  border-radius: 0.375rem;
+  border-radius: 0.25rem;
   background: var(--dash-surface);
   animation: dash-rise 0.42s both;
 }
@@ -308,7 +326,7 @@ button.dash-attention-item:hover {
 .dash-group-card {
   display: flex;
   flex-direction: column;
-  padding: 1.4rem;
+  padding: 1rem;
 }
 .dash-card-head,
 .dash-report-head {
@@ -321,9 +339,9 @@ button.dash-attention-item:hover {
   display: grid;
   place-items: center;
   flex: none;
-  width: 2.75rem;
-  height: 2.75rem;
-  border-radius: 0.5rem;
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 0.25rem;
   color: #1652b2;
   background: #eaf2ff;
 }
@@ -358,11 +376,11 @@ button.dash-attention-item:hover {
   display: flex;
   align-items: baseline;
   gap: 0.55rem;
-  margin: 1.5rem 0 1.15rem;
+  margin: 1rem 0 0.65rem;
 }
 .dash-card-total strong {
   color: #0a2850;
-  font-size: 2rem;
+  font-size: 1.65rem;
   font-weight: 750;
   letter-spacing: -0.06em;
   line-height: 1;
@@ -371,6 +389,20 @@ button.dash-attention-item:hover {
 .dash-card-total span {
   color: var(--dash-muted);
   font-size: 0.8rem;
+}
+.dash-card-distribution {
+  display: flex;
+  width: 100%;
+  height: 0.32rem;
+  overflow: hidden;
+  background: #edf1f6;
+}
+.dash-card-distribution span {
+  min-width: 0;
+  height: 100%;
+  border-right: 1px solid #fff;
+  transform-origin: left;
+  animation: dash-bar-enter 0.55s both;
 }
 .dash-status-list {
   display: grid;
@@ -383,8 +415,8 @@ button.dash-attention-item:hover {
   align-items: center;
   gap: 0.55rem;
   min-width: 0;
-  min-height: 2.55rem;
-  padding: 0.7rem 0.1rem;
+  min-height: 2.1rem;
+  padding: 0.45rem 0.1rem;
   border-top: 1px solid #e8edf3;
   border-radius: 0;
   background: transparent;
@@ -425,7 +457,7 @@ button.dash-attention-item:hover {
   gap: 0.4rem;
   align-self: flex-start;
   padding: 0.4rem 0;
-  margin-top: 1rem;
+  margin-top: 0.7rem;
   border: 0;
   background: transparent;
   color: #075bdb;
@@ -446,8 +478,8 @@ button.dash-attention-item:hover {
   align-items: center;
   width: 100%;
   gap: 0.85rem;
-  margin-top: 1.25rem;
-  padding: 1rem 1.2rem;
+  margin-top: 1rem;
+  padding: 0.75rem 1rem;
   border: 1px solid #d6e5fb;
   border-radius: 0.5rem;
   background: #f5f9ff;
@@ -530,7 +562,7 @@ button.dash-attention-item:hover {
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
-  gap: 1rem;
+  gap: 0.75rem;
   margin-bottom: 1rem;
 }
 .dash-report-heading h2 {
@@ -545,20 +577,20 @@ button.dash-attention-item:hover {
 .dash-report-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1rem;
+  gap: 0.75rem;
 }
 .dash-analytics-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1rem;
-  margin: 1rem 0 1.5rem;
+  gap: 0.75rem;
+  margin: 0.75rem 0 1.1rem;
   align-items: stretch;
 }
 .dash-analytics-grid .dash-map-preview {
   margin: 0;
 }
 .dash-volume {
-  padding: 1.35rem;
+  padding: 1rem;
   border: 1px solid #dfe7f1;
   border-radius: 0.375rem;
   background: #fff;
@@ -590,8 +622,8 @@ button.dash-attention-item:hover {
 }
 .dash-volume-rows {
   display: grid;
-  gap: 1rem;
-  margin-bottom: 1.3rem;
+  gap: 0.7rem;
+  margin-bottom: 0.9rem;
 }
 .dash-volume-row {
   display: grid;
@@ -648,8 +680,8 @@ button.dash-attention-item:hover {
 .dash-report-filters {
   display: grid;
   gap: 0.8rem;
-  margin-bottom: 1.5rem;
-  padding: 1rem 1.15rem;
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
   border: 1px solid #dfe7f1;
   border-radius: 0.375rem;
   background: #fff;
@@ -755,7 +787,7 @@ button.dash-attention-item:hover {
   font-size: 0.7rem;
 }
 .dash-report-card {
-  padding: 1.35rem;
+  padding: 1rem;
 }
 .dash-report-meta {
   display: flex;
@@ -798,8 +830,8 @@ button.dash-attention-item:hover {
   display: grid;
   grid-template-columns: 7.5rem minmax(0, 1fr);
   align-items: center;
-  gap: 1.1rem;
-  margin: 1.35rem 0 1.1rem;
+  gap: 0.9rem;
+  margin: 1rem 0 0.8rem;
 }
 .dash-donut {
   display: block;
@@ -810,7 +842,9 @@ button.dash-attention-item:hover {
 .dash-donut-track {
   stroke: #edf1f6;
 }
-.dash-donut-segment { transition: opacity .2s; }
+.dash-donut-segment {
+  transition: opacity 0.2s;
+}
 .dash-stroke-blue {
   stroke: #3476ed;
 }
@@ -838,7 +872,7 @@ button.dash-attention-item:hover {
 }
 .dash-bar-chart {
   display: grid;
-  gap: 0.9rem;
+  gap: 0.65rem;
   min-width: 0;
 }
 .dash-bar-label {
@@ -1094,13 +1128,20 @@ button.dash-attention-item:hover {
   .dash-attention-list {
     grid-template-columns: 1fr;
   }
+  .dash-groups > .dash-group-card {
+    border-right: 0 !important;
+    border-bottom: 1px solid var(--dash-border) !important;
+  }
+  .dash-groups > .dash-group-card:last-child {
+    border-bottom: 0 !important;
+  }
 }
 @media (max-width: 600px) {
   .dash-page {
-    padding: 1rem 1rem 6rem;
+    padding: 0.75rem 0.75rem 6rem;
   }
   .dash-overview-trend {
-    padding: 1rem;
+    padding: 0.85rem;
   }
   .dash-trend-tabs {
     flex-wrap: nowrap;
@@ -1114,10 +1155,10 @@ button.dash-attention-item:hover {
   }
   .dash-page-intro {
     align-items: flex-start;
-    margin-bottom: 1.4rem;
+    margin-bottom: 1rem;
   }
   .dash-page-intro h1 {
-    font-size: 1.85rem;
+    font-size: 1.55rem;
   }
   .dash-intro-actions {
     align-self: flex-start;
@@ -1145,20 +1186,20 @@ button.dash-attention-item:hover {
   }
   .dash-group-card,
   .dash-report-card {
-    padding: 1.1rem;
-    border-radius: 0.5rem;
+    padding: 0.9rem;
+    border-radius: 0.25rem;
   }
   .dash-status-list {
     grid-template-columns: 1fr 1fr;
   }
   .dash-status {
-    grid-template-columns: 0.4rem minmax(0, 1fr);
-    gap: 0.35rem;
-    min-height: 3.1rem;
-    padding: 0.55rem;
+    grid-template-columns: 0.4rem minmax(0, 1fr) auto;
+    gap: 0.4rem;
+    min-height: 2.5rem;
+    padding: 0.45rem 0.1rem;
   }
   .dash-status strong {
-    grid-column: 2;
+    grid-column: 3;
   }
   .dash-report-notice {
     padding: 0.85rem;
@@ -1178,7 +1219,7 @@ button.dash-attention-item:hover {
     box-shadow: none;
   }
 }
-@media (max-width: 350px) {
+@media (max-width: 420px) {
   .dash-status-list {
     grid-template-columns: 1fr;
   }

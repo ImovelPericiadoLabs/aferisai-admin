@@ -552,3 +552,220 @@
     overflow-wrap: anywhere;
   }
 }
+
+/* The operational workspace follows Vextor's tighter editorial rhythm. */
+@media (min-width: 761px) {
+  .main-area .content,
+  .main-area .financial-exceptions {
+    max-width: 1380px;
+    padding: 1.35rem clamp(1.35rem, 2.2vw, 2.25rem) 2.5rem;
+  }
+
+  .main-area .card,
+  .main-area .form-panel,
+  .main-area .side-panel,
+  .main-area .result,
+  .main-area .detail-card,
+  .main-area .review-card {
+    padding: 1rem 1.15rem;
+  }
+
+  .main-area :is(.data-table, .analyses-table) :is(th, td) {
+    padding: 0.62rem 0.75rem;
+  }
+
+  .main-area .directory-head,
+  .main-area .directory-row {
+    padding-inline: 1rem;
+  }
+
+  .main-area .directory-row,
+  .main-area .request-directory li {
+    padding-block: 0.7rem;
+  }
+}
+
+.main-area :is(.page-head, .review-heading, .directory-head, .detail-intro) h1,
+.main-area .financial-exceptions > header h1 {
+  font-size: clamp(1.45rem, 1.8vw, 1.8rem);
+  letter-spacing: -0.035em;
+  line-height: 1.2;
+}
+
+.main-area :is(.card, .form-panel, .side-panel, .detail-card, .review-card) h2 {
+  font-size: 1.04rem;
+  letter-spacing: -0.025em;
+}
+
+.main-area :is(.card, .form-panel, .side-panel, .detail-card, .review-card) h3 {
+  font-size: 0.96rem;
+  letter-spacing: -0.02em;
+}
+
+.main-area :is(.data-table, .analyses-table) th,
+.main-area .directory-labels {
+  color: #516f90;
+  background: #f5f8fa;
+  letter-spacing: 0.035em;
+}
+
+.main-area :is(.data-table, .analyses-table) tbody tr:hover td,
+.main-area .financial-item:hover {
+  background: #f5f8fa;
+}
+
+.main-area .directory-name {
+  color: #0066b3;
+}
+
+.main-area .directory-name:hover {
+  color: #004a84;
+}
+
+.main-area
+  :is(
+    .card,
+    .form-panel,
+    .side-panel,
+    .result,
+    .detail-card,
+    .review-card,
+    .directory,
+    .financial-item,
+    .financial-detail
+  ) {
+  border-color: #dce5ed;
+  border-radius: 6px;
+}
+
+/* Authentication mirrors the reference's centered, focused workspace. */
+.login-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  place-items: center;
+  background:
+    radial-gradient(circle at 50% -18%, rgb(0 102 179 / 9%), transparent 48%),
+    #f5f8fa;
+}
+
+.login-story {
+  display: none;
+}
+
+.login-panel {
+  width: 100%;
+  min-height: 100dvh;
+  padding: clamp(1.5rem, 3vw, 3rem);
+}
+
+.login-card {
+  width: min(100%, 400px);
+  padding: clamp(1.45rem, 2.2vw, 2rem);
+  border: 1px solid #dce5ed;
+  border-radius: 7px;
+  background: #fff;
+  box-shadow: 0 8px 28px rgb(38 63 93 / 5%);
+  animation: login-enter 380ms ease-out both;
+}
+
+.login-card .mobile-brand {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1.4rem;
+}
+
+.login-card .mobile-brand .brand {
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.login-card .mobile-brand .brand img {
+  width: 118px;
+}
+
+.login-card .mobile-brand .brand > span:last-child {
+  border-left: 0;
+  padding-left: 0;
+}
+
+.login-card h1 {
+  font-size: clamp(1.45rem, 1.85vw, 1.7rem);
+  letter-spacing: -0.035em;
+  text-align: center;
+}
+
+.login-card > .eyebrow,
+.login-card > .muted {
+  text-align: center;
+}
+
+.login-mobile-art {
+  display: none;
+}
+
+.login-card .form input {
+  height: 40px;
+  border-radius: 5px;
+  border-color: #cbd6e2;
+  font-size: 0.88rem;
+}
+
+.login-card .button {
+  min-height: 40px;
+  border-radius: 5px;
+  font-size: 0.83rem;
+  gap: 0.5rem;
+  padding-block: 0.5rem;
+}
+
+.login-card .passkey-login-option {
+  margin-top: 1.1rem;
+}
+
+@keyframes login-enter {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 760px) {
+  .main-area .content,
+  .main-area .financial-exceptions {
+    padding: 1rem 1rem calc(5rem + env(safe-area-inset-bottom));
+  }
+
+  .login-panel {
+    padding: clamp(1.4rem, 4vh, 2.2rem) max(1rem, env(safe-area-inset-left))
+      calc(1.25rem + env(safe-area-inset-bottom));
+    justify-content: center;
+  }
+
+  .login-card {
+    padding: 1.35rem;
+  }
+
+  .login-card .mobile-brand {
+    margin-bottom: 1.25rem;
+  }
+
+  .login-card .form input,
+  .login-card .button {
+    min-height: 44px;
+    font-size: 1rem;
+  }
+
+  .login-card h1 {
+    font-size: 1.55rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-card {
+    animation: none;
+  }
+}

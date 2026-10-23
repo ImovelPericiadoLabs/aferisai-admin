@@ -51,6 +51,7 @@ const sourceLabels: Record<string, string> = {
 };
 
 const itemLabels: Record<string, string> = {
+  "*": "Todos os itens",
   matricula: "Matrícula",
   inteiro_teor_simples: "Inteiro teor simples",
   inteiro_teor: "Inteiro teor",

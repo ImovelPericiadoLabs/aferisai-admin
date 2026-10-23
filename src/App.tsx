@@ -48,6 +48,7 @@ import "./App.css";
 import "./brand.css";
 import "./directory.css";
 import "./operational-polish.css";
+import "./shell.css";
 
 type Page =
   | "overview"
@@ -282,7 +283,7 @@ function Login({ onLogin }: { onLogin: (session: Session) => void }) {
             <Brand />
           </div>
           <p className="eyebrow">Acesso da equipe</p>
-          <h2 id="login-title">Entrar na área da equipe</h2>
+          <h1 id="login-title">Entrar na área da equipe</h1>
           <p className="muted">
             {loginMode === "passkey"
               ? "Informe seu e-mail e confirme a chave de acesso no dispositivo."
@@ -1142,7 +1143,10 @@ function App() {
               sidebarCollapsed ? "Expandir navegação" : "Recolher navegação"
             }
           >
-            <ShellIcon name="menu" size={18} />
+            <ShellIcon
+              name={sidebarCollapsed ? "panel-open" : "panel-close"}
+              size={17}
+            />
           </button>
           <button
             className="close-menu"
@@ -1292,7 +1296,10 @@ function App() {
               <button
                 type="button"
                 className="account-trigger"
-                onClick={() => setAccountMenuOpen((open) => !open)}
+                onClick={() => {
+                  if (sidebarCollapsed && !menuOpen) setSidebarCollapsed(false);
+                  setAccountMenuOpen((open) => !open);
+                }}
                 aria-expanded={accountMenuOpen}
                 aria-label={`Conta de ${session.member.email}, ${teamRoleLabel(session.member.role)}`}
                 title={sidebarCollapsed ? session.member.email : undefined}
@@ -1321,7 +1328,10 @@ function App() {
                 aria-label="Abrir configurações"
                 aria-expanded={accountMenuOpen}
                 title="Configurações"
-                onClick={() => setAccountMenuOpen((open) => !open)}
+                onClick={() => {
+                  if (sidebarCollapsed && !menuOpen) setSidebarCollapsed(false);
+                  setAccountMenuOpen((open) => !open);
+                }}
               >
                 <ShellIcon name="settings" size={18} />
               </button>
@@ -1359,7 +1369,7 @@ function App() {
             <strong>{currentItem?.label}</strong>
           </div>
           <span className="topbar-label">
-            <span className="topbar-status" /> Ambiente interno
+            <span className="topbar-status" /> Área interna
           </span>
         </header>
         <main key={currentPage} className="page-fade-in">

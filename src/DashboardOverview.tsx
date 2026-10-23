@@ -1,4 +1,11 @@
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { getDashboardMetrics, type DashboardMetrics } from "./api";
 import { CombinedSeriesChart, SeriesChart } from "./dashboard-series";
 import {
@@ -17,7 +24,9 @@ import {
 import "./dashboard.css";
 
 const DashboardMapPreview = lazy(() =>
-  import("./DashboardMapPreview").then((module) => ({ default: module.DashboardMapPreview })),
+  import("./DashboardMapPreview").then((module) => ({
+    default: module.DashboardMapPreview,
+  })),
 );
 
 export type DashboardPageProps = {
@@ -302,8 +311,24 @@ function GroupCard({
       </div>
       <div className="dash-card-total">
         <strong>{sum.toLocaleString("pt-BR")}</strong>
-        <span>registros nos estados exibidos</span>
+        <span>registros</span>
       </div>
+      {sum > 0 && (
+        <div
+          className="dash-card-distribution"
+          role="img"
+          aria-label={`Distribuição de ${group.title.toLowerCase()}: ${group.items.map((item) => `${item.label}, ${item.value}`).join("; ")}`}
+        >
+          {group.items.map((item) => (
+            <span
+              key={item.label}
+              className={`dash-tone-${item.tone}`}
+              style={{ width: `${(item.value / sum) * 100}%` }}
+              title={`${item.label}: ${item.value.toLocaleString("pt-BR")}`}
+            />
+          ))}
+        </div>
+      )}
       <div className="dash-status-list">
         {group.items.map((item) => (
           <StatusPill key={item.label} {...item} />
@@ -857,7 +882,17 @@ export function DashboardReports({ role, navigate }: DashboardPageProps) {
           </section>
           <div className="dash-analytics-grid">
             <DashboardVolumeChart groups={groups} />
-            <Suspense fallback={<div className="dash-series-loading" role="status" aria-label="Carregando mapa demonstrativo"/>}><DashboardMapPreview /></Suspense>
+            <Suspense
+              fallback={
+                <div
+                  className="dash-series-loading"
+                  role="status"
+                  aria-label="Carregando mapa demonstrativo"
+                />
+              }
+            >
+              <DashboardMapPreview />
+            </Suspense>
           </div>
           <div className="dash-section-heading">
             <div>

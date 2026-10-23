@@ -29,6 +29,14 @@ type FormState = {
   reason: string;
 };
 
+const itemOptions = [
+  { value: "matricula", label: "Matrícula" },
+  { value: "inteiro_teor_simples", label: "Inteiro teor simples" },
+  { value: "inteiro_teor", label: "Inteiro teor" },
+  { value: "visualizacao", label: "Visualização" },
+  { value: "*", label: "Todos os itens desta entrada" },
+];
+
 function initialForm(): FormState {
   const now = new Date();
   const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
@@ -368,16 +376,46 @@ export function CommercialPolicies({
               <option value="upload">Arquivo</option>
             </select>
             <label htmlFor="policy-item">Item</label>
-            <input
+            <select
               id="policy-item"
-              value={form.itemCode}
-              onChange={(event) => set("itemCode", event.target.value)}
-              maxLength={80}
+              value={
+                itemOptions.some((option) => option.value === form.itemCode)
+                  ? form.itemCode
+                  : "__other__"
+              }
+              onChange={(event) =>
+                set(
+                  "itemCode",
+                  event.target.value === "__other__" ? "" : event.target.value,
+                )
+              }
               required
               aria-describedby="policy-item-help"
-            />
+            >
+              {itemOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+              <option value="__other__">Outro item do catálogo</option>
+            </select>
+            {!itemOptions.some((option) => option.value === form.itemCode) && (
+              <>
+                <label htmlFor="policy-item-code">Código técnico do item</label>
+                <input
+                  id="policy-item-code"
+                  value={form.itemCode}
+                  onChange={(event) => set("itemCode", event.target.value)}
+                  maxLength={80}
+                  required
+                  aria-describedby="policy-item-help"
+                />
+              </>
+            )}
             <small id="policy-item-help">
-              Código do item ou * para todos os itens da entrada.
+              Escolha o documento ou aplique a condição a todos os itens desta
+              entrada. Para outro item, informe o código fornecido pelo
+              catálogo.
             </small>
             <div className="commercial-policy-groups">
               <fieldset className="commercial-fieldset">

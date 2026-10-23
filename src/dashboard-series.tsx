@@ -404,7 +404,16 @@ export function CombinedSeriesChart({
             anterior, alinhado por dia do intervalo. Unidade: registros criados
             por dia UTC.
           </p>
-          <details className="dash-definition dash-master-definition"><summary>Como ler esta tendência</summary><p>Cada linha representa um módulo autorizado e pode ser ocultada pela legenda. Os pontos contam registros criados no dia UTC, não pagamentos, conclusões, mudanças de estado ou pessoas únicas. A comparação usa o período imediatamente anterior com a mesma duração.</p></details>
+          <details className="dash-definition dash-master-definition">
+            <summary>Como ler esta tendência</summary>
+            <p>
+              Cada linha representa um módulo autorizado e pode ser ocultada
+              pela legenda. Os pontos contam registros criados no dia UTC, não
+              pagamentos, conclusões, mudanças de estado ou pessoas únicas. A
+              comparação usa o período imediatamente anterior com a mesma
+              duração.
+            </p>
+          </details>
         </>
       ) : (
         <p className="dash-series-empty">

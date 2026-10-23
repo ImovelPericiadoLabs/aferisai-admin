@@ -1,0 +1,340 @@
+/* Operational form controls share one visual and interaction contract. */
+.main-area main > :not(.dash-page) {
+  --form-ink: #33475b;
+  --form-muted: #516f90;
+  --form-border: #cbd6e2;
+  --form-hover: #9eb5cb;
+  --form-focus: #0b69f5;
+  --form-error: #b42335;
+}
+
+/* Keep editing surfaces readable without squeezing adjacent context panels. */
+.main-area main > :not(.dash-page) .workspace:has(> .form-panel) {
+  max-width: 1100px;
+  grid-template-columns: minmax(0, 800px) minmax(220px, 280px);
+  gap: 1rem;
+}
+
+.main-area main > :not(.dash-page) .content > .form-panel {
+  max-width: 800px;
+}
+
+.main-area main > :not(.dash-page) .form-panel > .muted + form {
+  margin-top: 1rem;
+}
+
+.main-area main > .commercial-page .notice + .workspace {
+  margin-top: 1rem;
+}
+
+.main-area
+  main
+  > :not(.dash-page)
+  :is(form, .field, .provider-form, .review-decision)
+  label {
+  color: var(--form-ink);
+  font-size: 0.81rem;
+  font-weight: 650;
+  line-height: 1.35;
+  letter-spacing: 0;
+}
+
+.main-area main > :not(.dash-page) :is(.form, .field, .provider-form) label {
+  margin-top: 0;
+}
+
+.main-area main > :not(.dash-page) :is(.form, .provider-form) {
+  row-gap: 0.65rem;
+}
+
+.main-area
+  main
+  > :not(.dash-page)
+  :is(input, select, textarea):not([type="checkbox"]):not([type="radio"]):not(
+    [type="file"]
+  ):not([type="hidden"]):not([type="button"]):not([type="submit"]) {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  height: 36px;
+  min-height: 36px;
+  padding: 0.45rem 0.7rem;
+  border: 1px solid var(--form-border);
+  border-radius: 6px;
+  background-color: #fff;
+  box-shadow: 0 1px 1px rgb(38 63 93 / 2%);
+  color: var(--form-ink);
+  font: inherit;
+  font-size: 0.86rem;
+  line-height: 1.35;
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease,
+    background-color 150ms ease;
+}
+
+.main-area main > :not(.dash-page) textarea {
+  height: auto !important;
+  min-height: 6rem !important;
+  padding-block: 0.6rem !important;
+  resize: vertical;
+}
+
+.main-area main > :not(.dash-page) select {
+  appearance: none;
+  padding-right: 2.1rem !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23516f90' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.7rem center;
+}
+
+.main-area main > :not(.dash-page) :is(input, textarea)::placeholder {
+  color: #788da4;
+  opacity: 1;
+}
+
+.main-area
+  main
+  > :not(.dash-page)
+  :is(input, select, textarea):not([type="checkbox"]):not([type="radio"]):not(
+    [type="file"]
+  ):not(:disabled):hover {
+  border-color: var(--form-hover);
+}
+
+.main-area
+  main
+  > :not(.dash-page)
+  :is(input, select, textarea):not([type="checkbox"]):not([type="radio"]):not(
+    [type="file"]
+  ):focus-visible {
+  border-color: var(--form-focus);
+  outline: 0;
+  box-shadow: 0 0 0 3px rgb(11 105 245 / 17%);
+}
+
+.main-area
+  main
+  > :not(.dash-page)
+  :is(input, select, textarea):is([aria-invalid="true"], :user-invalid):not(
+    [type="checkbox"]
+  ):not([type="radio"]),
+.main-area
+  main
+  > :not(.dash-page)
+  :is(input, select, textarea):is([aria-invalid="true"], :user-invalid):not(
+    [type="checkbox"]
+  ):not([type="radio"]):hover {
+  border-color: var(--form-error);
+}
+
+.main-area
+  main
+  > :not(.dash-page)
+  :is(input, select, textarea):is([aria-invalid="true"], :user-invalid):not(
+    [type="checkbox"]
+  ):not([type="radio"]):focus-visible {
+  box-shadow: 0 0 0 3px rgb(180 35 53 / 16%);
+}
+
+.main-area main > :not(.dash-page) :is(input, select, textarea):disabled,
+.main-area
+  main
+  > :not(.dash-page)
+  :is(input, select, textarea)[aria-disabled="true"] {
+  cursor: not-allowed;
+  background-color: #f5f8fa;
+  color: #71849a;
+  opacity: 1;
+}
+
+.main-area
+  main
+  > :not(.dash-page)
+  :is(input[readonly], textarea[readonly]):not(:disabled) {
+  background-color: #f8fafc;
+}
+
+.main-area
+  main
+  > :not(.dash-page)
+  :is(input[type="checkbox"], input[type="radio"]) {
+  width: 1rem;
+  height: 1rem;
+  flex: 0 0 1rem;
+  margin: 0.1rem 0 0;
+  accent-color: var(--form-focus);
+  cursor: pointer;
+}
+
+.main-area
+  main
+  > :not(.dash-page)
+  :is(input[type="checkbox"], input[type="radio"]):focus-visible {
+  outline: 3px solid rgb(11 105 245 / 25%);
+  outline-offset: 2px;
+}
+
+.main-area
+  main
+  > :not(.dash-page)
+  :is(input[type="checkbox"], input[type="radio"]):disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.main-area main > :not(.dash-page) input[type="file"] {
+  max-width: 100%;
+  color: var(--form-muted);
+  font-size: 0.82rem;
+}
+
+.main-area main > :not(.dash-page) input[type="file"]::file-selector-button {
+  margin-right: 0.7rem;
+  padding: 0.42rem 0.65rem;
+  border: 1px solid var(--form-border);
+  border-radius: 5px;
+  background: #fff;
+  color: var(--form-ink);
+  font: inherit;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.main-area
+  main
+  > :not(.dash-page)
+  input[type="file"]:hover::file-selector-button {
+  background: #f5f8fa;
+}
+
+.main-area
+  main
+  > :not(.dash-page)
+  :is(
+    .form small,
+    .field small,
+    .provider-form small,
+    .review-help,
+    .review-lookup small
+  ) {
+  color: var(--form-muted);
+  font-size: 0.75rem;
+  line-height: 1.45;
+}
+
+.main-area main > :not(.dash-page) .form .error {
+  margin: 0.15rem 0 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--form-error);
+  font-size: 0.78rem;
+  font-weight: 550;
+}
+
+.main-area main > :not(.dash-page) .button {
+  min-height: 36px;
+  padding: 0.45rem 0.75rem;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  box-shadow: none;
+  color: var(--form-ink);
+  font-size: 0.82rem;
+  font-weight: 650;
+  line-height: 1.2;
+  letter-spacing: 0;
+  gap: 0.45rem;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    box-shadow 150ms ease,
+    transform 150ms ease;
+}
+
+.main-area main > :not(.dash-page) .button.primary {
+  background: #0b69f5;
+  color: #fff;
+}
+
+.main-area main > :not(.dash-page) .button.primary:hover:not(:disabled) {
+  background: #0757d5;
+  filter: none;
+}
+
+.main-area main > :not(.dash-page) :is(.button.secondary, .button.white) {
+  background: #fff;
+  border-color: var(--form-border);
+  color: var(--form-ink);
+}
+
+.main-area
+  main
+  > :not(.dash-page)
+  :is(.button.secondary, .button.white):hover:not(:disabled) {
+  background: #f5f8fa;
+  border-color: var(--form-hover);
+  filter: none;
+}
+
+.main-area
+  main
+  > :not(.dash-page)
+  .button:not(.primary):not(.secondary):not(.white) {
+  background: transparent;
+  color: #12599b;
+}
+
+.main-area
+  main
+  > :not(.dash-page)
+  .button:not(.primary):not(.secondary):not(.white):hover:not(:disabled) {
+  background: #edf4fb;
+  filter: none;
+}
+
+.main-area main > :not(.dash-page) .button:focus-visible {
+  outline: 0;
+  box-shadow: 0 0 0 3px rgb(11 105 245 / 22%);
+}
+
+.main-area main > :not(.dash-page) .button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.main-area main > :not(.dash-page) .button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  transform: none;
+}
+
+@media (max-width: 760px) {
+  .main-area
+    main
+    > :not(.dash-page)
+    :is(input, select, textarea):not([type="checkbox"]):not([type="radio"]):not(
+      [type="file"]
+    ):not([type="hidden"]):not([type="button"]):not([type="submit"]) {
+    height: 44px;
+    min-height: 44px;
+    font-size: 1rem;
+  }
+
+  .main-area main > :not(.dash-page) .button {
+    min-height: 44px;
+    font-size: 0.88rem;
+  }
+}
+
+@media (max-width: 1000px) {
+  .main-area main > :not(.dash-page) .workspace:has(> .form-panel) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .main-area main > :not(.dash-page) :is(input, select, textarea, .button) {
+    transition: none;
+  }
+}

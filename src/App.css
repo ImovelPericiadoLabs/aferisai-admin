@@ -19,12 +19,12 @@ body {
   min-width: 320px;
   background: var(--bg);
   color: var(--ink);
-  font-family: "DM Sans", Arial, sans-serif;
+  font-family: "Lexend Deca", Arial, sans-serif;
 }
 h1,
 h2,
 h3 {
-  font-family: Manrope, Arial, sans-serif;
+  font-family: "Lexend Deca", Arial, sans-serif;
   letter-spacing: -0.035em;
 }
 h1 {
@@ -100,7 +100,7 @@ textarea:focus-visible {
 }
 .brand {
   font:
-    800 1.2rem Manrope,
+    800 1.2rem "Lexend Deca",
     Arial,
     sans-serif;
   letter-spacing: -0.06em;

@@ -25,6 +25,8 @@ type IconName =
   | "commercial-group"
   | "finance-group"
   | "menu"
+  | "panel-open"
+  | "panel-close"
   | "close"
   | "chevron"
   | "logout";
@@ -169,6 +171,18 @@ const paths: Record<IconName, ReactNode> = {
     </>
   ),
   menu: <path d="M4 7h16M4 12h16M4 17h16" />,
+  "panel-open": (
+    <>
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <path d="M9 4v16m5-11-3 3 3 3" />
+    </>
+  ),
+  "panel-close": (
+    <>
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <path d="M9 4v16m4-11 3 3-3 3" />
+    </>
+  ),
   close: <path d="M5 5l14 14M19 5 5 19" />,
   chevron: <path d="m9 6 6 6-6 6" />,
   logout: (

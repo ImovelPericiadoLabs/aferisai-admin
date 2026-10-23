@@ -22,5 +22,6 @@ describe("rótulos do painel", () => {
     expect(registryStatusLabel("pending")).toBe("Aguardando cotação ou envio");
     expect(decisionLabel("purchase_suspected")).toBe("Compra sob suspeita");
     expect(itemLabel("registry_completed")).toBe("Matrícula entregue");
+    expect(itemLabel("*")).toBe("Todos os itens");
   });
 });
