@@ -39,6 +39,7 @@ import { TeamMembers } from "./TeamMembers";
 import type { PeopleTab } from "./people-model";
 import { AnalysisProviders } from "./AnalysisProviders";
 import { ExecutiveDashboard } from "./ExecutiveDashboard";
+import { ReportsHub } from "./ReportsHub";
 import { RegistrySuppliers } from "./RegistrySuppliers";
 import { Organizations } from "./Organizations";
 import { DesignSystemGuide } from "./DesignSystemGuide";
@@ -47,7 +48,7 @@ import { Access } from "./Access";
 import { Passkeys } from "./Passkeys";
 import { installNoAutofill } from "./no-autofill";
 import { ShellIcon } from "./ShellIcon";
-import { DashboardOverview, DashboardReports } from "./DashboardOverview";
+import { DashboardOverview } from "./DashboardOverview";
 import { teamRoleLabel } from "./display-labels";
 import { PartnerPortal } from "./PartnerPortal";
 import { TeamInvitation } from "./TeamInvitation";
@@ -89,7 +90,7 @@ const nav: { page: Page; label: string; detail: string }[] = [
     label: "Painel executivo",
     detail: "Receita e operação",
   },
-  { page: "reports", label: "Relatórios", detail: "Indicadores disponíveis" },
+  { page: "reports", label: "Relatórios", detail: "Por tema, com exportação" },
   { page: "organizations", label: "Parceiros", detail: "Parcerias ativas" },
   {
     page: "commercial",
@@ -935,7 +936,7 @@ function TeamApp() {
             session.member.role === "administrator" ? (
             <ExecutiveDashboard onUnauthorized={unauthorize} />
           ) : currentPage === "reports" ? (
-            <DashboardReports role={session.member.role} navigate={navigate} />
+            <ReportsHub role={session.member.role} navigate={navigate} />
           ) : currentPage === "organizations" ? (
             <Organizations
               csrf={session.csrf}

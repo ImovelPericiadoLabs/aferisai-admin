@@ -430,3 +430,73 @@
     opacity: 0.12;
   }
 }
+
+/* Reports hub */
+.rp-panel {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-4);
+}
+
+.rp-table-block {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-3);
+}
+
+.rp-table-head p {
+  margin: 2px 0 0;
+}
+
+.rp-scroll {
+  max-height: 460px;
+  overflow: auto;
+}
+
+.rp-scroll thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface-muted);
+}
+
+.data-table th.rp-num,
+.rp-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.rp-up {
+  color: var(--success);
+}
+
+.rp-down {
+  color: var(--danger);
+}
+
+@media (max-width: 760px) {
+  .rp-scroll {
+    max-height: none;
+    overflow: visible;
+  }
+
+  .rp-scroll thead th {
+    position: static;
+  }
+
+  .xe-table tbody td.rp-num {
+    text-align: right;
+  }
+}
+
+@media print {
+  .rp-scroll {
+    max-height: none;
+    overflow: visible;
+  }
+
+  .tabbar,
+  [role="tablist"] {
+    display: none !important;
+  }
+}

@@ -763,7 +763,11 @@ export function DashboardOverview({ role, navigate }: DashboardPageProps) {
   );
 }
 
-export function DashboardReports({ role, navigate }: DashboardPageProps) {
+export function DashboardReports({
+  role,
+  navigate,
+  embedded = false,
+}: DashboardPageProps & { embedded?: boolean }) {
   const { data, fetchedAt, loading, error, refresh } = useDashboardData();
   const groups = data ? groupsForRole(data, role) : [];
   const [preset, setPreset] = useState<7 | 30 | 90 | "custom">(30);
@@ -802,13 +806,15 @@ export function DashboardReports({ role, navigate }: DashboardPageProps) {
   }
   return (
     <div className="dash-page">
-      <PageIntro
-        title="Relatórios"
-        description="Explore as contagens operacionais disponíveis para seu perfil."
-        fetchedAt={fetchedAt}
-        onRefresh={refresh}
-        loading={loading}
-      />
+      {!embedded && (
+        <PageIntro
+          title="Relatórios"
+          description="Explore as contagens operacionais disponíveis para seu perfil."
+          fetchedAt={fetchedAt}
+          onRefresh={refresh}
+          loading={loading}
+        />
+      )}
       <details className="dash-report-notice">
         <summary>
           <Icon name="chart" />
@@ -960,13 +966,15 @@ export function DashboardReports({ role, navigate }: DashboardPageProps) {
               />
             ))}
           </div>
-          <button
-            className="dash-text-action"
-            type="button"
-            onClick={() => navigate("overview")}
-          >
-            <Icon name="arrow" /> Voltar à visão geral
-          </button>
+          {!embedded && (
+            <button
+              className="dash-text-action"
+              type="button"
+              onClick={() => navigate("overview")}
+            >
+              <Icon name="arrow" /> Voltar à visão geral
+            </button>
+          )}
         </>
       )}
     </div>
