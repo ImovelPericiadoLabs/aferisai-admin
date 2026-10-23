@@ -5,6 +5,9 @@ import {
   type AnalysisProviderKind,
 } from "./api";
 import { kindLabels } from "./AnalysisProviderPanel";
+import { FileDropzone } from "./FileDropzone";
+import { FilePreview } from "./FilePreview";
+import { SERVICE_ACCOUNT_RULE } from "./file-rules";
 import { formToLimits, limitsToForm, type LimitsForm } from "./provider-model";
 import { validateReason } from "./reason";
 
@@ -58,22 +61,26 @@ export function AnalysisProviderForm({
   const [limits, setLimits] = useState<LimitsForm>(initialLimits);
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
-  const [fileKey, setFileKey] = useState(0);
+  const [credentialFile, setCredentialFile] = useState<File | null>(null);
   const [error, setError] = useState("");
   const reasonCheck = validateReason(reason, 10, 500);
 
-  async function chooseFile(file: File | undefined) {
-    if (!file) return;
-    if (file.size > 64 * 1024) {
-      setError("O arquivo da conta de serviço deve ter até 64 KiB.");
+  async function chooseFile(file: File | null) {
+    if (!file) {
+      setCredential("");
+      setCredentialFile(null);
+      setError("");
       return;
     }
     try {
       const value = await file.text();
       JSON.parse(value);
       setCredential(value);
+      setCredentialFile(file);
       setError("");
     } catch {
+      setCredential("");
+      setCredentialFile(null);
       setError("O arquivo da conta de serviço precisa conter JSON válido.");
     }
   }
@@ -83,6 +90,14 @@ export function AnalysisProviderForm({
     const parsed = formToLimits(limits);
     if (!parsed.ok) {
       setError(parsed.message);
+      return;
+    }
+    if (!credential) {
+      setError(
+        kind === "vertex_service_account"
+          ? "Escolha o arquivo JSON da conta de serviço."
+          : "Informe a chave ou o token.",
+      );
       return;
     }
     if (!reasonCheck.ok) {
@@ -107,10 +122,11 @@ export function AnalysisProviderForm({
         csrf,
       );
       setCredential("");
+      setCredentialFile(null);
       await onCreated();
     } catch (cause) {
       setCredential("");
-      setFileKey((value) => value + 1);
+      setCredentialFile(null);
       if (cause instanceof ApiError && cause.status === 401) onUnauthorized();
       else {
         await onReload();
@@ -183,6 +199,7 @@ export function AnalysisProviderForm({
               onChange={(event) => {
                 setKind(event.target.value as AnalysisProviderKind);
                 setCredential("");
+                setCredentialFile(null);
               }}
             >
               {Object.entries(kindLabels).map(([value, text]) => (
@@ -268,17 +285,16 @@ export function AnalysisProviderForm({
           <legend className="form-section-title">Credencial</legend>
           {kind === "vertex_service_account" ? (
             <div className="form-field">
-              <label className="form-field-label" htmlFor="prov-file">
-                Arquivo JSON da conta de serviço
-              </label>
-              <input
+              <FileDropzone
                 id="prov-file"
-                key={fileKey}
-                type="file"
-                accept=".json,application/json"
-                required={!credential}
-                onChange={(event) => void chooseFile(event.target.files?.[0])}
+                label="Arquivo JSON da conta de serviço"
+                rule={SERVICE_ACCOUNT_RULE}
+                file={credentialFile}
+                onFile={(next) => void chooseFile(next)}
+                disabled={busy}
+                hint="JSON"
               />
+              {credentialFile && <FilePreview file={credentialFile} />}
             </div>
           ) : (
             <div className="form-field">
