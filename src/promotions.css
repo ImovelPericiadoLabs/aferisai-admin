@@ -1,0 +1,23 @@
+.promo-usage {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 96px;
+}
+
+.promo-usage-bar {
+  display: block;
+  height: 4px;
+  overflow: hidden;
+  border-radius: 2px;
+  background: var(--surface-muted);
+}
+
+.promo-usage-bar span {
+  display: block;
+  height: 100%;
+  background: var(--primary);
+}
+
+.promo-usage-bar[data-full="true"] span {
+  background: var(--warning);
+}
