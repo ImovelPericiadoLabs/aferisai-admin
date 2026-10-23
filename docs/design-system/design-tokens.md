@@ -32,6 +32,9 @@ Este documento descreve a semântica desejada. Antes de alterar código, mapear 
 
 Não deixe referências `--existing-*` no código final. Elas são marcadores conceituais, não tokens prontos para produção.
 
+## Blocos de código (proposta, 2026-10-23)
+Tokens `--code-*` em `src/tokens.css`: superfície escura fixa (`--code-bg`, `--code-bar`, `--code-border`) e uma cor por tipo de token (`--code-key`, `--code-string`, `--code-number`, `--code-keyword`, `--code-function`, `--code-comment`, `--code-flag`). Contraste mínimo de 6,9:1 sobre `--code-bg`. São escolhas de interface, não cores de marca. O componente é `CodeBlock` e o destaque vem de `src/code-highlight.ts`, sem dependência externa.
+
 ## Regras
 1. Inspecionar a implementação atual antes de criar novos tokens.
 2. Preferir tokens semânticos a valores de cor fixos nos componentes.

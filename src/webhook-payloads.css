@@ -1,5 +1,6 @@
 .wp {
   display: grid;
+  min-width: 0;
   padding: var(--space-5);
   gap: var(--space-4);
 }
@@ -14,8 +15,9 @@
 
 .wp-body {
   display: grid;
-  gap: var(--space-4);
-  grid-template-columns: 240px minmax(0, 1fr);
+  min-width: 0;
+  gap: var(--space-5);
+  grid-template-columns: minmax(220px, 260px) minmax(0, 1fr);
   align-items: start;
 }
 
@@ -24,13 +26,14 @@
   min-width: 0;
   margin: 0;
   padding: 0;
-  gap: 4px;
+  gap: 2px;
   list-style: none;
 }
 
 .wp-event {
   display: flex;
   width: 100%;
+  min-width: 0;
   padding: 8px var(--space-3);
   gap: var(--space-2);
   align-items: center;
@@ -46,6 +49,11 @@
 
 .wp-event:hover {
   background: var(--surface-muted);
+}
+
+.wp-event:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
 }
 
 .wp-event[aria-pressed="true"] {
@@ -66,6 +74,10 @@
   white-space: nowrap;
 }
 
+.wp-event .badge {
+  flex: none;
+}
+
 .wp-panel,
 .wp-stack {
   display: grid;
@@ -73,62 +85,29 @@
   gap: var(--space-3);
 }
 
+.wp-title-row strong {
+  display: block;
+  font-size: var(--text-md);
+}
+
 .wp-title-row p {
   margin: 2px 0 0;
 }
 
-.wp-headers {
-  display: grid;
-  margin: 0;
-  padding: var(--space-3);
-  gap: 4px;
-  border-radius: var(--radius-md);
-  background: var(--surface-muted);
-  font-size: var(--text-sm);
+.wp-panel .seg {
+  justify-self: start;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
 }
 
-.wp-headers div {
-  display: grid;
-  gap: var(--space-3);
-  grid-template-columns: 170px minmax(0, 1fr);
+.wp-panel .seg::-webkit-scrollbar {
+  display: none;
 }
 
-.wp-headers dt {
-  color: var(--text-muted);
-}
-
-.wp-headers dd {
-  margin: 0;
-  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
-  overflow-wrap: anywhere;
-}
-
-.wp-code-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  color: var(--text-muted);
-  font-size: var(--text-sm);
-}
-
-.wp-code {
-  max-height: 360px;
-  margin: 0;
-  padding: var(--space-3) var(--space-4);
-  overflow: auto;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: var(--surface-muted);
-  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
-  font-size: var(--text-sm);
-  line-height: 1.55;
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
-.wp-code:focus-visible {
-  outline: 2px solid var(--primary-ring);
-  outline-offset: 2px;
+.wp-panel .seg-item {
+  flex: none;
+  white-space: nowrap;
 }
 
 .wp-exact summary {
@@ -137,22 +116,69 @@
   cursor: pointer;
 }
 
-.wp-exact .wp-code {
-  margin-top: var(--space-2);
+.wp-exact summary:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
 }
 
-@media (max-width: 860px) {
+.wp-exact .form-hint {
+  margin: var(--space-2) 0;
+}
+
+@media (max-width: 960px) {
   .wp-body {
+    gap: var(--space-3);
     grid-template-columns: minmax(0, 1fr);
   }
 
+  /* The event list becomes a row of chips that scrolls sideways. */
   .wp-events {
-    grid-auto-flow: column;
-    grid-auto-columns: max-content;
+    display: flex;
+    padding-bottom: var(--space-1);
     overflow-x: auto;
+    gap: var(--space-2);
+    scroll-snap-type: x proximity;
   }
 
-  .wp-headers div {
-    grid-template-columns: minmax(0, 1fr);
+  .wp-events li {
+    flex: none;
+    scroll-snap-align: start;
   }
+
+  .wp-event {
+    width: auto;
+    border-color: var(--border);
+    background: var(--surface);
+  }
+
+  .wp-event code {
+    flex: none;
+    overflow: visible;
+  }
+}
+
+@media (max-width: 520px) {
+  .wp {
+    padding: var(--space-4);
+  }
+
+  .wp-panel .seg {
+    flex-wrap: wrap;
+    overflow-x: visible;
+  }
+}
+
+/* Long identifiers and signatures in prose wrap instead of widening the card. */
+.wp-stack > *,
+.wp-panel > * {
+  min-width: 0;
+}
+
+.wp p,
+.wp .alert {
+  overflow-wrap: anywhere;
+}
+
+.wp .cb-pre code {
+  overflow-wrap: normal;
 }

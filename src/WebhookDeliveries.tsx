@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { CodeBlock } from "./CodeBlock";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { canResend } from "./webhook-settings-model";
 import "./webhook-settings.css";
@@ -520,9 +521,16 @@ export function WebhookDeliveries({
                                 ? ` (${eventLabel(selected.simulated_event_type)})`
                                 : ""}
                             </h3>
-                            <pre className="wh-payload">
-                              {JSON.stringify(selected.test_payload, null, 2)}
-                            </pre>
+                            <CodeBlock
+                              language="json"
+                              label="Corpo fictício"
+                              code={JSON.stringify(
+                                selected.test_payload,
+                                null,
+                                2,
+                              )}
+                              maxHeight={280}
+                            />
                           </section>
                         )}
                         {resendNotice && (

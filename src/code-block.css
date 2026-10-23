@@ -1,0 +1,106 @@
+.cb {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--code-border);
+  border-radius: var(--radius-md);
+  background: var(--code-bg);
+  color: var(--code-text);
+}
+
+.cb-bar {
+  display: flex;
+  min-height: 36px;
+  padding: 0 var(--space-2) 0 var(--space-3);
+  gap: var(--space-2);
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--code-border);
+  background: var(--code-bar);
+}
+
+.cb-title {
+  color: var(--code-muted);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.cb-copy {
+  padding: 4px var(--space-2);
+  border: 1px solid var(--code-border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--code-text);
+  font: inherit;
+  font-size: var(--text-caption);
+  cursor: pointer;
+}
+
+.cb-copy:hover {
+  background: var(--code-border);
+}
+
+.cb-copy:focus-visible,
+.cb-pre:focus-visible {
+  outline: 2px solid var(--primary-ring);
+  outline-offset: -2px;
+}
+
+.cb-pre {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  overflow: auto;
+  color: var(--code-text);
+  font-family:
+    ui-monospace, "SFMono-Regular", "JetBrains Mono", Menlo, Consolas, monospace;
+  font-size: var(--text-sm);
+  line-height: 1.6;
+  tab-size: 2;
+  white-space: pre;
+}
+
+.cb-pre code {
+  font: inherit;
+}
+
+.cb-key {
+  color: var(--code-key);
+}
+
+.cb-string {
+  color: var(--code-string);
+}
+
+.cb-number {
+  color: var(--code-number);
+}
+
+.cb-keyword {
+  color: var(--code-keyword);
+}
+
+.cb-function {
+  color: var(--code-function);
+}
+
+.cb-flag {
+  color: var(--code-flag);
+}
+
+.cb-comment {
+  color: var(--code-comment);
+  font-style: italic;
+}
+
+.cb-punct {
+  color: var(--code-muted);
+}
+
+@media (max-width: 520px) {
+  .cb-pre {
+    padding: var(--space-3);
+    font-size: var(--text-caption);
+  }
+}

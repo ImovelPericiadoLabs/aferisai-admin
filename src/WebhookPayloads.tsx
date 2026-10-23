@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { CodeBlock } from "./CodeBlock";
 import {
   buildExample,
   curlFor,
@@ -19,33 +20,6 @@ const views = [
   { id: "local", label: "Testar localmente" },
 ] as const;
 type View = (typeof views)[number]["id"];
-
-function CopyButton({
-  text,
-  label = "Copiar",
-}: {
-  text: string;
-  label?: string;
-}) {
-  const [done, setDone] = useState(false);
-  return (
-    <button
-      type="button"
-      className="btn btn-secondary btn-sm"
-      onClick={() => {
-        void navigator.clipboard
-          .writeText(text)
-          .then(() => {
-            setDone(true);
-            window.setTimeout(() => setDone(false), 1500);
-          })
-          .catch(() => undefined);
-      }}
-    >
-      {done ? "Copiado" : label}
-    </button>
-  );
-}
 
 export function WebhookPayloads({
   endpointUrl,
@@ -68,6 +42,14 @@ export function WebhookPayloads({
   }, [selected]);
 
   const target = endpointUrl ?? "https://SEU-SERVIDOR/webhooks/aferis";
+  const requestPath = (() => {
+    try {
+      const url = new URL(target);
+      return url.pathname || "/";
+    } catch {
+      return "/webhooks/aferis";
+    }
+  })();
 
   return (
     <section className="card wp" aria-labelledby="wp-title">
@@ -132,21 +114,21 @@ export function WebhookPayloads({
 
           {view === "request" && example && (
             <div className="wp-stack">
-              <dl className="wp-headers">
-                {Object.entries(example.headers).map(([name, value]) => (
-                  <div key={name}>
-                    <dt>{name}</dt>
-                    <dd>{value}</dd>
-                  </div>
-                ))}
-              </dl>
-              <div className="wp-code-head">
-                <span>Corpo (JSON)</span>
-                <CopyButton text={example.pretty} label="Copiar JSON" />
-              </div>
-              <pre className="wp-code" tabIndex={0}>
-                {example.pretty}
-              </pre>
+              <CodeBlock
+                language="http"
+                label="Requisição"
+                code={`POST ${requestPath} HTTP/1.1\n${Object.entries(
+                  example.headers,
+                )
+                  .map(([name, value]) => `${name}: ${value}`)
+                  .join("\n")}`}
+              />
+              <CodeBlock
+                language="json"
+                label="Corpo (JSON)"
+                copyLabel="Copiar JSON"
+                code={example.pretty}
+              />
               <details className="wp-exact">
                 <summary>Bytes exatos assinados</summary>
                 <p className="form-hint">
@@ -154,9 +136,12 @@ export function WebhookPayloads({
                   compacto, com chaves ordenadas e caracteres não ASCII
                   escapados. Não reserialize o JSON antes de validar.
                 </p>
-                <pre className="wp-code" tabIndex={0}>
-                  {example.body}
-                </pre>
+                <CodeBlock
+                  language="json"
+                  label="Corpo assinado"
+                  code={example.body}
+                  maxHeight={240}
+                />
               </details>
             </div>
           )}
@@ -214,19 +199,12 @@ export function WebhookPayloads({
                   Python
                 </button>
               </div>
-              <div className="wp-code-head">
-                <span>{language === "node" ? "Node.js" : "Python"}</span>
-                <CopyButton
-                  text={
-                    language === "node"
-                      ? nodeVerifySnippet
-                      : pythonVerifySnippet
-                  }
-                />
-              </div>
-              <pre className="wp-code" tabIndex={0}>
-                {language === "node" ? nodeVerifySnippet : pythonVerifySnippet}
-              </pre>
+              <CodeBlock
+                language={language === "node" ? "js" : "python"}
+                code={
+                  language === "node" ? nodeVerifySnippet : pythonVerifySnippet
+                }
+              />
               <div className="alert" role="note">
                 <strong>Vetor de teste:</strong> com a chave{" "}
                 <code>{SAMPLE_SECRET}</code>, o carimbo{" "}
@@ -248,16 +226,11 @@ export function WebhookPayloads({
                   ? "Este evento ainda não existe: o comando só serve para ensaiar o seu receptor."
                   : "Para um envio real assinado com a sua chave, use “Simular evento” na seção acima."}
               </div>
-              <div className="wp-code-head">
-                <span>cURL</span>
-                <CopyButton
-                  text={curlFor(target, example.headers, example.body)}
-                  label="Copiar comando"
-                />
-              </div>
-              <pre className="wp-code" tabIndex={0}>
-                {curlFor(target, example.headers, example.body)}
-              </pre>
+              <CodeBlock
+                language="shell"
+                copyLabel="Copiar comando"
+                code={curlFor(target, example.headers, example.body)}
+              />
               <p className="form-hint">
                 O receptor deve responder 2xx. Como o segredo do exemplo é
                 público, use-o só em ambiente de teste.
