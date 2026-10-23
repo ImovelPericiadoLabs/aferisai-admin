@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent, type KeyboardEvent } from "react";
 import {
   ApiError,
   describeOrganizationPermission,
@@ -13,8 +13,11 @@ import {
   revokeApplicationPermission,
   type OrganizationDetail as Detail,
 } from "./api";
-import "./detail.css";
+import "./partner-detail.css";
+import "./commercial-rules.css";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { Disclosure } from "./controls";
+import { FieldAction } from "./FieldAction";
 import { LOGO_RULE } from "./file-rules";
 import { ImageUploader } from "./ImageUploader";
 import { ApplicationCreationWizard } from "./ApplicationCreationWizard";
@@ -22,7 +25,6 @@ import { OrganizationApplicationsDirectory } from "./OrganizationApplicationsDir
 import { ApplicationWorkspace } from "./ApplicationWorkspace";
 import {
   applicationPermissionDescription,
-  applicationPermissionGlyph,
   applicationPermissionLabel,
 } from "./display-labels";
 
@@ -299,468 +301,559 @@ export function OrganizationDetail({
     }
   }
 
+  const sections = [
+    { id: "application", label: "Integrações" },
+    { id: "partnership", label: "Dados da parceria" },
+  ] as const;
+
+  function onSectionKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    const keys = ["ArrowLeft", "ArrowRight", "Home", "End"];
+    if (!keys.includes(event.key)) return;
+    event.preventDefault();
+    const index = sections.findIndex((item) => item.id === section);
+    const next =
+      event.key === "Home"
+        ? 0
+        : event.key === "End"
+          ? sections.length - 1
+          : (index + (event.key === "ArrowRight" ? 1 : -1) + sections.length) %
+            sections.length;
+    setSection(sections[next].id);
+    event.currentTarget
+      .querySelectorAll<HTMLButtonElement>('[role="tab"]')
+      [next]?.focus();
+  }
+
+  const activeApplications = detail
+    ? detail.applications.filter((item) => item.status === "active").length
+    : 0;
+
   return (
-    <section className="detail" aria-labelledby="detail-title">
-      <button className="back-link" onClick={onBack}>
-        ← Voltar ao diretório
+    <section className="page partner-detail" aria-labelledby="detail-title">
+      <button className="btn btn-ghost btn-sm" type="button" onClick={onBack}>
+        ← Parceiros
       </button>
       {loading && (
         <div
-          className="integration-skeleton"
+          className="rules-skeleton"
           role="status"
           aria-label="Carregando parceria"
         >
-          <i />
-          <i />
-          <i />
+          {Array.from({ length: 3 }, (_, index) => (
+            <span className="skeleton" key={index} />
+          ))}
         </div>
       )}
       {error && (
-        <div className="detail-error">
-          <p className="error" role="alert">
-            {error}
-          </p>
-          <button className="button secondary" onClick={retry}>
+        <div className="alert alert-danger" role="alert">
+          {error}{" "}
+          <button className="btn btn-secondary btn-sm" onClick={retry}>
             Tentar novamente
           </button>
         </div>
       )}
       {!loading && detail && (
         <>
-          <div className="detail-intro">
-            <div className="detail-intro-main">
-              <div className="detail-logo">
-                {logoBlobUrl ? (
-                  <img
-                    src={logoBlobUrl}
-                    alt={`Logo de ${detail.name}`}
-                    referrerPolicy="no-referrer"
-                  />
-                ) : (
-                  <span aria-hidden="true">
-                    {detail.name.slice(0, 1).toUpperCase()}
-                  </span>
-                )}
-              </div>
-              <div className="detail-intro-name">
-                <p className="eyebrow">Parceria</p>
-                <h1 id="detail-title">{detail.name}</h1>
-              </div>
-              <span
-                className={`detail-status detail-status--${detail.status === "active" ? "active" : detail.status === "suspended" ? "suspended" : "unknown"}`}
-              >
+          <header className="card partner-head">
+            <div className="partner-logo">
+              {logoBlobUrl ? (
+                <img
+                  src={logoBlobUrl}
+                  alt={`Logo de ${detail.name}`}
+                  referrerPolicy="no-referrer"
+                />
+              ) : (
                 <span aria-hidden="true">
-                  {detail.status === "active" ? "✓" : "–"}
+                  {detail.name.slice(0, 1).toUpperCase()}
                 </span>
-                {statusLabel(detail.status)}
-              </span>
+              )}
             </div>
-            <dl className="detail-summary">
+            <div className="partner-head-name">
+              <h1 className="page-title" id="detail-title">
+                {detail.name}
+              </h1>
+              <p className="page-subtitle">{detail.slug}</p>
+            </div>
+            <span
+              className={`badge ${detail.status === "active" ? "badge-success" : detail.status === "suspended" ? "badge-warning" : "badge-neutral"}`}
+            >
+              {statusLabel(detail.status)}
+            </span>
+            <dl className="partner-stats">
               <div>
                 <dt>Aplicações</dt>
                 <dd>{detail.applications.length}</dd>
               </div>
               <div>
-                <dt>Aplicações ativas</dt>
-                <dd>
-                  {
-                    detail.applications.filter(
-                      (item) => item.status === "active",
-                    ).length
-                  }
-                </dd>
+                <dt>Ativas</dt>
+                <dd>{activeApplications}</dd>
+              </div>
+              <div>
+                <dt>Ações no catálogo</dt>
+                <dd>{detail.permissions.length}</dd>
               </div>
             </dl>
-          </div>
+          </header>
           <div
-            className="integration-section-nav"
+            className="seg-tabs"
             role="tablist"
             aria-label="Área da parceria"
+            onKeyDown={onSectionKeyDown}
           >
-            <button
-              type="button"
-              role="tab"
-              aria-selected={section === "application"}
-              onClick={() => setSection("application")}
-            >
-              Integrações
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={section === "partnership"}
-              onClick={() => setSection("partnership")}
-            >
-              Dados da parceria
-            </button>
-          </div>
-          {section === "application" && selectedApplicationId && (
-            <>
+            {sections.map((item) => (
               <button
+                key={item.id}
+                id={`partner-tab-${item.id}`}
                 type="button"
-                className="back-link"
-                onClick={() => setSelectedApplicationId(null)}
+                role="tab"
+                className={`seg-tab${section === item.id ? " active" : ""}`}
+                aria-selected={section === item.id}
+                aria-controls={`partner-panel-${item.id}`}
+                tabIndex={section === item.id ? 0 : -1}
+                onClick={() => setSection(item.id)}
               >
-                ← Voltar às aplicações
+                {item.label}
               </button>
-              <ApplicationWorkspace
-                key={selectedApplicationId ?? organizationId}
-                applications={detail.applications}
-                permissions={detail.permissions}
-                selectedApplicationId={selectedApplicationId}
-                onSelectApplication={setSelectedApplicationId}
-                csrfToken={csrfToken}
-                canManage={canManage}
-                canEdit={detail.status === "active"}
-                onUnauthorized={onUnauthorized}
-                permissionBusy={permissionBusy !== null}
-                onTogglePermission={(applicationId, code, granted) =>
-                  void changePermission(
-                    () =>
-                      granted
-                        ? revokeApplicationPermission(
-                            applicationId,
-                            code,
-                            csrfToken,
-                          )
-                        : grantApplicationPermission(
-                            applicationId,
-                            code,
-                            csrfToken,
-                          ),
-                    `${applicationId}:${code}`,
-                    granted ? "Permissão revogada." : "Permissão concedida.",
-                  )
-                }
-                additionalApplication={null}
-              />
-            </>
-          )}
-          {section === "application" && !selectedApplicationId && (
-            <OrganizationApplicationsDirectory
-              organizationId={organizationId}
-              organizationName={detail.name}
-              applications={detail.applications}
-              permissions={detail.permissions}
-              canManage={canManage && detail.status === "active"}
-              csrfToken={csrfToken}
-              onOpen={setSelectedApplicationId}
-              onChanged={() => setRevision((value) => value + 1)}
-              onUnauthorized={onUnauthorized}
-              createForm={
-                canManage && detail.status === "active" ? (
-                  <ApplicationCreationWizard
-                    key={organizationId}
-                    organizationId={organizationId}
-                    organizationName={detail.name}
-                    availablePermissions={detail.permissions}
-                    csrfToken={csrfToken}
-                    onCreated={(applicationId) => {
-                      setSelectedApplicationId(applicationId);
-                      setRevision((value) => value + 1);
-                    }}
-                    onUnauthorized={onUnauthorized}
-                  />
-                ) : null
-              }
-            />
-          )}
+            ))}
+          </div>
           {permissionError && (
-            <p className="error" role="alert">
+            <div className="alert alert-danger" role="alert">
               {permissionError}
-            </p>
-          )}
-          {permissionNotice && (
-            <p className="profile-saved" role="status">
-              {permissionNotice}
-            </p>
-          )}
-          {section === "partnership" && isAdmin && (
-            <section
-              className="integration-invitation"
-              aria-labelledby="partner-invitation-title"
-            >
-              <div>
-                <h3 id="partner-invitation-title">Acesso do parceiro</h3>
-                <p>
-                  Convide a pessoa responsável. Ela criará uma senha e ativará o
-                  autenticador antes de entrar na própria integração.
-                </p>
-              </div>
-              <form noValidate onSubmit={requestInvite}>
-                <div className="field">
-                  <label htmlFor="partner-invite-email">
-                    E-mail do responsável
-                  </label>
-                  <input
-                    id="partner-invite-email"
-                    name="responsible-contact"
-                    type="text"
-                    inputMode="email"
-                    autoComplete="off"
-                    autoCapitalize="none"
-                    spellCheck={false}
-                    readOnly={!inviteEditable}
-                    onFocus={() => setInviteEditable(true)}
-                    value={inviteEmail}
-                    onChange={(event) => setInviteEmail(event.target.value)}
-                  />
-                </div>
-                <button
-                  className="button primary"
-                  disabled={inviteBusy || !inviteEmail.trim()}
-                >
-                  {inviteBusy ? "Enviando…" : "Enviar convite"}
-                </button>
-              </form>
-              <ConfirmDialog
-                open={inviteConfirm}
-                title="Enviar convite de acesso?"
-                description="O convite será enviado agora por e-mail e o link vale por 24 horas. Confira o endereço: se estiver errado, outra pessoa receberá o acesso."
-                details={[
-                  { label: "Parceria", value: detail?.name ?? "—" },
-                  { label: "Enviar para", value: inviteEmail.trim() },
-                ]}
-                confirmLabel="Enviar convite"
-                busy={inviteBusy}
-                onConfirm={() => void sendInvite()}
-                onCancel={() => setInviteConfirm(false)}
-              />
-              {inviteError && (
-                <p className="error" role="alert">
-                  {inviteError}
-                </p>
-              )}
-              {inviteNotice && (
-                <p className="profile-saved" role="status">
-                  {inviteNotice}
-                </p>
-              )}
-            </section>
-          )}
-          {section === "partnership" && (
-            <div className="detail-grid">
-              <div className="detail-main">
-                <article className="detail-card">
-                  <div className="detail-card-head">
-                    <h3>Perfil</h3>
-                    {canManage && !editing ? (
-                      <button className="back-link" onClick={startEditing}>
-                        Editar perfil
-                      </button>
-                    ) : (
-                      <span>{canManage ? "Editando" : "Somente leitura"}</span>
-                    )}
-                  </div>
-                  {saved && (
-                    <p className="profile-saved" role="status">
-                      Perfil atualizado.
-                    </p>
-                  )}
-                  {editing ? (
-                    <form className="form profile-form" onSubmit={saveProfile}>
-                      <label htmlFor="profile-name">Nome da organização</label>
-                      <input
-                        id="profile-name"
-                        required
-                        maxLength={255}
-                        value={name}
-                        onChange={(event) => setName(event.target.value)}
-                      />
-                      <label htmlFor="profile-description">
-                        Descrição institucional
-                      </label>
-                      <textarea
-                        id="profile-description"
-                        maxLength={2000}
-                        rows={5}
-                        value={description}
-                        onChange={(event) => setDescription(event.target.value)}
-                      />
-                      <small>
-                        Até 2.000 caracteres. Deixe vazio para remover.
-                      </small>
-                      {saveError && (
-                        <p className="error" role="alert">
-                          {saveError}
-                        </p>
-                      )}
-                      <div className="button-row">
-                        <button
-                          className="button primary"
-                          disabled={saving || !name.trim()}
-                        >
-                          {saving ? "Salvando…" : "Salvar perfil"}
-                        </button>
-                        <button
-                          type="button"
-                          className="button secondary"
-                          disabled={saving}
-                          onClick={() => setEditing(false)}
-                        >
-                          Cancelar
-                        </button>
-                      </div>
-                    </form>
-                  ) : (
-                    <>
-                      <dl>
-                        <div>
-                          <dt>Descrição</dt>
-                          <dd>
-                            {detail.description?.trim() ||
-                              "Nenhuma descrição cadastrada."}
-                          </dd>
-                        </div>
-                      </dl>
-                      <details className="detail-technical">
-                        <summary>Identificador técnico</summary>
-                        <div>
-                          <code>{detail.id}</code>
-                          <button
-                            type="button"
-                            className="back-link"
-                            onClick={() => void copyIdentifier()}
-                          >
-                            Copiar
-                          </button>
-                        </div>
-                        {identifierNotice && (
-                          <p role="status">{identifierNotice}</p>
-                        )}
-                      </details>
-                    </>
-                  )}
-                </article>
-                <section
-                  className="detail-card logo-card"
-                  aria-labelledby="logo-title"
-                >
-                  <div className="detail-card-head">
-                    <h3 id="logo-title">Logo</h3>
-                    <span>{detail.logo_url ? "Disponível" : "Sem imagem"}</span>
-                  </div>
-                  <p>
-                    Imagem da organização, visível somente para a equipe nesta
-                    área.
-                  </p>
-                  <ImageUploader
-                    label="Logo"
-                    currentSrc={logoBlobUrl}
-                    rule={LOGO_RULE}
-                    shape="circle"
-                    canEdit={isAdmin}
-                    onUpload={uploadLogo}
-                    onRemove={removeLogo}
-                    onUnauthorized={onUnauthorized}
-                  />
-                  {logoError && (
-                    <p className="error" role="alert">
-                      {logoError}
-                    </p>
-                  )}
-                  {logoNotice && (
-                    <p className="profile-saved" role="status">
-                      {logoNotice}
-                    </p>
-                  )}
-                </section>
-              </div>
-              <aside className="detail-card" aria-labelledby="catalog-title">
-                <div className="detail-card-head">
-                  <h3 id="catalog-title">Catálogo de ações</h3>
-                  <span>{detail.permissions.length}</span>
-                </div>
-                <p>
-                  Permissões que esta organização pode conceder às suas
-                  aplicações.
-                </p>
-                {detail.permissions.length === 0 ? (
-                  <p className="detail-empty">Nenhuma ação no catálogo.</p>
-                ) : (
-                  <ul className="catalog-list">
-                    {detail.permissions.map((permission, index) => (
-                      <li key={permission.code}>
-                        <span className="catalog-icon" aria-hidden="true">
-                          {applicationPermissionGlyph(permission.code, index)}
-                        </span>
-                        <div className="catalog-content">
-                          <strong title={permission.code}>
-                            {applicationPermissionLabel(permission.code)}
-                          </strong>
-                          {permissionEditing === permission.code ? (
-                            <form
-                              className="permission-description-form"
-                              onSubmit={savePermissionDescription}
-                            >
-                              <label htmlFor="permission-description">
-                                Descrição da ação
-                              </label>
-                              <input
-                                id="permission-description"
-                                required
-                                maxLength={255}
-                                value={permissionDescription}
-                                onChange={(event) =>
-                                  setPermissionDescription(event.target.value)
-                                }
-                              />
-                              <div className="button-row">
-                                <button
-                                  className="button primary"
-                                  disabled={
-                                    permissionBusy !== null ||
-                                    !permissionDescription.trim()
-                                  }
-                                >
-                                  {permissionBusy
-                                    ? "Salvando…"
-                                    : "Salvar descrição"}
-                                </button>
-                                <button
-                                  type="button"
-                                  className="button secondary"
-                                  disabled={permissionBusy !== null}
-                                  onClick={() => setPermissionEditing(null)}
-                                >
-                                  Cancelar
-                                </button>
-                              </div>
-                            </form>
-                          ) : (
-                            <>
-                              <span>
-                                {permission.description?.trim() ||
-                                  applicationPermissionDescription(
-                                    permission.code,
-                                  )}
-                              </span>
-                              {isAdmin && (
-                                <button
-                                  type="button"
-                                  className="back-link"
-                                  disabled={permissionBusy !== null}
-                                  onClick={() => {
-                                    setPermissionEditing(permission.code);
-                                    setPermissionDescription(
-                                      permission.description,
-                                    );
-                                    setPermissionError("");
-                                  }}
-                                >
-                                  Editar descrição
-                                </button>
-                              )}
-                            </>
-                          )}
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </aside>
             </div>
           )}
+          {permissionNotice && (
+            <div className="alert alert-success" role="status">
+              {permissionNotice}
+            </div>
+          )}
+          <div
+            id={`partner-panel-${section}`}
+            role="tabpanel"
+            aria-labelledby={`partner-tab-${section}`}
+          >
+            {section === "application" && selectedApplicationId && (
+              <>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  onClick={() => setSelectedApplicationId(null)}
+                >
+                  ← Aplicações
+                </button>
+                <ApplicationWorkspace
+                  key={selectedApplicationId ?? organizationId}
+                  applications={detail.applications}
+                  permissions={detail.permissions}
+                  selectedApplicationId={selectedApplicationId}
+                  onSelectApplication={setSelectedApplicationId}
+                  csrfToken={csrfToken}
+                  canManage={canManage}
+                  canEdit={detail.status === "active"}
+                  onUnauthorized={onUnauthorized}
+                  permissionBusy={permissionBusy !== null}
+                  onTogglePermission={(applicationId, code, granted) =>
+                    void changePermission(
+                      () =>
+                        granted
+                          ? revokeApplicationPermission(
+                              applicationId,
+                              code,
+                              csrfToken,
+                            )
+                          : grantApplicationPermission(
+                              applicationId,
+                              code,
+                              csrfToken,
+                            ),
+                      `${applicationId}:${code}`,
+                      granted ? "Permissão revogada." : "Permissão concedida.",
+                    )
+                  }
+                  additionalApplication={null}
+                />
+              </>
+            )}
+            {section === "application" && !selectedApplicationId && (
+              <OrganizationApplicationsDirectory
+                organizationId={organizationId}
+                organizationName={detail.name}
+                applications={detail.applications}
+                permissions={detail.permissions}
+                canManage={canManage && detail.status === "active"}
+                csrfToken={csrfToken}
+                onOpen={setSelectedApplicationId}
+                onChanged={() => setRevision((value) => value + 1)}
+                onUnauthorized={onUnauthorized}
+                createForm={
+                  canManage && detail.status === "active" ? (
+                    <ApplicationCreationWizard
+                      key={organizationId}
+                      organizationId={organizationId}
+                      organizationName={detail.name}
+                      availablePermissions={detail.permissions}
+                      csrfToken={csrfToken}
+                      onCreated={(applicationId) => {
+                        setSelectedApplicationId(applicationId);
+                        setRevision((value) => value + 1);
+                      }}
+                      onUnauthorized={onUnauthorized}
+                    />
+                  ) : null
+                }
+              />
+            )}
+            {section === "partnership" && (
+              <div className="partner-grid">
+                <div className="partner-column">
+                  <section className="card" aria-labelledby="profile-title">
+                    <div className="card-header">
+                      <h2 className="card-title" id="profile-title">
+                        Perfil
+                      </h2>
+                      {canManage && !editing ? (
+                        <button
+                          className="btn btn-secondary btn-sm"
+                          type="button"
+                          onClick={startEditing}
+                        >
+                          Editar perfil
+                        </button>
+                      ) : (
+                        <span className="badge badge-neutral">
+                          {canManage ? "Editando" : "Somente leitura"}
+                        </span>
+                      )}
+                    </div>
+                    <div className="card-body">
+                      {saved && (
+                        <div className="alert alert-success" role="status">
+                          Perfil atualizado.
+                        </div>
+                      )}
+                      {editing ? (
+                        <form className="form-stack" onSubmit={saveProfile}>
+                          <div className="form-field">
+                            <label
+                              className="form-field-label"
+                              htmlFor="profile-name"
+                            >
+                              Nome da organização
+                            </label>
+                            <input
+                              id="profile-name"
+                              className="input"
+                              required
+                              maxLength={255}
+                              value={name}
+                              onChange={(event) => setName(event.target.value)}
+                            />
+                          </div>
+                          <div className="form-field">
+                            <label
+                              className="form-field-label"
+                              htmlFor="profile-description"
+                            >
+                              Descrição institucional
+                            </label>
+                            <textarea
+                              id="profile-description"
+                              className="input"
+                              maxLength={2000}
+                              rows={5}
+                              value={description}
+                              onChange={(event) =>
+                                setDescription(event.target.value)
+                              }
+                            />
+                            <span className="form-hint">
+                              Até 2.000 caracteres. Deixe vazio para remover.
+                            </span>
+                          </div>
+                          {saveError && (
+                            <div className="alert alert-danger" role="alert">
+                              {saveError}
+                            </div>
+                          )}
+                          <div className="partner-actions">
+                            <button
+                              className="btn btn-primary btn-md"
+                              disabled={saving || !name.trim()}
+                            >
+                              {saving ? "Salvando…" : "Salvar perfil"}
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-ghost btn-md"
+                              disabled={saving}
+                              onClick={() => setEditing(false)}
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                        </form>
+                      ) : (
+                        <>
+                          <div className="partner-field">
+                            <span className="form-field-label">Descrição</span>
+                            <p>
+                              {detail.description?.trim() ||
+                                "Nenhuma descrição cadastrada."}
+                            </p>
+                          </div>
+                          <Disclosure title="Identificador técnico">
+                            <div className="partner-id">
+                              <code>{detail.id}</code>
+                              <button
+                                type="button"
+                                className="btn btn-ghost btn-sm"
+                                onClick={() => void copyIdentifier()}
+                              >
+                                Copiar
+                              </button>
+                            </div>
+                            {identifierNotice && (
+                              <p className="form-hint" role="status">
+                                {identifierNotice}
+                              </p>
+                            )}
+                          </Disclosure>
+                        </>
+                      )}
+                    </div>
+                  </section>
+
+                  <section className="card" aria-labelledby="logo-title">
+                    <div className="card-header">
+                      <h2 className="card-title" id="logo-title">
+                        Logo
+                      </h2>
+                      <span className="badge badge-neutral">
+                        {detail.logo_url ? "Disponível" : "Sem imagem"}
+                      </span>
+                    </div>
+                    <div className="card-body">
+                      <p className="form-hint">
+                        Imagem da organização, visível somente para a equipe
+                        nesta área.
+                      </p>
+                      <ImageUploader
+                        label="Logo"
+                        currentSrc={logoBlobUrl}
+                        rule={LOGO_RULE}
+                        shape="circle"
+                        canEdit={isAdmin}
+                        onUpload={uploadLogo}
+                        onRemove={removeLogo}
+                        onUnauthorized={onUnauthorized}
+                      />
+                      {logoError && (
+                        <div className="alert alert-danger" role="alert">
+                          {logoError}
+                        </div>
+                      )}
+                      {logoNotice && (
+                        <div className="alert alert-success" role="status">
+                          {logoNotice}
+                        </div>
+                      )}
+                    </div>
+                  </section>
+
+                  {isAdmin && (
+                    <section
+                      className="card"
+                      aria-labelledby="partner-invitation-title"
+                    >
+                      <div className="card-header">
+                        <h2
+                          className="card-title"
+                          id="partner-invitation-title"
+                        >
+                          Acesso do parceiro
+                        </h2>
+                      </div>
+                      <div className="card-body">
+                        <p className="form-hint">
+                          Convide a pessoa responsável. Ela criará uma senha e
+                          ativará o autenticador antes de entrar na própria
+                          integração.
+                        </p>
+                        <form
+                          noValidate
+                          onSubmit={requestInvite}
+                          className="form-stack"
+                        >
+                          <FieldAction
+                            id="partner-invite-email"
+                            label="E-mail do responsável"
+                            action={
+                              <button
+                                className="btn btn-primary btn-md"
+                                disabled={inviteBusy || !inviteEmail.trim()}
+                              >
+                                {inviteBusy ? "Enviando…" : "Enviar convite"}
+                              </button>
+                            }
+                          >
+                            <input
+                              id="partner-invite-email"
+                              className="input"
+                              name="responsible-contact"
+                              type="text"
+                              inputMode="email"
+                              autoComplete="off"
+                              autoCapitalize="none"
+                              spellCheck={false}
+                              readOnly={!inviteEditable}
+                              onFocus={() => setInviteEditable(true)}
+                              value={inviteEmail}
+                              onChange={(event) =>
+                                setInviteEmail(event.target.value)
+                              }
+                            />
+                          </FieldAction>
+                        </form>
+                        {inviteError && (
+                          <div className="alert alert-danger" role="alert">
+                            {inviteError}
+                          </div>
+                        )}
+                        {inviteNotice && (
+                          <div className="alert alert-success" role="status">
+                            {inviteNotice}
+                          </div>
+                        )}
+                        <ConfirmDialog
+                          open={inviteConfirm}
+                          title="Enviar convite de acesso?"
+                          description="O convite será enviado agora por e-mail e o link vale por 24 horas. Confira o endereço: se estiver errado, outra pessoa receberá o acesso."
+                          details={[
+                            { label: "Parceria", value: detail?.name ?? "—" },
+                            {
+                              label: "Enviar para",
+                              value: inviteEmail.trim(),
+                            },
+                          ]}
+                          confirmLabel="Enviar convite"
+                          busy={inviteBusy}
+                          onConfirm={() => void sendInvite()}
+                          onCancel={() => setInviteConfirm(false)}
+                        />
+                      </div>
+                    </section>
+                  )}
+                </div>
+
+                <section
+                  className="card partner-catalog"
+                  aria-labelledby="catalog-title"
+                >
+                  <div className="card-header">
+                    <h2 className="card-title" id="catalog-title">
+                      Catálogo de ações
+                    </h2>
+                    <span className="badge badge-neutral">
+                      {detail.permissions.length}
+                    </span>
+                  </div>
+                  <div className="card-body">
+                    <p className="form-hint">
+                      Permissões que esta organização pode conceder às suas
+                      aplicações.
+                    </p>
+                    {detail.permissions.length === 0 ? (
+                      <div className="empty-state" role="status">
+                        <strong>Nenhuma ação no catálogo</strong>
+                      </div>
+                    ) : (
+                      <ul className="catalog-list">
+                        {detail.permissions.map((permission) => (
+                          <li key={permission.code}>
+                            <strong title={permission.code}>
+                              {applicationPermissionLabel(permission.code)}
+                            </strong>
+                            {permissionEditing === permission.code ? (
+                              <form
+                                className="form-stack"
+                                onSubmit={savePermissionDescription}
+                              >
+                                <div className="form-field">
+                                  <label
+                                    className="form-field-label"
+                                    htmlFor="permission-description"
+                                  >
+                                    Descrição da ação
+                                  </label>
+                                  <input
+                                    id="permission-description"
+                                    className="input"
+                                    required
+                                    maxLength={255}
+                                    value={permissionDescription}
+                                    onChange={(event) =>
+                                      setPermissionDescription(
+                                        event.target.value,
+                                      )
+                                    }
+                                  />
+                                </div>
+                                <div className="partner-actions">
+                                  <button
+                                    className="btn btn-primary btn-sm"
+                                    disabled={
+                                      permissionBusy !== null ||
+                                      !permissionDescription.trim()
+                                    }
+                                  >
+                                    {permissionBusy
+                                      ? "Salvando…"
+                                      : "Salvar descrição"}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="btn btn-ghost btn-sm"
+                                    disabled={permissionBusy !== null}
+                                    onClick={() => setPermissionEditing(null)}
+                                  >
+                                    Cancelar
+                                  </button>
+                                </div>
+                              </form>
+                            ) : (
+                              <>
+                                <span>
+                                  {permission.description?.trim() ||
+                                    applicationPermissionDescription(
+                                      permission.code,
+                                    )}
+                                </span>
+                                {isAdmin && (
+                                  <button
+                                    type="button"
+                                    className="btn btn-ghost btn-sm"
+                                    disabled={permissionBusy !== null}
+                                    onClick={() => {
+                                      setPermissionEditing(permission.code);
+                                      setPermissionDescription(
+                                        permission.description,
+                                      );
+                                      setPermissionError("");
+                                    }}
+                                  >
+                                    Editar descrição
+                                  </button>
+                                )}
+                              </>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </section>
+              </div>
+            )}
+          </div>
         </>
       )}
     </section>
