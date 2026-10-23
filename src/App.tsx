@@ -915,6 +915,7 @@ function TeamApp() {
               unauthorize={unauthorize}
               selectedId={selectedOrganizationId}
               onSelect={setSelectedOrganizationId}
+              onToast={showToast}
             />
           ) : currentPage === "commercial" &&
             session.member.role === "administrator" ? (

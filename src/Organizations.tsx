@@ -2,6 +2,7 @@ import { useState } from "react";
 import { OrganizationDetail } from "./OrganizationDetail";
 import { PartnerDirectory } from "./PartnerDirectory";
 import { PartnerOnboarding } from "./PartnerOnboarding";
+import type { ToastKind } from "./useToast";
 
 export function Organizations({
   csrf,
@@ -10,6 +11,7 @@ export function Organizations({
   unauthorize,
   selectedId,
   onSelect,
+  onToast,
 }: {
   csrf: string;
   canManage: boolean;
@@ -17,6 +19,7 @@ export function Organizations({
   unauthorize: () => void;
   selectedId: string | null;
   onSelect: (id: string | null) => void;
+  onToast: (message: string, kind: ToastKind) => void;
 }) {
   const [creating, setCreating] = useState(false);
 
@@ -39,6 +42,7 @@ export function Organizations({
         isAdmin={isAdmin}
         onBack={() => onSelect(null)}
         onUnauthorized={unauthorize}
+        onToast={onToast}
       />
     );
   return (

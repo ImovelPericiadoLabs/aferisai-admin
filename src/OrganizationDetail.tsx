@@ -13,6 +13,7 @@ import {
   revokeApplicationPermission,
   type OrganizationDetail as Detail,
 } from "./api";
+import type { ToastKind } from "./useToast";
 import "./partner-detail.css";
 import "./commercial-rules.css";
 import { Breadcrumbs } from "./Breadcrumbs";
@@ -38,6 +39,7 @@ type Props = {
   isAdmin: boolean;
   onBack: () => void;
   onUnauthorized: () => void;
+  onToast: (message: string, kind: ToastKind) => void;
 };
 
 function statusLabel(status: string): string {
@@ -53,6 +55,7 @@ export function OrganizationDetail({
   isAdmin,
   onBack,
   onUnauthorized,
+  onToast,
 }: Props) {
   const [detail, setDetail] = useState<Detail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -69,8 +72,6 @@ export function OrganizationDetail({
   );
   const [permissionDescription, setPermissionDescription] = useState("");
   const [permissionBusy, setPermissionBusy] = useState<string | null>(null);
-  const [permissionError, setPermissionError] = useState("");
-  const [permissionNotice, setPermissionNotice] = useState("");
   const [logoBlobUrl, setLogoBlobUrl] = useState<string | null>(null);
   const [logoRevision, setLogoRevision] = useState(0);
   const [logoError, setLogoError] = useState("");
@@ -181,20 +182,19 @@ export function OrganizationDetail({
     notice: string,
   ) {
     setPermissionBusy(key);
-    setPermissionError("");
-    setPermissionNotice("");
     try {
       await action();
       setDetail(await getOrganization(organizationId));
       setPermissionEditing(null);
-      setPermissionNotice(notice);
+      onToast(notice, "success");
     } catch (cause) {
       if (cause instanceof ApiError && cause.status === 401) onUnauthorized();
       else
-        setPermissionError(
+        onToast(
           cause instanceof ApiError
             ? cause.detail
             : "Não foi possível atualizar a permissão.",
+          "error",
         );
     } finally {
       setPermissionBusy(null);
@@ -444,16 +444,6 @@ export function OrganizationDetail({
                   {item.label}
                 </button>
               ))}
-            </div>
-          )}
-          {permissionError && (
-            <div className="alert alert-danger" role="alert">
-              {permissionError}
-            </div>
-          )}
-          {permissionNotice && (
-            <div className="alert alert-success" role="status">
-              {permissionNotice}
             </div>
           )}
           <div
@@ -864,7 +854,6 @@ export function OrganizationDetail({
                                       setPermissionDescription(
                                         permission.description,
                                       );
-                                      setPermissionError("");
                                     }}
                                   >
                                     Editar descrição
