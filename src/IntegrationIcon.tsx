@@ -33,6 +33,14 @@ const shapes: Record<string, ReactNode> = {
       <path d="M8 11V8a4 4 0 0 1 8 0v3" />
     </>
   ),
+  grid: (
+    <>
+      <rect x="4" y="4" width="7" height="7" rx="1.5" />
+      <rect x="13" y="4" width="7" height="7" rx="1.5" />
+      <rect x="4" y="13" width="7" height="7" rx="1.5" />
+      <rect x="13" y="13" width="7" height="7" rx="1.5" />
+    </>
+  ),
   plus: <path d="M12 5v14M5 12h14" />,
   close: <path d="m6 6 12 12M18 6 6 18" />,
   arrow: <path d="M5 12h14m-5-5 5 5-5 5" />,

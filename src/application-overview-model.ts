@@ -105,3 +105,45 @@ export function summarizeDeliveries(items: WebhookDelivery[]): {
       : null,
   };
 }
+
+export type TabBadge = {
+  tone: "success" | "warning" | "neutral";
+  label: string | null;
+};
+
+/** Small status marks for the application tabs, from real data only. */
+export function tabBadges(
+  snapshot: {
+    endpoint: WebhookEndpoint | null;
+    credentials: PartnerCredential[];
+    deliveries: WebhookDelivery[];
+  } | null,
+  grantedCount: number,
+  totalPermissions: number,
+): {
+  webhooks: TabBadge | null;
+  deliveries: TabBadge | null;
+  credentials: TabBadge | null;
+  access: TabBadge | null;
+} | null {
+  if (!snapshot) return null;
+  const endpoint = snapshot.endpoint;
+  const webhooks: TabBadge =
+    endpoint?.status === "active"
+      ? { tone: "success", label: null }
+      : endpoint?.status === "draft"
+        ? { tone: "neutral", label: null }
+        : { tone: "warning", label: "!" };
+  const problems = summarizeDeliveries(snapshot.deliveries).problems;
+  const credentials = summarizeCredentials(snapshot.credentials);
+  return {
+    webhooks,
+    deliveries:
+      problems > 0 ? { tone: "warning", label: String(problems) } : null,
+    credentials: {
+      tone: credentials.active > 0 ? "success" : "warning",
+      label: `${credentials.active}/2`,
+    },
+    access: { tone: "neutral", label: `${grantedCount}/${totalPermissions}` },
+  };
+}

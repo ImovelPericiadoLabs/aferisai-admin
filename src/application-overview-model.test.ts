@@ -9,6 +9,7 @@ import {
   summarizeDeliveries,
   summarizeDelivery,
   summarizeEndpoint,
+  tabBadges,
   webhookHost,
 } from "./application-overview-model";
 
@@ -192,5 +193,37 @@ describe("summarizeDeliveries", () => {
         delivery({ status: "skipped" }),
       ]).successRate,
     ).toBeNull();
+  });
+});
+
+describe("tabBadges", () => {
+  const snapshot = {
+    endpoint: endpoint(),
+    credentials: [credential(), credential({ id: "c2", status: "revoked" })],
+    deliveries: [
+      delivery({ id: "1" }),
+      delivery({ id: "2", status: "attempted" }),
+      delivery({ id: "3", status: "unknown" }),
+    ],
+  };
+  it("summarizes each tab with real state", () => {
+    expect(tabBadges(snapshot, 5, 8)).toEqual({
+      webhooks: { tone: "success", label: null },
+      deliveries: { tone: "warning", label: "2" },
+      credentials: { tone: "success", label: "1/2" },
+      access: { tone: "neutral", label: "5/8" },
+    });
+  });
+  it("flags what is missing", () => {
+    const empty = { endpoint: null, credentials: [], deliveries: [] };
+    expect(tabBadges(empty, 0, 8)).toEqual({
+      webhooks: { tone: "warning", label: "!" },
+      deliveries: null,
+      credentials: { tone: "warning", label: "0/2" },
+      access: { tone: "neutral", label: "0/8" },
+    });
+  });
+  it("shows nothing before the data arrives", () => {
+    expect(tabBadges(null, 0, 0)).toBeNull();
   });
 });
