@@ -275,8 +275,8 @@ export function Promotions({
             Promoções
           </h1>
           <p className="page-subtitle">
-            Cupons e links ligados a uma regra comercial do canal promoção. O
-            código aparece uma única vez, na criação.
+            Gere cupons e links com base em regras de preço e comissão já
+            publicadas. O código aparece uma única vez, na criação.
           </p>
         </div>
         <button

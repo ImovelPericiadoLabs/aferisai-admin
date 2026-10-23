@@ -72,11 +72,15 @@ export function PromotionForm({
           <EntityPicker
             onUnauthorized={onUnauthorized}
             id="promo-policy"
-            label="Regra da promoção"
-            placeholder="Buscar regra publicada de promoção"
+            label="Regra comercial aplicada"
+            placeholder="Buscar regra comercial publicada"
             required
-            hint="Só aparecem regras publicadas do canal promoção."
-            emptyMessage="Nenhuma regra de promoção publicada. Crie e publique uma regra antes de criar a promoção."
+            hint="A regra define desconto, comissão e vigência para o cupom ou link."
+            emptyMessage="Ainda não há regra comercial publicada para cupons ou links. Configure uma em Regras comerciais antes de gerar o código."
+            emptyAction={{
+              label: "Abrir Regras comerciais",
+              href: "#commercial",
+            }}
             value={form.policyVersionId}
             search={searchPromotionPolicies}
             limitNote={LIMIT_NOTES.policies}

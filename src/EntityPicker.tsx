@@ -21,6 +21,7 @@ type Shared = {
   hint?: string;
   limitNote?: string;
   emptyMessage?: string;
+  emptyAction?: { label: string; href: string };
   knownOptions?: PickerOption[];
   cacheKey?: string;
   onUnauthorized?: () => void;
@@ -60,6 +61,7 @@ export function EntityPicker(props: Props) {
     hint,
     limitNote,
     emptyMessage,
+    emptyAction,
     knownOptions,
     cacheKey,
     onUnauthorized,
@@ -377,11 +379,18 @@ export function EntityPicker(props: Props) {
             </p>
           )}
           {!loading && !loaded?.failed && options.length === 0 && (
-            <p className="picker-status">
-              {!query.trim() && !current?.next && emptyMessage
-                ? emptyMessage
-                : "Nenhum resultado."}
-            </p>
+            <>
+              <p className="picker-status">
+                {!query.trim() && !current?.next && emptyMessage
+                  ? emptyMessage
+                  : "Nenhum resultado."}
+              </p>
+              {!query.trim() && !current?.next && emptyAction && (
+                <a className="picker-empty-action" href={emptyAction.href}>
+                  {emptyAction.label}
+                </a>
+              )}
+            </>
           )}
           {current?.next && (
             <button
