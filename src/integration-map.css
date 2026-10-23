@@ -1,0 +1,168 @@
+.imap-summary {
+  display: flex;
+  flex-wrap: wrap;
+  margin-bottom: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  gap: var(--space-6);
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+
+.imap-summary > div:not(:last-child) {
+  display: grid;
+}
+
+.imap-summary strong {
+  font-size: var(--text-xl);
+  font-variant-numeric: tabular-nums;
+}
+
+.imap-summary span {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.imap-summary > :last-child {
+  margin-left: auto;
+}
+
+.imap code {
+  color: var(--text-muted);
+  font-size: var(--text-caption);
+  overflow-wrap: anywhere;
+}
+
+.imap-grid {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+}
+
+.imap-card {
+  display: grid;
+  padding: var(--space-4);
+  gap: var(--space-3);
+  align-content: start;
+}
+
+.imap-card[data-status="proposed"],
+.imap-perm[data-status="proposed"] {
+  border-style: dashed;
+}
+
+.imap-card header {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.imap-card h2 {
+  margin: 0;
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+}
+
+.imap-card dl {
+  display: grid;
+  margin: 0;
+  gap: 2px var(--space-3);
+  grid-template-columns: 110px minmax(0, 1fr);
+  font-size: var(--text-sm);
+}
+
+.imap-card dt {
+  color: var(--text-muted);
+}
+
+.imap-card dd {
+  margin: 0;
+}
+
+.imap-card p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.imap-perms {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.imap-perm {
+  display: grid;
+  padding: var(--space-3) var(--space-4);
+  gap: var(--space-3);
+  grid-template-columns: 38px minmax(0, 1fr) auto;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+
+.imap-perm-icon {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border-radius: 10px;
+  background: var(--primary-faint);
+  color: var(--primary);
+}
+
+.imap-perm[data-status="proposed"] .imap-perm-icon {
+  background: var(--surface-muted);
+  color: var(--text-subtle);
+}
+
+.imap-perm-main {
+  display: grid;
+  min-width: 0;
+}
+
+.imap-perm-main small {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.imap-perm-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  justify-content: flex-end;
+}
+
+.imap-gaps {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  gap: var(--space-3);
+  list-style: none;
+}
+
+.imap-gaps li {
+  display: grid;
+  padding: var(--space-4);
+  gap: var(--space-1);
+  border-left: 3px solid var(--warning);
+}
+
+.imap-gaps p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+@media (max-width: 720px) {
+  .imap-perm {
+    grid-template-columns: 38px minmax(0, 1fr);
+  }
+
+  .imap-perm-tags {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+  }
+}

@@ -2,6 +2,8 @@
 
 Este arquivo reúne tudo o que o admin precisa do backend, rodada a rodada. No fim das ondas vira **um único pedido** em `construtor/backend/pedidos/`. Itens já enviados antes: `construtor/backend/pedidos/001-buscas-e-gestao-de-contas.md`.
 
+> **2026-10-23:** a gestão de pessoas e convites do parceiro foi entregue pelo backend (PR #28) e o admin já a consome. Novos pedidos: `construtor/backend/pedidos/002-...md` (atualizado) e `003-mapa-de-permissoes-e-integracoes.md`.
+
 ## Já enviado (pedido 001)
 Busca e filtros em listas (usuários, membros, regras, comissões, aplicações, organizações em lote), dados extras de contas, ações de gestão de equipe e usuários.
 

@@ -39,6 +39,7 @@ import type { PeopleTab } from "./people-model";
 import { AnalysisProviders } from "./AnalysisProviders";
 import { Organizations } from "./Organizations";
 import { DesignSystemGuide } from "./DesignSystemGuide";
+import { IntegrationMap } from "./IntegrationMap";
 import { Access } from "./Access";
 import { Passkeys } from "./Passkeys";
 import { installNoAutofill } from "./no-autofill";
@@ -73,7 +74,7 @@ type Page =
   | "team-members"
   | "analysis-providers"
   | "passkeys";
-type HiddenPage = "design-system";
+type HiddenPage = "design-system" | "integration-map";
 type Session = { csrf: string; member: TeamMember };
 
 const nav: { page: Page; label: string; detail: string }[] = [
@@ -481,7 +482,8 @@ function pageFromHash(): Page | HiddenPage {
     value === "team-members" ||
     value === "analysis-providers" ||
     value === "passkeys" ||
-    value === "design-system"
+    value === "design-system" ||
+    value === "integration-map"
     ? value
     : "overview";
 }
@@ -659,7 +661,8 @@ function TeamApp() {
   );
   const currentPage =
     visibleNav.some((item) => item.page === page) ||
-    (page === "design-system" && session.member.role === "administrator")
+    ((page === "design-system" || page === "integration-map") &&
+      session.member.role === "administrator")
       ? page
       : isFinancial
         ? "financial"
@@ -999,6 +1002,8 @@ function TeamApp() {
             />
           ) : currentPage === "design-system" ? (
             <DesignSystemGuide />
+          ) : currentPage === "integration-map" ? (
+            <IntegrationMap />
           ) : currentPage === "passkeys" ? (
             <Passkeys csrf={session.csrf} onUnauthorized={unauthorize} />
           ) : (
