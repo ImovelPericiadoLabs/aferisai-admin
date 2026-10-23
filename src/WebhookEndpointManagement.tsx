@@ -9,6 +9,11 @@ import {
   type WebhookEndpoint,
   type WebhookTestResult,
 } from "./api";
+import { ConfirmDialog } from "./ConfirmDialog";
+import { Checkbox } from "./controls";
+import { SecretReveal } from "./SecretReveal";
+import { webhookStep } from "./webhook-setup-model";
+import "./partner-onboarding.css";
 
 type Props = {
   applicationId: string;
@@ -53,7 +58,6 @@ export function WebhookEndpointManagement({
   const [test, setTest] = useState<WebhookTestResult | null>(null);
   const [confirmRemove, setConfirmRemove] = useState(false);
   const [confirmSuspend, setConfirmSuspend] = useState(false);
-  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     let live = true;
@@ -187,45 +191,60 @@ export function WebhookEndpointManagement({
     }
   }
 
-  function copySecret() {
-    if (!secret) return;
-    void navigator.clipboard
-      .writeText(secret)
-      .then(() => {
-        setCopied(true);
-        window.setTimeout(() => setCopied(false), 2000);
-      })
-      .catch(() =>
-        setError(
-          "Não foi possível copiar. Selecione a chave e copie manualmente.",
-        ),
-      );
-  }
-
   if (!loaded)
     return (
       <div
-        className="integration-skeleton"
+        className="rules-skeleton"
         role="status"
         aria-label="Carregando webhook"
       >
-        <i />
-        <i />
+        <span className="skeleton" />
+        <span className="skeleton" />
       </div>
     );
 
+  const step = webhookStep({
+    hasEndpoint: endpoint !== null,
+    active: endpoint?.status === "active",
+    configured,
+    testDelivered: test?.status === "delivered",
+  });
+  const labels = ["Endereço", "Assinatura", "Teste", "Ativar"];
+  const testResult = test && (
+    <div
+      className={`alert ${test.status === "delivered" ? "alert-success" : "alert-warning"}`}
+      role="status"
+    >
+      <strong>
+        {test.status === "delivered"
+          ? "Teste recebido pelo destino"
+          : "Teste sem confirmação de entrega"}
+      </strong>
+      <div>
+        {test.http_status
+          ? `HTTP ${test.http_status}`
+          : "Sem resposta HTTP confirmada"}
+        {test.duration_ms != null ? ` · ${test.duration_ms} ms` : ""}
+      </div>
+    </div>
+  );
+
   return (
-    <section className="webhook-page" aria-labelledby="webhook-title">
-      <div className="integration-toolbar">
+    <section className="cred" aria-labelledby="webhook-title">
+      <header className="cred-head">
         <div>
-          <h4 id="webhook-title">Webhook</h4>
-          <p>Receba um aviso assinado quando a análise for concluída.</p>
+          <h3 className="appws-section-title" id="webhook-title">
+            Webhook
+          </h3>
+          <p className="form-hint">
+            Receba um aviso assinado quando a análise for concluída.
+          </p>
         </div>
         {endpoint?.status === "active" && canManage && canEdit && (
-          <div className="webhook-toolbar-actions">
+          <div className="appdir-actions">
             <button
               type="button"
-              className="button secondary"
+              className="btn btn-secondary btn-sm"
               disabled={busy}
               onClick={() => void sendTest()}
             >
@@ -233,7 +252,7 @@ export function WebhookEndpointManagement({
             </button>
             <button
               type="button"
-              className="button secondary"
+              className="btn btn-secondary btn-sm"
               disabled={busy}
               onClick={() => setConfirmSuspend(true)}
             >
@@ -241,65 +260,50 @@ export function WebhookEndpointManagement({
             </button>
           </div>
         )}
-      </div>
+      </header>
       {error && (
-        <p className="error" role="alert">
+        <div className="alert alert-danger" role="alert">
           {error}
-        </p>
-      )}
-      {confirmSuspend && endpoint?.status === "active" && (
-        <div
-          className="webhook-suspend-review"
-          role="group"
-          aria-label="Revisar suspensão do webhook"
-        >
-          <div>
-            <strong>Suspender este destino?</strong>
-            <p>
-              Eventos futuros não serão enviados até você reativar o webhook.
-            </p>
-          </div>
-          <button
-            type="button"
-            className="button secondary"
-            disabled={busy}
-            onClick={() => setConfirmSuspend(false)}
-          >
-            Cancelar
-          </button>
-          <button
-            type="button"
-            className="button primary"
-            disabled={busy}
-            onClick={() => void setStatus("suspended")}
-          >
-            Confirmar suspensão
-          </button>
         </div>
       )}
+
+      <ol className="stepper" aria-label="Etapas de configuração">
+        {labels.map((label, index) => (
+          <li key={label}>
+            <span
+              className="stepper-step"
+              aria-current={step === index ? "step" : undefined}
+              data-done={step > index}
+            >
+              <span aria-hidden="true">{step > index ? "✓" : index + 1}</span>
+              {label}
+            </span>
+          </li>
+        ))}
+      </ol>
+
       {!endpoint && !error && (
         <form
-          className="webhook-setup"
+          className="card cred-form"
           noValidate
           onSubmit={(event) => void register(event)}
         >
-          <div className="webhook-steps" aria-label="Etapas de configuração">
-            <span className="current">1 · Endereço</span>
-            <span>2 · Assinatura</span>
-            <span>3 · Teste</span>
-            <span>4 · Ativar</span>
-          </div>
-          <h5>Onde sua aplicação recebe eventos?</h5>
-          <p>
+          <h4>Onde sua aplicação recebe eventos?</h4>
+          <p className="form-hint">
             Informe um endereço público HTTPS sob controle da sua equipe. Um
-            destino por aplicação.
+            destino por aplicação. O cadastro prepara a chave, sem ativar
+            entregas reais.
           </p>
-          <div className="field">
-            <label htmlFor={`webhook-url-${applicationId}`}>
+          <div className="form-field">
+            <label
+              className="form-field-label"
+              htmlFor={`webhook-url-${applicationId}`}
+            >
               URL do webhook
             </label>
             <input
               id={`webhook-url-${applicationId}`}
+              className="input"
               type="url"
               inputMode="url"
               autoComplete="url"
@@ -317,19 +321,18 @@ export function WebhookEndpointManagement({
               required
             />
             {urlError && (
-              <small
+              <span
                 id={`webhook-url-error-${applicationId}`}
-                className="webhook-field-error"
+                className="form-hint onboarding-error"
                 role="alert"
               >
                 {urlError}
-              </small>
+              </span>
             )}
           </div>
-          <div className="webhook-actions">
-            <span>O cadastro prepara a chave, sem ativar entregas reais.</span>
+          <div className="appdir-actions">
             <button
-              className="button primary"
+              className="btn btn-primary btn-md"
               disabled={!canManage || !canEdit || busy || !url.trim()}
             >
               {busy ? "Preparando…" : "Continuar"}
@@ -337,20 +340,20 @@ export function WebhookEndpointManagement({
           </div>
         </form>
       )}
+
       {endpoint && (
         <>
-          <div className="webhook-destination">
+          <div className="card webhook-destination">
             <div>
-              <small>DESTINO</small>
-              <strong>{endpoint.url}</strong>
-              <span>Evento: Análise concluída</span>
+              <small className="rules-cell-sub">Destino</small>
+              <strong className="rules-cell-main">{endpoint.url}</strong>
+              <small className="rules-cell-sub">
+                Evento: Análise concluída
+              </small>
             </div>
             <span
-              className={`integration-status ${endpoint.status === "active" ? "is-active" : "is-paused"}`}
+              className={`badge ${endpoint.status === "active" ? "badge-success" : endpoint.status === "draft" ? "badge-neutral" : "badge-warning"}`}
             >
-              <span aria-hidden="true">
-                {endpoint.status === "active" ? "✓" : "Ⅱ"}
-              </span>
               {endpoint.status === "active"
                 ? "Ativo"
                 : endpoint.status === "draft"
@@ -358,171 +361,102 @@ export function WebhookEndpointManagement({
                   : "Suspenso"}
             </span>
           </div>
-          {endpoint.status === "active" && test && (
-            <div
-              className={`webhook-test-result ${test.status === "delivered" ? "is-success" : ""}`}
-              role="status"
-            >
-              <strong>
-                {test.status === "delivered"
-                  ? "Teste recebido pelo destino"
-                  : "Teste sem confirmação de entrega"}
-              </strong>
-              <span>
-                {test.http_status
-                  ? `HTTP ${test.http_status}`
-                  : "Sem resposta HTTP confirmada"}
-                {test.duration_ms != null ? ` · ${test.duration_ms} ms` : ""}
-              </span>
-            </div>
-          )}
+          {endpoint.status === "active" && testResult}
           {endpoint.status !== "active" && canManage && canEdit && (
-            <div className="webhook-setup">
-              <div
-                className="webhook-steps"
-                aria-label="Etapas de configuração"
-              >
-                <span className="done">✓ Endereço</span>
-                <span className={secret ? "current" : undefined}>
-                  2 · Assinatura
-                </span>
-                <span>3 · Teste</span>
-                <span>4 · Ativar</span>
-              </div>
-              {secret && (
-                <div className="webhook-secret" role="status">
-                  <h5>Chave de assinatura · exibição única</h5>
-                  <p>
-                    Salve esta chave no servidor que recebe o webhook. Verifique
-                    a assinatura HMAC de cada evento.
-                  </p>
-                  <code>{secret}</code>
-                  <div className="webhook-actions">
-                    <button
-                      type="button"
-                      className="button secondary"
-                      onClick={copySecret}
-                    >
-                      {copied ? "Copiada" : "Copiar chave"}
-                    </button>
-                    <button
-                      type="button"
-                      className="button secondary"
-                      onClick={() => setSecret(null)}
-                    >
-                      Já salvei, ocultar
-                    </button>
-                  </div>
-                </div>
-              )}
+            <section className="card cred-form" aria-label="Configuração">
               {!secret && (
-                <p className="webhook-note">
-                  A chave não aparece novamente. Use a cópia salva no seu
-                  servidor para verificar o teste.
+                <p className="form-hint">
+                  A chave de assinatura não aparece de novo. Use a cópia salva
+                  no seu servidor para verificar o teste.
                 </p>
               )}
-              <label className="webhook-check">
-                <input
-                  type="checkbox"
-                  checked={configured}
-                  onChange={(event) => setConfigured(event.target.checked)}
-                />{" "}
-                Configurei a verificação da assinatura no meu servidor.
-              </label>
-              <div className="webhook-actions">
-                <span>
-                  O teste usa um evento fictício assinado. Não cria análise nem
-                  cobrança.
-                </span>
+              <Checkbox
+                id="webhook-configured"
+                label="Configurei a verificação da assinatura no meu servidor."
+                checked={configured}
+                onChange={setConfigured}
+              />
+              <p className="form-hint">
+                O teste usa um evento fictício assinado. Não cria análise nem
+                cobrança.
+              </p>
+              <div className="appdir-actions">
                 <button
                   type="button"
-                  className="button secondary"
+                  className="btn btn-secondary btn-md"
                   disabled={busy || !configured}
                   onClick={() => void sendTest()}
                 >
                   {busy ? "Enviando…" : "Enviar teste assinado"}
                 </button>
-              </div>
-              {test && (
-                <div
-                  className={`webhook-test-result ${test.status === "delivered" ? "is-success" : ""}`}
-                  role="status"
-                >
-                  <strong>
-                    {test.status === "delivered"
-                      ? "Teste recebido pelo destino"
-                      : "Teste sem confirmação de entrega"}
-                  </strong>
-                  <span>
-                    {test.http_status
-                      ? `HTTP ${test.http_status}`
-                      : "Sem resposta HTTP confirmada"}
-                    {test.duration_ms != null
-                      ? ` · ${test.duration_ms} ms`
-                      : ""}
-                  </span>
-                </div>
-              )}
-              {test?.status === "delivered" && (
-                <div className="webhook-actions">
-                  <span>
-                    O destino confirmou o teste. Ative para receber eventos
-                    reais.
-                  </span>
+                {test?.status === "delivered" && (
                   <button
                     type="button"
-                    className="button primary"
+                    className="btn btn-primary btn-md"
                     disabled={busy}
                     onClick={() => void setStatus("active")}
                   >
                     Ativar webhook
                   </button>
-                </div>
+                )}
+              </div>
+              {testResult}
+              {test?.status === "delivered" && (
+                <p className="form-hint">
+                  O destino confirmou o teste. Ative para receber eventos reais.
+                </p>
               )}
               {endpoint.status === "suspended" && !test && (
-                <p className="webhook-note">
+                <p className="form-hint">
                   O webhook está suspenso. Envie um novo teste antes de
                   ativá-lo.
                 </p>
               )}
-            </div>
+            </section>
           )}
           {canManage && canEdit && (
-            <div className="webhook-danger">
-              {!confirmRemove ? (
-                <button
-                  type="button"
-                  className="back-link"
-                  onClick={() => setConfirmRemove(true)}
-                >
-                  Remover destino
-                </button>
-              ) : (
-                <div>
-                  <p>
-                    Remover o destino interrompe entregas futuras. A chave atual
-                    será descartada.
-                  </p>
-                  <button
-                    type="button"
-                    className="button secondary"
-                    disabled={busy}
-                    onClick={() => void remove()}
-                  >
-                    Confirmar remoção
-                  </button>
-                  <button
-                    type="button"
-                    className="back-link"
-                    onClick={() => setConfirmRemove(false)}
-                  >
-                    Cancelar
-                  </button>
-                </div>
-              )}
+            <div>
+              <button
+                type="button"
+                className="btn btn-ghost-danger btn-sm"
+                onClick={() => setConfirmRemove(true)}
+              >
+                Remover destino
+              </button>
             </div>
           )}
         </>
+      )}
+
+      <ConfirmDialog
+        open={confirmSuspend && endpoint?.status === "active"}
+        title="Suspender este destino?"
+        description="Eventos futuros não serão enviados até você reativar o webhook."
+        details={endpoint ? [{ label: "Destino", value: endpoint.url }] : []}
+        confirmLabel="Confirmar suspensão"
+        busy={busy}
+        onConfirm={() => void setStatus("suspended")}
+        onCancel={() => setConfirmSuspend(false)}
+      />
+      <ConfirmDialog
+        open={confirmRemove}
+        tone="danger"
+        title="Remover este destino?"
+        description="Remover interrompe as entregas futuras. A chave atual será descartada."
+        details={endpoint ? [{ label: "Destino", value: endpoint.url }] : []}
+        confirmLabel="Remover destino"
+        busy={busy}
+        onConfirm={() => void remove()}
+        onCancel={() => setConfirmRemove(false)}
+      />
+      {secret && (
+        <SecretReveal
+          title="Chave de assinatura"
+          description="Salve esta chave no servidor que recebe o webhook e verifique a assinatura HMAC de cada evento."
+          secretLabel="Chave de assinatura"
+          secret={secret}
+          onDismiss={() => setSecret(null)}
+        />
       )}
     </section>
   );

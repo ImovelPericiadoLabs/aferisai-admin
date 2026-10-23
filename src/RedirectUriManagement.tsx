@@ -5,6 +5,7 @@ import {
   replaceApplicationRedirectUris,
   type RedirectUriRegistry,
 } from "./api";
+import { ConfirmDialog } from "./ConfirmDialog";
 
 type Props = {
   applicationId: string;
@@ -115,76 +116,97 @@ export function RedirectUriManagement({
     }
   }
 
+  const lines = draft
+    .split("\n")
+    .map((value) => value.trim())
+    .filter(Boolean);
+
   return (
-    <section className="redirect-uris" aria-label="URLs de retorno OAuth">
-      <h5>URLs de retorno OAuth</h5>
-      <p>
+    <section className="cred" aria-label="URLs de retorno OAuth">
+      <p className="form-hint">
         Cadastre até cinco destinos HTTPS exatos para a futura autorização
-        delegada. O cadastro não libera acesso ao titular.
+        delegada. O cadastro não libera acesso ao titular. Lista vazia remove
+        todos os destinos.
       </p>
-      {error && <p role="alert">{error}</p>}
-      {notice && <p role="status">{notice}</p>}
+      {error && (
+        <div className="alert alert-danger" role="alert">
+          {error}
+        </div>
+      )}
+      {notice && (
+        <div className="alert alert-success" role="status">
+          {notice}
+        </div>
+      )}
       {registry && (
-        <form onSubmit={startConfirmation}>
-          <label htmlFor={`redirect-uris-${applicationId}`}>
-            Uma URL por linha
-          </label>
-          <textarea
-            id={`redirect-uris-${applicationId}`}
-            value={draft}
-            onChange={(event) => {
-              setDraft(event.target.value);
-              setConfirm(false);
-            }}
-            rows={Math.max(2, draft.split("\n").length + 1)}
-            spellCheck={false}
-            placeholder="https://parceiro.exemplo.com/oauth/callback"
-            disabled={!canEdit || busy}
-          />
-          <p>
-            Versão {registry.version}. Lista vazia remove todos os destinos.
-          </p>
-          <div className="permission-actions">
-            {canEdit && (
-              <button type="submit" className="back-link" disabled={busy}>
-                Revisar alteração
-              </button>
-            )}
+        <form className="card cred-form" onSubmit={startConfirmation}>
+          <div className="form-field">
+            <label
+              className="form-field-label"
+              htmlFor={`redirect-uris-${applicationId}`}
+            >
+              Uma URL por linha
+            </label>
+            <textarea
+              id={`redirect-uris-${applicationId}`}
+              className="input"
+              value={draft}
+              onChange={(event) => {
+                setDraft(event.target.value);
+                setConfirm(false);
+              }}
+              rows={Math.max(3, draft.split("\n").length + 1)}
+              spellCheck={false}
+              placeholder="https://parceiro.exemplo.com/oauth/callback"
+              disabled={!canEdit || busy}
+            />
+            <span className="form-hint">
+              {lines.length} de 5 destinos informados.
+            </span>
+          </div>
+          <div className="appdir-actions">
             <button
               type="button"
-              className="back-link"
+              className="btn btn-ghost btn-md"
               onClick={() => void refresh()}
               disabled={busy}
             >
               Atualizar estado
             </button>
+            {canEdit && (
+              <button
+                type="submit"
+                className="btn btn-primary btn-md"
+                disabled={busy}
+              >
+                Revisar alteração
+              </button>
+            )}
           </div>
-          {confirm && (
-            <div role="group" aria-label="Confirmar alteração de URLs">
-              <p>
-                Confirma substituir a lista inteira pelos destinos exibidos
-                acima?
-              </p>
-              <button
-                type="button"
-                className="back-link"
-                onClick={() => void save()}
-                disabled={busy}
-              >
-                Confirmar URLs
-              </button>
-              <button
-                type="button"
-                className="back-link"
-                onClick={() => setConfirm(false)}
-                disabled={busy}
-              >
-                Cancelar
-              </button>
-            </div>
-          )}
         </form>
       )}
+      <ConfirmDialog
+        open={confirm}
+        title="Substituir as URLs de retorno?"
+        description="A lista inteira será substituída pelos destinos abaixo."
+        details={
+          lines.length
+            ? lines.map((value, index) => ({
+                label: `URL ${index + 1}`,
+                value,
+              }))
+            : [
+                {
+                  label: "Resultado",
+                  value: "Todos os destinos serão removidos",
+                },
+              ]
+        }
+        confirmLabel="Confirmar URLs"
+        busy={busy}
+        onConfirm={() => void save()}
+        onCancel={() => setConfirm(false)}
+      />
     </section>
   );
 }

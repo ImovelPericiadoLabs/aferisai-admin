@@ -277,3 +277,21 @@
     animation: none;
   }
 }
+
+.webhook-destination {
+  display: flex;
+  padding: var(--space-4);
+  gap: var(--space-4);
+  align-items: center;
+  justify-content: space-between;
+}
+
+.webhook-destination > div {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.webhook-destination strong {
+  overflow-wrap: anywhere;
+}
