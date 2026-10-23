@@ -1578,7 +1578,8 @@ function ToastStack({
 }
 
 function portalMode(): "team" | "partner" | "invitation" | "team-invitation" {
-  if (window.location.hash.startsWith("#equipe-convite")) return "team-invitation";
+  if (window.location.hash.startsWith("#equipe-convite"))
+    return "team-invitation";
   if (window.location.hash.startsWith("#convite")) return "invitation";
   if (window.location.hash.startsWith("#parceiro")) return "partner";
   return "team";
