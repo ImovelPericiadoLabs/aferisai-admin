@@ -101,7 +101,7 @@ export type OrganizationListItem = {
   name: string;
   status: string;
   applications_count: number;
-  /** Not returned by the list yet; the avatar falls back to the detail. */
+  /** Returned by the list since backend PR #33; undefined only on older servers, where the avatar falls back to the detail. */
   logo_url?: string | null;
 };
 export type OrganizationList = {
