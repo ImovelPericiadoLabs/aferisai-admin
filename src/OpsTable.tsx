@@ -5,12 +5,7 @@ import {
   type KeyboardEvent,
   type ReactNode,
 } from "react";
-import {
-  readPrefs,
-  writePrefs,
-  type Density,
-  type TablePrefs,
-} from "./ops-model";
+import type { Density, TablePrefs } from "./ops-model";
 
 export type OpsColumn<T> = {
   id: string;
@@ -26,16 +21,6 @@ export type OpsColumn<T> = {
 };
 
 export type RowTone = "warn" | "danger";
-
-/** Saved density and hidden columns for one table, kept in this browser. */
-export function useOpsPrefs(key: string) {
-  const [prefs, setPrefs] = useState<TablePrefs>(() => readPrefs(key));
-  const update = (next: TablePrefs) => {
-    setPrefs(next);
-    writePrefs(key, next);
-  };
-  return [prefs, update] as const;
-}
 
 export function OpsTable<T>({
   label,

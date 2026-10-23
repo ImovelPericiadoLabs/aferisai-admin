@@ -10,7 +10,8 @@ import {
   OpsViews,
   RecordDrawer,
 } from "./OpsParts";
-import { OpsTable, OpsViewMenu, useOpsPrefs, type OpsColumn } from "./OpsTable";
+import { OpsTable, OpsViewMenu, type OpsColumn } from "./OpsTable";
+import { useOpsPrefs } from "./useOpsPrefs";
 import {
   REGISTRY_VIEWS,
   SOURCE_FILTERS,

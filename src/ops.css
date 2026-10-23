@@ -9,7 +9,7 @@
 
 .ops-head {
   display: flex;
-  align-items: flex-end;
+  align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-3);
   flex-wrap: wrap;
@@ -448,8 +448,8 @@
   position: fixed;
   inset: 0;
   z-index: 60;
-  display: flex;
-  align-items: flex-end;
+  display: grid;
+  align-content: end;
   background: rgba(15, 23, 42, 0.45);
 }
 .ops-sheet {
