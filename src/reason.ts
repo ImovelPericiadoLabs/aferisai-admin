@@ -26,11 +26,19 @@ const TYPOGRAPHIC: [RegExp, string][] = [
   [/…/g, "..."],
 ];
 
+/** RFC 8187 attr-char: everything else is percent-encoded as UTF-8. */
+const encodeUtf8 = (text: string) =>
+  encodeURIComponent(text).replace(
+    /['()*]/g,
+    (char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`,
+  );
+
 /**
- * Builds the optional `X-Change-Reason` header (3–500 characters). Header values
- * cannot hold line breaks or characters outside Latin-1, so the text is flattened
- * and anything else becomes "?". The backend records the default purpose when
- * the header is absent.
+ * Builds the optional change-reason header (3–500 characters). The text is flattened
+ * to one line. Latin-1 text (accents included) keeps the plain `X-Change-Reason`, which
+ * every backend release reads. Anything beyond Latin-1 (emoji, other scripts) uses
+ * `X-Change-Reason*` with UTF-8 percent-encoding, and only that header is sent. The
+ * backend records the default purpose when no header is present.
  */
 export function changeReasonHeaders(
   reason: string | undefined,
@@ -39,8 +47,9 @@ export function changeReasonHeaders(
   let text = reason.replace(/\s+/g, " ").trim();
   for (const [pattern, replacement] of TYPOGRAPHIC)
     text = text.replace(pattern, replacement);
-  text = Array.from(text, (char) => (char.charCodeAt(0) > 0xff ? "?" : char))
-    .join("")
-    .slice(0, 500);
-  return text.length >= 3 ? { "X-Change-Reason": text } : {};
+  text = Array.from(text).slice(0, 500).join("");
+  if (Array.from(text).length < 3) return {};
+  if (Array.from(text).every((char) => char.charCodeAt(0) <= 0xff))
+    return { "X-Change-Reason": text };
+  return { "X-Change-Reason*": `UTF-8''${encodeUtf8(text)}` };
 }

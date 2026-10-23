@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import type { PaymentExceptionCase, TeamMember } from "./api";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { Disclosure, RadioGroup } from "./controls";
@@ -93,6 +93,7 @@ export function ExceptionPanel({
   const [viewing, setViewing] = useState<OriginalTarget | null>(null);
   const [locating, setLocating] = useState<string | null>(null);
   const [originalError, setOriginalError] = useState("");
+  const lastOriginal = useRef<string | null>(null);
   const targets = canViewOriginals(role) ? originalTargets(item) : [];
   const stage = stageOf(item);
   const affectedRows = affectedItemRows(item);
@@ -102,7 +103,9 @@ export function ExceptionPanel({
   const memberSearch = useMemo(() => searchTeamMembers(target), [target]);
 
   async function openOriginal(ref: (typeof targets)[number]) {
+    if (locating !== null) return;
     setLocating(ref.key);
+    lastOriginal.current = ref.key;
     setOriginalError("");
     const found = await resolveRequestId(ref);
     setLocating(null);
@@ -262,7 +265,8 @@ export function ExceptionPanel({
                   type="button"
                   className="btn btn-secondary btn-md"
                   aria-haspopup="dialog"
-                  disabled={locating !== null}
+                  aria-busy={locating === ref.key}
+                  data-original-target={ref.key}
                   onClick={() => void openOriginal(ref)}
                 >
                   {locating === ref.key
@@ -505,6 +509,11 @@ export function ExceptionPanel({
         csrf={csrf}
         onClose={() => setViewing(null)}
         onUnauthorized={onUnauthorized}
+        returnFocus={() =>
+          document.querySelector<HTMLElement>(
+            `[data-original-target="${lastOriginal.current}"]`,
+          )
+        }
       />
     </>
   );

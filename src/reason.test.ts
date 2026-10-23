@@ -57,9 +57,24 @@ describe("changeReasonHeaders", () => {
         "reticências",
       ),
     });
-    expect(changeReasonHeaders("teste 😀 ok")["X-Change-Reason"]).toBe(
-      "teste ? ok",
+  });
+  it("sends text beyond Latin-1 only in the UTF-8 percent-encoded header, never both", () => {
+    expect(changeReasonHeaders("teste 😀 ok")).toEqual({
+      "X-Change-Reason*": "UTF-8''teste%20%F0%9F%98%80%20ok",
+    });
+    expect(changeReasonHeaders("Ревизия одобрена")).toEqual({
+      "X-Change-Reason*":
+        "UTF-8''%D0%A0%D0%B5%D0%B2%D0%B8%D0%B7%D0%B8%D1%8F%20%D0%BE%D0%B4%D0%BE%D0%B1%D1%80%D0%B5%D0%BD%D0%B0",
+    });
+  });
+  it("percent-encodes the characters RFC 8187 does not allow raw", () => {
+    expect(changeReasonHeaders("a'b(c)*d 😀")["X-Change-Reason*"]).toBe(
+      "UTF-8''a%27b%28c%29%2Ad%20%F0%9F%98%80",
     );
+  });
+  it("cuts the encoded text at 500 characters, not 500 bytes", () => {
+    const header = changeReasonHeaders("😀".repeat(600))["X-Change-Reason*"];
+    expect(decodeURIComponent(header.slice(7))).toBe("😀".repeat(500));
   });
   it("cuts at the 500 character limit", () => {
     expect(
