@@ -6,6 +6,12 @@ import {
   type RedirectUriRegistry,
 } from "./api";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { FieldAction } from "./FieldAction";
+import { IntegrationIcon } from "./IntegrationIcon";
+import {
+  MAX_REDIRECT_URIS,
+  validateRedirectUris,
+} from "./integration-insights-model";
 
 type Props = {
   applicationId: string;
@@ -21,7 +27,9 @@ export function RedirectUriManagement({
   onUnauthorized,
 }: Props) {
   const [registry, setRegistry] = useState<RedirectUriRegistry | null>(null);
-  const [draft, setDraft] = useState("");
+  const [list, setList] = useState<string[]>([]);
+  const [candidate, setCandidate] = useState("");
+  const [candidateError, setCandidateError] = useState("");
   const [busy, setBusy] = useState(false);
   const [confirm, setConfirm] = useState(false);
   const [error, setError] = useState("");
@@ -33,7 +41,7 @@ export function RedirectUriManagement({
       .then((result) => {
         if (!live) return;
         setRegistry(result);
-        setDraft(result.redirect_uris.join("\n"));
+        setList(result.redirect_uris);
       })
       .catch((cause: unknown) => {
         if (!live) return;
@@ -51,7 +59,7 @@ export function RedirectUriManagement({
     try {
       const result = await getApplicationRedirectUris(applicationId);
       setRegistry(result);
-      setDraft(result.redirect_uris.join("\n"));
+      setList(result.redirect_uris);
       setConfirm(false);
       return result;
     } catch (cause) {
@@ -63,19 +71,9 @@ export function RedirectUriManagement({
     }
   }
 
-  function startConfirmation(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setError("");
-    setNotice("");
-    setConfirm(true);
-  }
-
   async function save() {
     if (!registry) return;
-    const uris = draft
-      .split("\n")
-      .map((value) => value.trim())
-      .filter(Boolean);
+    const uris = list;
     setBusy(true);
     setError("");
     setNotice("");
@@ -88,7 +86,7 @@ export function RedirectUriManagement({
         csrfToken,
       );
       setRegistry(result);
-      setDraft(result.redirect_uris.join("\n"));
+      setList(result.redirect_uris);
       setNotice(
         uris.length === 0
           ? "URLs de retorno removidas."
@@ -116,17 +114,44 @@ export function RedirectUriManagement({
     }
   }
 
-  const lines = draft
-    .split("\n")
-    .map((value) => value.trim())
-    .filter(Boolean);
+  const saved = registry?.redirect_uris ?? [];
+  const dirty = JSON.stringify(list) !== JSON.stringify(saved);
+  const check = validateRedirectUris(list);
+
+  function addCandidate(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const value = candidate.trim();
+    if (!value) return;
+    const trial = validateRedirectUris([...list, value]);
+    if (trial.tooMany) {
+      setCandidateError("O limite é de 5 destinos.");
+      return;
+    }
+    const problem = trial.problems[list.length];
+    if (problem) {
+      setCandidateError(problem);
+      return;
+    }
+    setList([...list, value]);
+    setCandidate("");
+    setCandidateError("");
+    setNotice("");
+  }
+
+  function parts(value: string): { host: string; rest: string } {
+    try {
+      const url = new URL(value);
+      return { host: url.host, rest: `${url.pathname}${url.search}` };
+    } catch {
+      return { host: value, rest: "" };
+    }
+  }
 
   return (
     <section className="cred" aria-label="URLs de retorno OAuth">
       <p className="form-hint">
         Cadastre até cinco destinos HTTPS exatos para a futura autorização
-        delegada. O cadastro não libera acesso ao titular. Lista vazia remove
-        todos os destinos.
+        delegada. O cadastro não libera acesso ao titular.
       </p>
       {error && (
         <div className="alert alert-danger" role="alert">
@@ -139,59 +164,134 @@ export function RedirectUriManagement({
         </div>
       )}
       {registry && (
-        <form className="card cred-form" onSubmit={startConfirmation}>
-          <div className="form-field">
-            <label
-              className="form-field-label"
-              htmlFor={`redirect-uris-${applicationId}`}
-            >
-              Uma URL por linha
-            </label>
-            <textarea
-              id={`redirect-uris-${applicationId}`}
-              className="input"
-              value={draft}
-              onChange={(event) => {
-                setDraft(event.target.value);
-                setConfirm(false);
-              }}
-              rows={Math.max(3, draft.split("\n").length + 1)}
-              spellCheck={false}
-              placeholder="https://parceiro.exemplo.com/oauth/callback"
-              disabled={!canEdit || busy}
-            />
-            <span className="form-hint">
-              {lines.length} de 5 destinos informados.
-            </span>
+        <div className="oauth card">
+          <div
+            className="oauth-slots"
+            role="img"
+            aria-label={`${list.length} de ${MAX_REDIRECT_URIS} destinos`}
+          >
+            {Array.from({ length: MAX_REDIRECT_URIS }, (_, index) => (
+              <span key={index} data-filled={index < list.length} />
+            ))}
+            <strong>
+              {list.length} de {MAX_REDIRECT_URIS}
+            </strong>
           </div>
+          {list.length === 0 ? (
+            <div className="empty-state" role="status">
+              <strong>Nenhum destino cadastrado</strong>
+              <span>
+                Adicione o endereço exato para onde o retorno deve voltar.
+              </span>
+            </div>
+          ) : (
+            <ul className="oauth-list" aria-label="Destinos de retorno">
+              {list.map((value, index) => {
+                const { host, rest } = parts(value);
+                return (
+                  <li key={value} data-invalid={Boolean(check.problems[index])}>
+                    <span className="oauth-lock">
+                      <IntegrationIcon name="lock" size={16} />
+                    </span>
+                    <span className="oauth-url">
+                      <strong>{host}</strong>
+                      <small>{rest || "/"}</small>
+                      {check.problems[index] && (
+                        <em role="alert">{check.problems[index]}</em>
+                      )}
+                    </span>
+                    {canEdit && (
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-sm"
+                        aria-label={`Remover ${value}`}
+                        disabled={busy}
+                        onClick={() =>
+                          setList(
+                            list.filter((_, position) => position !== index),
+                          )
+                        }
+                      >
+                        <IntegrationIcon name="close" size={14} />
+                      </button>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          {canEdit && list.length < MAX_REDIRECT_URIS && (
+            <form className="oauth-add" onSubmit={addCandidate} noValidate>
+              <FieldAction
+                id={`redirect-candidate-${applicationId}`}
+                label="Novo destino"
+                hint={candidateError || undefined}
+                action={
+                  <button
+                    type="submit"
+                    className="btn btn-secondary btn-md"
+                    disabled={busy || !candidate.trim()}
+                  >
+                    Adicionar
+                  </button>
+                }
+              >
+                <input
+                  id={`redirect-candidate-${applicationId}`}
+                  className="input"
+                  type="url"
+                  inputMode="url"
+                  spellCheck={false}
+                  placeholder="https://parceiro.exemplo.com/oauth/callback"
+                  value={candidate}
+                  aria-invalid={Boolean(candidateError)}
+                  disabled={busy}
+                  onChange={(event) => {
+                    setCandidate(event.target.value);
+                    setCandidateError("");
+                  }}
+                />
+              </FieldAction>
+            </form>
+          )}
+        </div>
+      )}
+      {registry && (dirty || canEdit) && (
+        <div className="oauth-bar" data-dirty={dirty}>
+          <span>
+            {dirty
+              ? "Alterações não salvas. A lista inteira será substituída."
+              : "Lista sincronizada com o servidor."}
+          </span>
           <div className="appdir-actions">
             <button
               type="button"
               className="btn btn-ghost btn-md"
-              onClick={() => void refresh()}
               disabled={busy}
+              onClick={() => (dirty ? setList(saved) : void refresh())}
             >
-              Atualizar estado
+              {dirty ? "Descartar" : "Atualizar estado"}
             </button>
             {canEdit && (
               <button
-                type="submit"
+                type="button"
                 className="btn btn-primary btn-md"
-                disabled={busy}
+                disabled={busy || !dirty || !check.ok}
+                onClick={() => setConfirm(true)}
               >
-                Revisar alteração
+                Revisar e salvar
               </button>
             )}
           </div>
-        </form>
+        </div>
       )}
       <ConfirmDialog
         open={confirm}
         title="Substituir as URLs de retorno?"
         description="A lista inteira será substituída pelos destinos abaixo."
         details={
-          lines.length
-            ? lines.map((value, index) => ({
+          list.length
+            ? list.map((value, index) => ({
                 label: `URL ${index + 1}`,
                 value,
               }))

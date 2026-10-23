@@ -21,7 +21,6 @@ const INTENTIONAL = [
   ".dash-section-heading",
   ".dash-report-heading",
   ".dash-card-trend-bars",
-  ".appws-bars",
 ];
 
 // Legacy forms to migrate to FieldAction when their screens are redesigned

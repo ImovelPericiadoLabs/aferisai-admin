@@ -13,6 +13,7 @@ import { ConfirmDialog } from "./ConfirmDialog";
 import { Checkbox } from "./controls";
 import { SecretReveal } from "./SecretReveal";
 import { webhookStep } from "./webhook-setup-model";
+import { WebhookFlow } from "./WebhookFlow";
 import "./partner-onboarding.css";
 
 type Props = {
@@ -221,7 +222,6 @@ export function WebhookEndpointManagement({
     configured,
     testDelivered: test?.status === "delivered",
   });
-  const labels = ["Endereço", "Assinatura", "Teste", "Ativar"];
   const testResult = test && (
     <div
       className={`alert ${test.status === "delivered" ? "alert-success" : "alert-warning"}`}
@@ -279,20 +279,11 @@ export function WebhookEndpointManagement({
         </div>
       )}
 
-      <ol className="stepper" aria-label="Etapas de configuração">
-        {labels.map((label, index) => (
-          <li key={label}>
-            <span
-              className="stepper-step"
-              aria-current={step === index ? "step" : undefined}
-              data-done={step > index}
-            >
-              <span aria-hidden="true">{step > index ? "✓" : index + 1}</span>
-              {label}
-            </span>
-          </li>
-        ))}
-      </ol>
+      <WebhookFlow
+        state={endpoint ? endpoint.status : "none"}
+        url={endpoint?.url ?? null}
+        step={step}
+      />
 
       {!endpoint && !error && (
         <form
@@ -357,7 +348,7 @@ export function WebhookEndpointManagement({
         <>
           <div className="card webhook-destination">
             <div>
-              <small className="rules-cell-sub">Destino</small>
+              <small className="rules-cell-sub">Destino completo</small>
               <strong className="rules-cell-main">{endpoint.url}</strong>
               <small className="rules-cell-sub">
                 Evento: Análise concluída

@@ -58,7 +58,6 @@ export function ApplicationHero({
   const credentials = snapshot
     ? summarizeCredentials(snapshot.credentials)
     : null;
-  const bars = snapshot ? [...snapshot.deliveries].reverse() : [];
 
   return (
     <header className="appws-hero card">
@@ -67,11 +66,15 @@ export function ApplicationHero({
           <h2 className="appws-title">{name}</h2>
           <p className="page-subtitle">{description}</p>
         </div>
-        <span className={`badge ${active ? "badge-success" : "badge-warning"}`}>
-          {active ? "Ativa" : "Suspensa"}
-        </span>
+        <div className="appws-hero-side">
+          {switcher}
+          <span
+            className={`badge ${active ? "badge-success" : "badge-warning"}`}
+          >
+            {active ? "Ativa" : "Suspensa"}
+          </span>
+        </div>
       </div>
-      {switcher}
       {canManage && (
         <>
           {failed && (
@@ -114,21 +117,6 @@ export function ApplicationHero({
               hint="Concedidas"
             />
           </dl>
-          {bars.length > 0 && (
-            <div
-              className="appws-bars"
-              role="img"
-              aria-label={`Resultado das últimas ${bars.length} entregas, da mais antiga para a mais recente`}
-            >
-              {bars.map((item, index) => (
-                <span
-                  key={item.id}
-                  data-status={item.status}
-                  style={{ animationDelay: `${index * 25}ms` }}
-                />
-              ))}
-            </div>
-          )}
         </>
       )}
     </header>

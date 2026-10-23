@@ -2,6 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { summarizeDeliveries } from "./application-overview-model";
 import { useDialogFocus } from "./useDialogFocus";
+import { DeliveryCharts } from "./DeliveryCharts";
+import { IntegrationIcon } from "./IntegrationIcon";
+import { relativeTime } from "./integration-insights-model";
+import { webhookHost } from "./application-overview-model";
 import { deliveryLabel, deliveryTone, eventLabel } from "./delivery-labels";
 import {
   ApiError,
@@ -158,6 +162,27 @@ export function WebhookDeliveries({
   }
 
   const metrics = summarizeDeliveries(items);
+  const [kind, setKind] = useState<"all" | "real" | "test">("all");
+  const shownItems = items.filter(
+    (item) =>
+      kind === "all" || (kind === "test" ? item.is_test : !item.is_test),
+  );
+  const maxLatency = Math.max(
+    1,
+    ...shownItems.map((item) => item.duration_ms ?? 0),
+  );
+  const counts: Record<string, number> = {
+    all: items.length,
+    attempted: items.filter((item) => item.status === "attempted").length,
+    delivered: items.filter((item) => item.status === "delivered").length,
+    unknown: items.filter((item) => item.status === "unknown").length,
+    skipped: items.filter((item) => item.status === "skipped").length,
+  };
+  const kinds = [
+    { value: "all", label: "Todas" },
+    { value: "real", label: "Eventos reais" },
+    { value: "test", label: "Testes" },
+  ] as const;
 
   return (
     <section className="cred" aria-labelledby="delivery-title">
@@ -180,26 +205,49 @@ export function WebhookDeliveries({
           Atualizar
         </button>
       </header>
-      <div className="rules-tabs" role="group" aria-label="Filtrar entregas">
-        {filters.map((item) => (
-          <button
-            key={item.value}
-            type="button"
-            className="rules-tab"
-            aria-pressed={filter === item.value}
-            onClick={() => {
-              if (item.value === filter) return;
-              setLoading(true);
-              setError("");
-              setItems([]);
-              setCursor(null);
-              setSelected(null);
-              setFilter(item.value);
-            }}
-          >
-            {item.label}
-          </button>
-        ))}
+      {!loading && !error && items.length > 0 && (
+        <DeliveryCharts items={items} />
+      )}
+      <div className="dfilters">
+        <div className="seg" role="group" aria-label="Filtrar por estado">
+          {filters.map((item) => (
+            <button
+              key={item.value}
+              type="button"
+              className="seg-item"
+              data-status={item.value}
+              aria-pressed={filter === item.value}
+              onClick={() => {
+                if (item.value === filter) return;
+                setLoading(true);
+                setError("");
+                setItems([]);
+                setCursor(null);
+                setSelected(null);
+                setFilter(item.value);
+              }}
+            >
+              <span className="seg-dot" aria-hidden="true" />
+              {item.label}
+              {filter === "all" && counts[item.value] !== undefined && (
+                <span className="seg-count">{counts[item.value]}</span>
+              )}
+            </button>
+          ))}
+        </div>
+        <div className="seg" role="group" aria-label="Filtrar por tipo">
+          {kinds.map((item) => (
+            <button
+              key={item.value}
+              type="button"
+              className="seg-item"
+              aria-pressed={kind === item.value}
+              onClick={() => setKind(item.value)}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
       </div>
       {!loading && !error && items.length > 0 && (
         <p className="form-hint" role="status">
@@ -224,81 +272,84 @@ export function WebhookDeliveries({
         <div className="alert alert-danger" role="alert">
           {error}
         </div>
-      ) : items.length === 0 ? (
+      ) : shownItems.length === 0 ? (
         <div className="empty-state" role="status">
           <strong>Nenhuma entrega encontrada</strong>
           <span>
-            {filter === "all"
+            {filter === "all" && kind === "all"
               ? "Os eventos enviados aparecerão aqui quando houver atividade."
-              : "Não há entregas com este estado."}
+              : "Não há entregas com este filtro."}
           </span>
         </div>
       ) : (
         <>
-          <div className="data-table-wrap">
-            <table className="data-table" aria-label="Lista de entregas">
-              <thead>
-                <tr>
-                  <th scope="col">Evento</th>
-                  <th scope="col">Estado</th>
-                  <th scope="col">Resposta</th>
-                  <th scope="col">Horário</th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((delivery) => (
-                  <tr
-                    key={delivery.id}
-                    data-clickable
-                    className={
-                      delivery.id === lastOpenedId.current && detailOpen
-                        ? "selected"
-                        : undefined
-                    }
-                    onClick={() => void openDetail(delivery.id)}
-                  >
-                    <td data-label="Evento">
-                      <button
-                        className="rules-cell-button"
-                        data-row-id={delivery.id}
-                        type="button"
-                        aria-haspopup="dialog"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          void openDetail(delivery.id);
-                        }}
-                      >
-                        <strong>{eventLabel(delivery.event_type)}</strong>
-                        <small>
-                          {delivery.is_test ? "Teste assinado" : "Evento real"}
-                        </small>
-                      </button>
-                    </td>
-                    <td data-label="Estado">
-                      <span
-                        className={`badge ${deliveryTone(delivery.status)}`}
-                      >
-                        {deliveryLabel(delivery.status)}
-                      </span>
-                    </td>
-                    <td data-label="Resposta">
-                      {delivery.http_status
-                        ? `HTTP ${delivery.http_status}`
-                        : "Sem resposta"}
-                      {delivery.duration_ms != null && (
-                        <small className="rules-cell-sub">
-                          {delivery.duration_ms} ms
-                        </small>
+          <ul className="feed" aria-label="Lista de entregas">
+            {shownItems.map((delivery) => (
+              <li key={delivery.id}>
+                <button
+                  className="feed-row"
+                  data-row-id={delivery.id}
+                  data-tone={deliveryTone(delivery.status)}
+                  data-selected={
+                    delivery.id === lastOpenedId.current && detailOpen
+                  }
+                  type="button"
+                  aria-haspopup="dialog"
+                  onClick={() => void openDetail(delivery.id)}
+                >
+                  <span className="feed-mark" aria-hidden="true">
+                    <IntegrationIcon
+                      name={
+                        delivery.status === "delivered"
+                          ? "check"
+                          : delivery.status === "attempted" ||
+                              delivery.status === "unknown"
+                            ? "close"
+                            : "activity"
+                      }
+                      size={15}
+                    />
+                  </span>
+                  <span className="feed-main">
+                    <strong>{eventLabel(delivery.event_type)}</strong>
+                    <small>
+                      {webhookHost(delivery.endpoint_url)} ·{" "}
+                      {delivery.is_test ? "Teste assinado" : "Evento real"}
+                    </small>
+                  </span>
+                  <span className="feed-http">
+                    {delivery.http_status
+                      ? `HTTP ${delivery.http_status}`
+                      : "Sem resposta"}
+                  </span>
+                  <span className="feed-latency">
+                    {delivery.duration_ms != null ? (
+                      <>
+                        <i
+                          style={{
+                            width: `${Math.max(6, (delivery.duration_ms / maxLatency) * 100)}%`,
+                          }}
+                        />
+                        <small>{delivery.duration_ms} ms</small>
+                      </>
+                    ) : (
+                      <small>—</small>
+                    )}
+                  </span>
+                  <span className="feed-time">
+                    <strong>
+                      {relativeTime(
+                        delivery.attempted_at || delivery.created_at,
                       )}
-                    </td>
-                    <td data-label="Horário">
+                    </strong>
+                    <small>
                       {dateLabel(delivery.attempted_at || delivery.created_at)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                    </small>
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
           {cursor && (
             <button
               className="btn btn-secondary btn-md cred-more"

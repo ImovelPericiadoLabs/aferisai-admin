@@ -1,4 +1,5 @@
 import { useId, useState, type KeyboardEvent, type ReactNode } from "react";
+import { AccessMatrix } from "./AccessMatrix";
 import { ApplicationHero } from "./ApplicationHero";
 import { ApplicationOverview } from "./ApplicationOverview";
 import { useApplicationSnapshot } from "./useApplicationSnapshot";
@@ -8,11 +9,9 @@ import { CredentialManagement } from "./CredentialManagement";
 import { RedirectUriManagement } from "./RedirectUriManagement";
 import { WebhookEndpointManagement } from "./WebhookEndpointManagement";
 import { WebhookDeliveries } from "./WebhookDeliveries";
-import {
-  applicationPermissionDescription,
-  applicationPermissionLabel,
-} from "./display-labels";
+import { applicationPermissionLabel } from "./display-labels";
 import "./application-workspace.css";
+import "./integration-insights.css";
 
 type Application = {
   id: string;
@@ -398,74 +397,15 @@ export function ApplicationWorkspace({
               <h3 className="appws-section-title" id="appws-permissions-title">
                 Permissões da aplicação
               </h3>
-              {permissions.length ? (
-                <div className="data-table-wrap">
-                  <table className="data-table" aria-label="Permissões">
-                    <thead>
-                      <tr>
-                        <th scope="col">Permissão</th>
-                        <th scope="col">Estado</th>
-                        <th scope="col">
-                          <span className="sr-only">Ações</span>
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {permissions.map((permission) => {
-                        const granted = application.permissions.includes(
-                          permission.code,
-                        );
-                        return (
-                          <tr key={permission.code}>
-                            <td data-label="Permissão">
-                              <strong
-                                className="rules-cell-main"
-                                title={permission.code}
-                              >
-                                {applicationPermissionLabel(permission.code)}
-                              </strong>
-                              <small className="rules-cell-sub">
-                                {applicationPermissionDescription(
-                                  permission.code,
-                                  permission.description,
-                                )}
-                              </small>
-                            </td>
-                            <td data-label="Estado">
-                              <span
-                                className={`badge ${granted ? "badge-success" : "badge-neutral"}`}
-                              >
-                                {granted ? "Concedida" : "Não concedida"}
-                              </span>
-                            </td>
-                            <td className="appws-open">
-                              {canManage && channel === "team" && (
-                                <button
-                                  type="button"
-                                  className={`btn btn-sm ${granted ? "btn-ghost-danger" : "btn-secondary"}`}
-                                  disabled={permissionBusy || !editable}
-                                  onClick={() =>
-                                    setPermissionToReview({
-                                      code: permission.code,
-                                      granted,
-                                    })
-                                  }
-                                >
-                                  {granted ? "Revogar" : "Conceder"}
-                                </button>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div className="empty-state" role="status">
-                  <strong>Nenhuma permissão disponível</strong>
-                </div>
-              )}
+              <AccessMatrix
+                permissions={permissions}
+                granted={application.permissions}
+                canChange={canManage && channel === "team" && editable}
+                busy={permissionBusy}
+                onRequest={(code, granted) =>
+                  setPermissionToReview({ code, granted })
+                }
+              />
             </section>
             {canManage && channel === "team" && (
               <section aria-labelledby="appws-oauth-title">
