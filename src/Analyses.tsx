@@ -9,6 +9,7 @@ import {
 import { AnalysisReview } from "./AnalysisReview";
 import { SourceClassification } from "./SourceClassification";
 import { analysisWorkStatusLabel, statusLabel } from "./display-labels";
+import { OriginalViewer, type OriginalTarget } from "./OriginalViewer";
 import "./review.css";
 
 type Tab = "requests" | "classify" | "review" | "attention";
@@ -56,6 +57,7 @@ export function Analyses({
   const [attention, setAttention] = useState<AttentionPage | null>(null);
   const [attentionError, setAttentionError] = useState("");
   const [attentionBusy, setAttentionBusy] = useState(false);
+  const [viewing, setViewing] = useState<OriginalTarget | null>(null);
 
   useEffect(() => {
     if (tab !== "requests") return;
@@ -343,6 +345,7 @@ export function Analyses({
                             <th>Status</th>
                             <th>Código de erro</th>
                             <th>Finalizado em</th>
+                            <th>Documento</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -373,6 +376,38 @@ export function Analyses({
                                     )
                                   : "—"}
                               </td>
+                              <td data-label="Documento">
+                                <button
+                                  type="button"
+                                  className="btn btn-secondary btn-sm"
+                                  aria-haspopup="dialog"
+                                  data-original-for={item.work_id}
+                                  onClick={() =>
+                                    setViewing({
+                                      requestId: item.request_id,
+                                      title: "Documento do pedido",
+                                      facts: [
+                                        {
+                                          label: "Trabalho",
+                                          value: item.work_id,
+                                        },
+                                        {
+                                          label: "Pedido",
+                                          value: item.request_id,
+                                        },
+                                        {
+                                          label: "Status",
+                                          value: analysisWorkStatusLabel(
+                                            item.status,
+                                          ),
+                                        },
+                                      ],
+                                    })
+                                  }
+                                >
+                                  Ver documento
+                                </button>
+                              </td>
                             </tr>
                           ))}
                         </tbody>
@@ -396,6 +431,17 @@ export function Analyses({
           )}
         </section>
       )}
+      <OriginalViewer
+        target={viewing}
+        csrf={csrf}
+        onClose={() => setViewing(null)}
+        onUnauthorized={onUnauthorized}
+        returnFocus={() =>
+          document.querySelector<HTMLElement>(
+            `[data-original-for="${viewing?.facts[0]?.value ?? ""}"]`,
+          )
+        }
+      />
     </div>
   );
 }

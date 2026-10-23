@@ -41,7 +41,7 @@ export function misalignment(
 }
 
 const GROUPS =
-  "form, fieldset, .card, header, footer, [role=toolbar], [class*=toolbar], [class*=actions], [class*=filters], [class*=-row]";
+  "form, fieldset, [role=dialog], [role=alertdialog], .card, header, footer, [role=toolbar], [class*=toolbar], [class*=actions], [class*=filters], [class*=-row]";
 
 function describe(element: Element): string {
   const text = (element.textContent ?? "").trim().slice(0, 24);

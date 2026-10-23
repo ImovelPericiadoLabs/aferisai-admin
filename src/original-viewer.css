@@ -1,0 +1,8 @@
+.ov-panel {
+  width: min(720px, 100vw);
+}
+
+.ov-reason {
+  display: grid;
+  gap: var(--space-2);
+}
