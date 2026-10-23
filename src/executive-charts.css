@@ -270,3 +270,153 @@
   height: 10px;
   border-radius: 3px;
 }
+
+/* Multi-series trend */
+.xc-multi {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-3);
+}
+
+.xc-legend-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.xc-chip {
+  display: inline-flex;
+  padding: 5px var(--space-3);
+  gap: var(--space-2);
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  cursor: pointer;
+}
+
+.xc-chip i {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  background: var(--series);
+}
+
+.xc-chip[aria-pressed="false"] {
+  color: var(--text-subtle);
+}
+
+.xc-chip[aria-pressed="false"] i {
+  background: var(--border-strong);
+}
+
+.xc-chip:hover {
+  background: var(--surface-muted);
+}
+
+.xc-chip:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.xc-multi-line {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.25;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.xc-multi-previous {
+  fill: none;
+  opacity: 0.55;
+  stroke: currentColor;
+  stroke-dasharray: 5 4;
+  stroke-width: 1.75;
+}
+
+.xc-multi-dot {
+  stroke: var(--surface);
+  stroke-width: 2;
+}
+
+.xc-tip {
+  position: absolute;
+  z-index: 2;
+  display: grid;
+  min-width: 190px;
+  max-width: 260px;
+  padding: var(--space-3);
+  gap: 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+  font-size: var(--text-sm);
+  pointer-events: none;
+}
+
+.xc-tip-row {
+  display: grid;
+  gap: 0 var(--space-2);
+  grid-template-columns: 10px 1fr auto;
+  align-items: center;
+}
+
+.xc-tip-row i {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+
+.xc-tip-row b {
+  font-variant-numeric: tabular-nums;
+}
+
+.xc-tip-row small {
+  grid-column: 2 / 4;
+  color: var(--text-muted);
+  font-size: var(--text-caption);
+}
+
+.xc-reading-item {
+  display: inline-flex;
+  gap: 6px;
+  align-items: baseline;
+}
+
+.xc-reading-item i {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+}
+
+.xc-empty {
+  margin: 0;
+  padding: var(--space-6, 32px) 0;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.xc-note {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--text-caption);
+}
+
+@media (max-width: 520px) {
+  .xc-tip {
+    min-width: 0;
+    padding: var(--space-2) var(--space-3);
+    gap: 3px;
+  }
+
+  /* The comparison values are also written under the chart. */
+  .xc-tip-row small {
+    display: none;
+  }
+}

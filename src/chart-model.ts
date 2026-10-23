@@ -1,7 +1,27 @@
 export type Point = { x: number; y: number };
 
-/** A top value rounded up to 1, 2, 2.5, 5 or 10 times a power of ten, plus 4 even steps. */
-export function niceScale(value: number): { max: number; ticks: number[] } {
+/**
+ * A top value rounded up to a readable step, plus even ticks. With `integer`, steps are
+ * 1, 2 or 5 times a power of ten and the tick count is 3 to 5 intervals, so counts read
+ * 10, 20, 30 instead of 7.5, 15, 22.5.
+ */
+export function niceScale(
+  value: number,
+  options: { integer?: boolean } = {},
+): { max: number; ticks: number[] } {
+  if (options.integer) {
+    const target = Math.max(1, Math.ceil(value));
+    for (let power = 1; ; power *= 10)
+      for (const multiple of [1, 2, 5]) {
+        const step = multiple * power;
+        const intervals = Math.max(2, Math.ceil(target / step));
+        if (intervals <= 5 && (intervals >= 3 || target <= 2 * step))
+          return {
+            max: step * intervals,
+            ticks: Array.from({ length: intervals + 1 }, (_, i) => i * step),
+          };
+      }
+  }
   if (value <= 0) return { max: 4, ticks: [0, 1, 2, 3, 4] };
   const intervals = 4;
   const rough = value / intervals;

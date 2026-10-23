@@ -27,6 +27,44 @@ describe("niceScale", () => {
   });
 });
 
+describe("niceScale for whole numbers", () => {
+  it("never produces fractional ticks, so counts read as 10, 20, 30", () => {
+    expect(niceScale(30, { integer: true })).toEqual({
+      max: 30,
+      ticks: [0, 10, 20, 30],
+    });
+    expect(niceScale(15, { integer: true })).toEqual({
+      max: 15,
+      ticks: [0, 5, 10, 15],
+    });
+    expect(niceScale(7, { integer: true })).toEqual({
+      max: 8,
+      ticks: [0, 2, 4, 6, 8],
+    });
+    expect(niceScale(1, { integer: true })).toEqual({
+      max: 2,
+      ticks: [0, 1, 2],
+    });
+    expect(niceScale(0, { integer: true })).toEqual({
+      max: 2,
+      ticks: [0, 1, 2],
+    });
+    expect(niceScale(1234, { integer: true })).toEqual({
+      max: 1500,
+      ticks: [0, 500, 1000, 1500],
+    });
+  });
+  it("always covers the largest value and keeps every tick an integer", () => {
+    for (const value of [1, 2, 3, 9, 11, 29, 31, 99, 101, 1234, 56_789]) {
+      const scale = niceScale(value, { integer: true });
+      expect(scale.max).toBeGreaterThanOrEqual(value);
+      expect(scale.ticks.every(Number.isInteger)).toBe(true);
+      expect(scale.ticks.length).toBeGreaterThanOrEqual(3);
+      expect(scale.ticks.length).toBeLessThanOrEqual(6);
+    }
+  });
+});
+
 describe("pointsFor and paths", () => {
   it("spreads points across the width and flips y so larger is higher", () => {
     const points = pointsFor([0, 5, 10], 200, 100, 10);
