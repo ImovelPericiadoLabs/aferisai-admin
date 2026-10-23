@@ -6,6 +6,7 @@ import type {
 } from "./api";
 import {
   canResend,
+  eventsSummary,
   keyStage,
   selectableEvents,
   selectionChanged,
@@ -119,5 +120,22 @@ describe("canResend", () => {
     expect(canResend(delivery({ status: "delivered" }))).toBe(false);
     expect(canResend(delivery({ status: "pending" }))).toBe(false);
     expect(canResend(delivery({ is_test: true }))).toBe(false);
+  });
+});
+
+describe("eventsSummary", () => {
+  it("names the selected events", () => {
+    expect(eventsSummary(["analysis.created", "analysis.completed"])).toBe(
+      "Análise criada, Análise concluída",
+    );
+    expect(eventsSummary(["analysis.completed"])).toBe("Análise concluída");
+  });
+  it("says deliveries are paused when nothing is selected", () => {
+    expect(eventsSummary([])).toBe(
+      "Nenhum evento selecionado: entregas pausadas",
+    );
+  });
+  it("keeps the old wording for a backend that sends no selection", () => {
+    expect(eventsSummary(undefined)).toBe("Análise concluída");
   });
 });

@@ -15,6 +15,7 @@ import { ConfirmDialog } from "./ConfirmDialog";
 import { Checkbox } from "./controls";
 import { SecretReveal } from "./SecretReveal";
 import { webhookStep } from "./webhook-setup-model";
+import { eventsSummary } from "./webhook-settings-model";
 import { IntegrationIcon } from "./IntegrationIcon";
 import { webhookHost } from "./application-overview-model";
 import { WebhookFlow } from "./WebhookFlow";
@@ -361,7 +362,7 @@ export function WebhookEndpointManagement({
               <small className="rules-cell-sub">Destino completo</small>
               <strong className="rules-cell-main">{endpoint.url}</strong>
               <small className="rules-cell-sub">
-                Evento: Análise concluída
+                Eventos: {eventsSummary(endpoint.event_types)}
               </small>
             </div>
             <span

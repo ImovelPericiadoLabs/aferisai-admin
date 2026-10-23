@@ -1,5 +1,7 @@
 # Padrão de payloads de webhook e simulação de eventos
 
+> **Atualização (backend `bff5303`, PRs #58, #61 a #65):** o backend adotou o padrão proposto abaixo. Hoje o corpo é um envelope v1 (`id`, `event`, `version`, `occurred_at`, `application_id`, `connection_id`, `data`), a assinatura é `HMAC-SHA256(chave, "<X-Aferis-Timestamp>.<corpo>")`, há `X-Aferis-Key-Version`, reenvio com recuo, reenvio manual, rotação de chave, seleção de eventos e simulação por `event_type`. Eventos reais: `analysis.created` e `analysis.completed`; `webhook.test` é só de teste. As seções 1 a 4 ficam como histórico da proposta; a fonte da verdade é `src/webhook-payloads.ts`, testado contra valores gerados pelas funções do backend.
+
 **Respondendo à pergunta:** faz sentido, sim. O parceiro precisa de um payload de exemplo fiel, de um jeito de validar a assinatura antes de ligar o webhook e de poder simular os eventos que ele vai escutar. Hoje o backend só envia `webhook.test`; o resto vira proposta.
 
 ## 1. O que existe hoje (fato)

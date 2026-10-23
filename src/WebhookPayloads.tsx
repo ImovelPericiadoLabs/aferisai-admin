@@ -150,9 +150,9 @@ export function WebhookPayloads({
               <details className="wp-exact">
                 <summary>Bytes exatos assinados</summary>
                 <p className="form-hint">
-                  A assinatura cobre este corpo compacto, com chaves ordenadas e
-                  caracteres não ASCII escapados. Não reserialize o JSON antes
-                  de validar.
+                  A assinatura cobre o carimbo de tempo, um ponto e este corpo
+                  compacto, com chaves ordenadas e caracteres não ASCII
+                  escapados. Não reserialize o JSON antes de validar.
                 </p>
                 <pre className="wp-code" tabIndex={0}>
                   {example.body}
@@ -189,9 +189,12 @@ export function WebhookPayloads({
           {view === "verify" && example && (
             <div className="wp-stack">
               <p className="form-hint">
-                Calcule o HMAC-SHA256 dos bytes recebidos com a sua chave e
-                compare com o cabeçalho <code>X-Aferis-Signature</code>, em
-                tempo constante.
+                Calcule o HMAC-SHA256 do carimbo (
+                <code>X-Aferis-Timestamp</code>), de um ponto e dos bytes
+                recebidos, com a sua chave. Compare com o cabeçalho{" "}
+                <code>X-Aferis-Signature</code>, em tempo constante. Durante uma
+                rotação de chave, o cabeçalho <code>X-Aferis-Key-Version</code>{" "}
+                indica qual chave assinou.
               </p>
               <div className="seg" role="group" aria-label="Linguagem">
                 <button
@@ -226,9 +229,11 @@ export function WebhookPayloads({
               </pre>
               <div className="alert" role="note">
                 <strong>Vetor de teste:</strong> com a chave{" "}
-                <code>{SAMPLE_SECRET}</code> e o corpo exato acima, a assinatura
-                esperada é <code>{example.headers["X-Aferis-Signature"]}</code>.
-                Use para conferir a sua implementação antes de ligar o webhook.
+                <code>{SAMPLE_SECRET}</code>, o carimbo{" "}
+                <code>{example.headers["X-Aferis-Timestamp"]}</code> e o corpo
+                exato acima, a assinatura esperada é{" "}
+                <code>{example.headers["X-Aferis-Signature"]}</code>. Use para
+                conferir a sua implementação antes de ligar o webhook.
               </div>
             </div>
           )}
@@ -239,9 +244,9 @@ export function WebhookPayloads({
                 Este comando <strong>não é enviado pela Aferis</strong>: roda no
                 seu terminal, com a chave de exemplo, para testar o seu
                 receptor.{" "}
-                {selected.type === "webhook.test"
-                  ? "Para um envio real assinado com a sua chave, use “Enviar teste assinado”."
-                  : "Hoje a Aferis só envia o teste (webhook.test) sob demanda; simular outros eventos depende de mudança no backend."}
+                {selected.status === "proposed"
+                  ? "Este evento ainda não existe: o comando só serve para ensaiar o seu receptor."
+                  : "Para um envio real assinado com a sua chave, use “Simular evento” na seção acima."}
               </div>
               <div className="wp-code-head">
                 <span>cURL</span>

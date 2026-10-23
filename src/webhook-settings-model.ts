@@ -1,3 +1,4 @@
+import { eventLabel } from "./delivery-labels";
 import type {
   WebhookDelivery,
   WebhookEndpoint,
@@ -35,3 +36,9 @@ export function selectionChanged(a: string[], b: string[]): boolean {
 export const canResend = (delivery: WebhookDelivery) =>
   !delivery.is_test &&
   (delivery.status === "attempted" || delivery.status === "unknown");
+
+export function eventsSummary(types: string[] | undefined): string {
+  if (types === undefined) return eventLabel("analysis.completed");
+  if (types.length === 0) return "Nenhum evento selecionado: entregas pausadas";
+  return types.map(eventLabel).join(", ");
+}
