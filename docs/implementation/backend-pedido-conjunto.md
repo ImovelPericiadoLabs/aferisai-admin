@@ -26,6 +26,8 @@ Busca e filtros em listas (usuários, membros, regras, comissões, aplicações,
 - Suspender e reativar aplicação isolada e organização; renomear aplicação.
 - Trocar URL e rotacionar chave de webhook; reenviar entrega; filtrar entregas por data.
 - Pessoas e convites do parceiro (listar, reenviar, revogar).
+- **Gestão de convidados por aplicação:** vincular pessoa do parceiro a aplicação, listar quem tem acesso, revogar o acesso de uma pessoa (hoje só se revoga a credencial da aplicação) e **trilha de auditoria** (quem concedeu/revogou, quando, motivo) para permissões, credenciais, webhooks e convites. Sem isso o admin não pode mostrar convidados nem histórico, e não os inventa.
+- Métricas por aplicação além das últimas 20 entregas: série temporal de entregas por estado e latência (p50/p95) por período.
 
 **Upload e arquivos**
 - Tipos e tamanhos permitidos por upload, expostos pela API.
