@@ -1,5 +1,6 @@
 .dz {
   display: grid;
+  min-width: 0;
   gap: var(--space-1);
 }
 
@@ -91,6 +92,7 @@
 
 .dz-file {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-3) var(--space-4);
@@ -118,7 +120,7 @@
 .dz-file-text {
   display: grid;
   min-width: 0;
-  flex: 1;
+  flex: 1 1 9rem;
 }
 
 .dz-file-text strong {

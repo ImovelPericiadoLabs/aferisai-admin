@@ -41,6 +41,7 @@ import { Users } from "./Users";
 import { TeamMembers } from "./TeamMembers";
 import type { PeopleTab } from "./people-model";
 import { AnalysisProviders } from "./AnalysisProviders";
+import { DesignSystemGuide } from "./DesignSystemGuide";
 import { Access } from "./Access";
 import { Passkeys } from "./Passkeys";
 import { installNoAutofill } from "./no-autofill";
@@ -74,6 +75,7 @@ type Page =
   | "team-members"
   | "analysis-providers"
   | "passkeys";
+type HiddenPage = "design-system";
 type Session = { csrf: string; member: TeamMember };
 
 const nav: { page: Page; label: string; detail: string }[] = [
@@ -947,7 +949,7 @@ function Organizations({
   );
 }
 
-function pageFromHash(): Page {
+function pageFromHash(): Page | HiddenPage {
   const value = window.location.hash.slice(1);
   return value === "organizations" ||
     value === "reports" ||
@@ -966,7 +968,8 @@ function pageFromHash(): Page {
     value === "users" ||
     value === "team-members" ||
     value === "analysis-providers" ||
-    value === "passkeys"
+    value === "passkeys" ||
+    value === "design-system"
     ? value
     : "overview";
 }
@@ -974,7 +977,7 @@ function pageFromHash(): Page {
 function TeamApp() {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState<Page>(pageFromHash);
+  const [page, setPage] = useState<Page | HiddenPage>(pageFromHash);
   const [selectedOrganizationId, setSelectedOrganizationId] = useState<
     string | null
   >(null);
@@ -1142,11 +1145,13 @@ function TeamApp() {
         (item.page !== "analysis-providers" ||
           session.member.role === "administrator"),
   );
-  const currentPage = visibleNav.some((item) => item.page === page)
-    ? page
-    : isFinancial
-      ? "financial"
-      : "overview";
+  const currentPage =
+    visibleNav.some((item) => item.page === page) ||
+    (page === "design-system" && session.member.role === "administrator")
+      ? page
+      : isFinancial
+        ? "financial"
+        : "overview";
   const currentItem = nav.find((item) => item.page === currentPage);
   const peopleTabs: PeopleTab[] = [
     ...(canReview ? [{ page: "users" as const, label: "Usuários" }] : []),
@@ -1479,6 +1484,8 @@ function TeamApp() {
               csrf={session.csrf}
               onUnauthorized={unauthorize}
             />
+          ) : currentPage === "design-system" ? (
+            <DesignSystemGuide />
           ) : currentPage === "passkeys" ? (
             <Passkeys csrf={session.csrf} onUnauthorized={unauthorize} />
           ) : (
@@ -1515,7 +1522,7 @@ function TeamApp() {
             </button>
           ))}
           <button
-            className={`bottom-nav-item${visibleMobileItems.includes(currentPage) ? "" : " active"}`}
+            className={`bottom-nav-item${(visibleMobileItems as string[]).includes(currentPage) ? "" : " active"}`}
             onClick={() => openMenu()}
             aria-label="Mais opções"
             aria-expanded={menuOpen}

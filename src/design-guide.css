@@ -1,0 +1,56 @@
+.guide-section {
+  margin-bottom: var(--space-6);
+}
+
+.guide-section > h2 {
+  margin: 0 0 var(--space-1);
+  font-size: var(--text-lg);
+  font-weight: 600;
+}
+
+.guide-section > p {
+  margin: 0 0 var(--space-4);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.guide-grid {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  align-items: start;
+}
+
+.guide-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.guide-inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.guide-label {
+  margin: 0 0 var(--space-2);
+  color: var(--text-muted);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.guide-grid > .guide-wide {
+  grid-column: 1 / -1;
+}
+
+.guide-grid > * {
+  min-width: 0;
+}
+
+.guide-inline + .guide-inline {
+  margin-top: var(--space-3);
+}
