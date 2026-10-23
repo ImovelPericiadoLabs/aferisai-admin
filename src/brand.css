@@ -16,8 +16,8 @@
   width: auto;
   margin-top: 0;
   padding-left: 0.6rem;
-  border-left: 1px solid #c8d2e0;
-  color: #536680;
+  border-left: 1px solid var(--border-strong);
+  color: var(--text-muted);
   font:
     800 0.59rem Manrope,
     Arial,
@@ -26,6 +26,6 @@
   text-transform: uppercase;
 }
 .brand-light > span:last-child {
-  color: #b8c9e3;
-  border-color: #58709a;
+  color: var(--border-strong);
+  border-color: var(--text-muted);
 }

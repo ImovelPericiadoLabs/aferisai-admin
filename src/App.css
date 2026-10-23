@@ -1,13 +1,11 @@
 :root {
-  --blue: #075bff;
-  --navy: #061c3d;
-  --ink: #172b4d;
-  --muted: #5f7088;
-  --line: #dfe7f0;
-  --surface: #fff;
-  --bg: #f7f9fc;
-  --surface-subtle: #f0f5fb;
-  --focus: #75a5ff;
+  --blue: var(--primary);
+  --navy: var(--text);
+  --ink: var(--text);
+  --muted: var(--text-muted);
+  --line: var(--border);
+  --surface-subtle: var(--surface-muted);
+  --focus: var(--primary);
   color-scheme: light;
 }
 
@@ -83,15 +81,15 @@ textarea:focus-visible {
 }
 .button.primary {
   background: var(--blue);
-  color: #fff;
+  color: var(--surface);
 }
 .button.white {
-  background: #fff;
+  background: var(--surface);
   color: var(--navy);
 }
 .button.secondary {
-  background: #fff;
-  border-color: #c7d2e2;
+  background: var(--surface);
+  border-color: var(--border-strong);
   color: var(--navy);
 }
 .button.full {
@@ -119,17 +117,17 @@ textarea:focus-visible {
   font-size: 0.53rem;
   letter-spacing: 0.13em;
   text-transform: uppercase;
-  color: #8595aa;
+  color: var(--text-subtle);
   margin-top: 0.32rem;
 }
 .brand-ai {
   color: var(--blue);
 }
 .brand-light {
-  color: #fff;
+  color: var(--surface);
 }
 .brand-light small {
-  color: #a5badb;
+  color: var(--text-subtle);
 }
 .brand-mark {
   width: 2.2rem;
@@ -137,7 +135,7 @@ textarea:focus-visible {
   display: grid;
   place-items: center;
   background: var(--blue);
-  color: #fff;
+  color: var(--surface);
   clip-path: polygon(50% 0, 100% 100%, 68% 100%, 50% 60%, 30% 100%, 0 100%);
 }
 .shell {
@@ -161,7 +159,7 @@ textarea:focus-visible {
   padding: 0 0.8rem 3.3rem;
 }
 .nav-title {
-  color: #3a5170;
+  color: var(--text-muted);
   font-size: 0.62rem;
   font-weight: 800;
   letter-spacing: 0.14em;
@@ -181,7 +179,7 @@ textarea:focus-visible {
   align-items: center;
   gap: 0.85rem;
   text-align: left;
-  color: #7a9ec0;
+  color: var(--text-subtle);
   padding: 0.75rem;
   transition:
     background 0.15s,
@@ -189,11 +187,11 @@ textarea:focus-visible {
 }
 .nav-link:hover {
   background: rgba(255, 255, 255, 0.07);
-  color: #d0e3f8;
+  color: var(--primary-ring);
 }
 .nav-link.active {
   background: rgba(7, 91, 255, 0.18);
-  color: #fff;
+  color: var(--surface);
   border-left-color: var(--blue);
 }
 .nav-link strong,
@@ -205,11 +203,11 @@ textarea:focus-visible {
 }
 .nav-link small {
   font-size: 0.67rem;
-  color: #4d6680;
+  color: var(--text-muted);
   margin-top: 0.2rem;
 }
 .nav-link.active small {
-  color: #8fb8e8;
+  color: var(--text-subtle);
 }
 .nav-glyph {
   font-size: 1.35rem;
@@ -234,7 +232,7 @@ textarea:focus-visible {
   display: grid;
   place-items: center;
   background: rgba(255, 255, 255, 0.1);
-  color: #90badf;
+  color: var(--text-subtle);
   font-weight: 800;
 }
 .account strong,
@@ -243,10 +241,10 @@ textarea:focus-visible {
   font-size: 0.7rem;
 }
 .account strong {
-  color: #d0e3f8;
+  color: var(--primary-ring);
 }
 .account small {
-  color: #4d6a88;
+  color: var(--text-muted);
   margin-top: 0.2rem;
 }
 .logout {
@@ -255,14 +253,14 @@ textarea:focus-visible {
   background: transparent;
   display: flex;
   justify-content: space-between;
-  color: #5a7899;
+  color: var(--text-muted);
   font-size: 0.75rem;
   font-weight: 800;
   padding: 0.8rem 0.5rem;
   transition: color 0.15s;
 }
 .logout:hover {
-  color: #ff7b8c;
+  color: var(--text-subtle);
 }
 .main-area {
   display: flex;
@@ -271,18 +269,18 @@ textarea:focus-visible {
 }
 .topbar {
   height: 72px;
-  background: #fff;
+  background: var(--surface);
   border-bottom: 1px solid var(--line);
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 clamp(1.25rem, 3vw, 3rem);
-  color: #40516c;
+  color: var(--text-muted);
   font-size: 0.77rem;
   font-weight: 700;
 }
 .topbar b {
-  color: #aab6c6;
+  color: var(--text-subtle);
   padding: 0 0.5rem;
 }
 .content {
@@ -304,8 +302,8 @@ textarea:focus-visible {
   font-size: 0.84rem;
 }
 .pill {
-  background: #e9eef8;
-  color: #526782;
+  background: var(--bg);
+  color: var(--text-muted);
   border-radius: 30px;
   padding: 0.45rem 0.8rem;
   font-size: 0.67rem;
@@ -313,12 +311,12 @@ textarea:focus-visible {
   white-space: nowrap;
 }
 .pill.success {
-  background: #e5f5ed;
-  color: #16734b;
+  background: var(--border);
+  color: var(--success);
 }
 .hero {
-  background: #0b1d3d;
-  color: #fff;
+  background: var(--text);
+  color: var(--surface);
   border-radius: 13px;
   padding: clamp(1.5rem, 3vw, 3rem);
   display: flex;
@@ -331,7 +329,7 @@ textarea:focus-visible {
   max-width: 600px;
 }
 .hero .eyebrow {
-  color: #89b5ff;
+  color: var(--primary-ring);
 }
 .hero h2 {
   font-size: clamp(1.4rem, 2.2vw, 1.9rem);
@@ -339,7 +337,7 @@ textarea:focus-visible {
 }
 .hero p:not(.eyebrow) {
   font-size: 0.82rem;
-  color: #bfcee4;
+  color: var(--border-strong);
   max-width: 470px;
   margin: 0 0 1.6rem;
 }
@@ -354,15 +352,15 @@ textarea:focus-visible {
   place-items: center;
   width: 3.7rem;
   height: 3.7rem;
-  border: 1px solid #6d8ac6;
+  border: 1px solid var(--text-subtle);
   border-radius: 10px;
-  background: #173467;
-  color: #b8cfff;
+  background: var(--text-muted);
+  color: var(--primary-ring);
   font: 800 1.3rem Manrope;
 }
 .hero-diagram span:last-child {
   background: var(--blue);
-  color: #fff;
+  color: var(--surface);
 }
 .section-head {
   display: flex;
@@ -396,7 +394,7 @@ textarea:focus-visible {
   padding: 1.4rem;
 }
 .cards small {
-  color: #7b9fdd;
+  color: var(--text-subtle);
   font-size: 0.7rem;
   font-weight: 800;
 }
@@ -413,11 +411,11 @@ textarea:focus-visible {
 }
 .notice {
   margin-top: 1.5rem;
-  background: #edf4ff;
-  border: 1px solid #d5e3fa;
+  background: var(--primary-faint);
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 1rem;
-  color: #36567e;
+  color: var(--text-muted);
   font-size: 0.76rem;
   line-height: 1.6;
 }
@@ -444,7 +442,7 @@ textarea:focus-visible {
   flex: 0 0 2rem;
   display: grid;
   place-items: center;
-  background: #eaf1ff;
+  background: var(--primary-faint);
   border-radius: 7px;
   color: var(--blue);
   font-size: 0.7rem;
@@ -474,18 +472,18 @@ textarea:focus-visible {
 .form input {
   height: 44px;
   width: 100%;
-  border: 1px solid #cbd6e5;
+  border: 1px solid var(--border-strong);
   border-radius: 7px;
   padding: 0 0.8rem;
   color: var(--ink);
-  background: #fff;
+  background: var(--surface);
 }
 .form input::placeholder {
-  color: #a1aec0;
+  color: var(--text-subtle);
 }
 .form small {
   font-size: 0.67rem;
-  color: #8291a5;
+  color: var(--text-subtle);
 }
 .form hr {
   border: 0;
@@ -519,10 +517,10 @@ textarea:focus-visible {
   grid-row: span 2;
   display: grid;
   place-items: center;
-  background: #eaf1ff;
+  background: var(--primary-faint);
   border-radius: 50%;
   height: 1.6rem;
-  color: #2865ce;
+  color: var(--primary-hover);
   font-size: 0.68rem;
   font-weight: 800;
 }
@@ -535,16 +533,16 @@ textarea:focus-visible {
   margin-top: 0.18rem;
 }
 .side-note {
-  background: #f2f5fa;
+  background: var(--surface-muted);
   border-radius: 8px;
   padding: 1rem;
-  color: #53657e;
+  color: var(--text-muted);
   font-size: 0.73rem;
   line-height: 1.6;
 }
 .result {
   max-width: 760px;
-  border-color: #bbdfcc;
+  border-color: var(--border-strong);
 }
 .result > p:not(.eyebrow) {
   font-size: 0.78rem;
@@ -571,7 +569,7 @@ textarea:focus-visible {
   overflow-wrap: anywhere;
 }
 .result .secret {
-  color: #074db9;
+  color: var(--primary-hover);
   font-weight: 800;
 }
 .button-row {
@@ -580,11 +578,11 @@ textarea:focus-visible {
   gap: 0.65rem;
 }
 .error {
-  background: #fff0f2;
-  border: 1px solid #f6c9d1;
+  background: var(--danger-bg);
+  border: 1px solid var(--border-strong);
   border-radius: 7px;
   padding: 0.7rem;
-  color: #962b3c;
+  color: var(--danger);
   font-size: 0.74rem;
 }
 .hierarchy {
@@ -602,7 +600,7 @@ textarea:focus-visible {
 }
 .hierarchy span {
   grid-row: span 2;
-  color: #7c9bcb;
+  color: var(--text-subtle);
   font-size: 0.7rem;
   font-weight: 800;
 }
@@ -614,7 +612,7 @@ textarea:focus-visible {
   color: var(--muted);
 }
 .side-panel code {
-  background: #eaf0f9;
+  background: var(--bg);
   padding: 0.1rem 0.25rem;
   border-radius: 4px;
 }
@@ -624,7 +622,7 @@ textarea:focus-visible {
 .main-area footer {
   margin-top: auto;
   padding: 1rem clamp(1.25rem, 3vw, 3rem);
-  color: #94a1b2;
+  color: var(--text-subtle);
   font-size: 0.68rem;
 }
 .login-layout {
@@ -634,8 +632,8 @@ textarea:focus-visible {
   background: var(--bg);
 }
 .login-story {
-  background: #071a39;
-  color: #fff;
+  background: var(--text);
+  color: var(--surface);
   padding: clamp(2rem, 4vw, 4rem);
   display: flex;
   flex-direction: column;
@@ -648,13 +646,13 @@ textarea:focus-visible {
   position: absolute;
   width: 45vw;
   height: 45vw;
-  border: 1px solid #1d416f;
+  border: 1px solid var(--text-muted);
   border-radius: 50%;
   bottom: -25vw;
   left: -16vw;
   box-shadow:
-    0 0 0 6vw #0b2042,
-    0 0 0 calc(6vw + 1px) #1d416f;
+    0 0 0 6vw var(--text),
+    0 0 0 calc(6vw + 1px) var(--text-muted);
   pointer-events: none;
 }
 .login-story > * {
@@ -668,14 +666,14 @@ textarea:focus-visible {
 }
 .login-story p:not(.eyebrow) {
   max-width: 440px;
-  color: #bac9e0;
+  color: var(--border-strong);
   font-size: 0.9rem;
 }
 .login-story .eyebrow {
-  color: #89b6ff;
+  color: var(--primary-ring);
 }
 .login-story small {
-  color: #8ba4c5;
+  color: var(--text-subtle);
   font-size: 0.7rem;
 }
 .login-panel {
@@ -695,7 +693,7 @@ textarea:focus-visible {
   margin: 0 0 2rem;
 }
 .fine-print {
-  color: #8593a5;
+  color: var(--text-subtle);
   font-size: 0.68rem;
   margin-top: 1.2rem;
 }
@@ -762,7 +760,7 @@ textarea:focus-visible {
   display: none;
 }
 .close-menu {
-  color: #d0e3f8;
+  color: var(--primary-ring);
 }
 @media (max-width: 1000px) {
   .hero-diagram {
@@ -877,7 +875,7 @@ textarea:focus-visible {
   }
 }
 .skeleton {
-  background: linear-gradient(90deg, #e8edf4 25%, #f4f6fb 50%, #e8edf4 75%);
+  background: linear-gradient(90deg, var(--bg) 25%, var(--surface-muted) 50%, var(--bg) 75%);
   background-size: 400px 100%;
   animation: skeleton-shimmer 1.4s ease infinite;
   border-radius: 6px;
@@ -925,24 +923,24 @@ textarea:focus-visible {
   flex: none;
 }
 .badge-green {
-  background: #ecfdf5;
-  color: #047857;
+  background: var(--success-bg);
+  color: var(--success);
 }
 .badge-yellow {
-  background: #fffbeb;
-  color: #92400e;
+  background: var(--warning-bg);
+  color: var(--danger);
 }
 .badge-red {
-  background: #fef2f2;
-  color: #991b1b;
+  background: var(--danger-bg);
+  color: var(--danger);
 }
 .badge-blue {
-  background: #eff6ff;
-  color: #1d4ed8;
+  background: var(--primary-faint);
+  color: var(--primary-hover);
 }
 .badge-gray {
-  background: #f3f4f6;
-  color: #4b5563;
+  background: var(--surface-muted);
+  color: var(--text-muted);
 }
 
 /* ── Card surface ─────────────────────────────────────────────── */
@@ -999,7 +997,7 @@ textarea:focus-visible {
   font-size: 0.875rem;
 }
 .data-table tbody tr:hover td {
-  background: #f8faff;
+  background: var(--info-bg);
 }
 
 /* ── Form field ───────────────────────────────────────────────── */
@@ -1074,8 +1072,8 @@ textarea:focus-visible {
     left: 0;
     right: 0;
     z-index: 20;
-    background: var(--surface, #fff);
-    border-top: 1px solid var(--border, #e2e8f0);
+    background: var(--surface, var(--surface));
+    border-top: 1px solid var(--border, var(--border));
     padding-bottom: env(safe-area-inset-bottom, 0);
     box-shadow: 0 -2px 12px rgba(7, 26, 57, 0.08);
   }
@@ -1090,7 +1088,7 @@ textarea:focus-visible {
     border: 0;
     background: transparent;
     cursor: pointer;
-    color: var(--muted, #8593a5);
+    color: var(--muted, var(--text-subtle));
     font-size: 0.65rem;
     font-weight: 500;
     letter-spacing: 0.01em;
@@ -1100,7 +1098,7 @@ textarea:focus-visible {
   }
 
   .bottom-nav-item.active {
-    color: var(--accent, #1a73e8);
+    color: var(--accent, var(--primary));
   }
 
   .bottom-nav-icon {
@@ -1156,21 +1154,21 @@ textarea:focus-visible {
 }
 
 .toast.success {
-  background: #f0fdf4;
-  border-color: #86efac;
-  color: #14532d;
+  background: var(--success-bg);
+  border-color: var(--text-subtle);
+  color: var(--text);
 }
 
 .toast.error {
-  background: #fef2f2;
-  border-color: #fca5a5;
-  color: #7f1d1d;
+  background: var(--danger-bg);
+  border-color: var(--border-strong);
+  color: var(--danger);
 }
 
 .toast.warning {
-  background: #fffbeb;
-  border-color: #fcd34d;
-  color: #78350f;
+  background: var(--warning-bg);
+  border-color: var(--warning);
+  color: var(--danger);
 }
 
 .toast-icon {
@@ -1228,7 +1226,7 @@ textarea:focus-visible {
   margin-bottom: 1rem;
 }
 .nav-title {
-  color: #60738c;
+  color: var(--text-muted);
   margin: 1.25rem 0.8rem 0.7rem;
   font-size: 0.63rem;
   letter-spacing: 0.12em;
@@ -1254,29 +1252,29 @@ textarea:focus-visible {
   border: 1px solid transparent;
   border-radius: 9px;
   padding: 0.55rem 0.75rem;
-  color: #435777;
+  color: var(--text-muted);
   gap: 0.8rem;
 }
 .nav-link:hover {
-  background: #f3f7fc;
+  background: var(--surface-muted);
   color: var(--ink);
 }
 .nav-link.active {
-  background: #edf4ff;
-  border-color: #dbe9ff;
-  color: #0752ce;
+  background: var(--primary-faint);
+  border-color: var(--border);
+  color: var(--primary-hover);
 }
 .nav-link strong {
   font-size: 0.83rem;
   line-height: 1.25;
 }
 .nav-link small {
-  color: #60738c;
+  color: var(--text-muted);
   font-size: 0.67rem;
   margin-top: 0.16rem;
 }
 .nav-link.active small {
-  color: #3e68a5;
+  color: var(--text-muted);
 }
 .nav-glyph {
   width: 1.5rem;
@@ -1310,13 +1308,13 @@ textarea:focus-visible {
   border-radius: 8px;
   background: transparent;
   padding: 0.65rem 0.75rem;
-  color: #4d6280;
+  color: var(--text-muted);
   font-weight: 700;
   font-size: 0.75rem;
 }
 .collapse-control:hover,
 .logout:hover {
-  background: #f3f7fc;
+  background: var(--surface-muted);
   color: var(--ink);
 }
 .collapse-control svg {
@@ -1329,8 +1327,8 @@ textarea:focus-visible {
   margin-top: 0.25rem;
 }
 .account > span {
-  background: #e8f0ff;
-  color: #0752ce;
+  background: var(--primary-faint);
+  color: var(--primary-hover);
   width: 2.25rem;
   height: 2.25rem;
 }
@@ -1363,7 +1361,7 @@ textarea:focus-visible {
   align-items: center;
   gap: 0.6rem;
   min-width: 0;
-  color: #7a8ba1;
+  color: var(--text-subtle);
 }
 .topbar-breadcrumb strong {
   color: var(--ink);
@@ -1374,7 +1372,7 @@ textarea:focus-visible {
 }
 .topbar-breadcrumb svg {
   flex: none;
-  color: #a5b4c5;
+  color: var(--text-subtle);
 }
 .content {
   max-width: 1600px;
@@ -1412,7 +1410,7 @@ textarea:focus-visible {
   margin: 0 auto;
 }
 .skeleton {
-  background: linear-gradient(90deg, #e8edf4 25%, #f4f7fb 50%, #e8edf4 75%);
+  background: linear-gradient(90deg, var(--bg) 25%, var(--surface-muted) 50%, var(--bg) 75%);
   background-size: 400px 100%;
 }
 .shell-collapsed {
@@ -1459,10 +1457,10 @@ textarea:focus-visible {
   padding: clamp(2rem, 4vw, 4rem);
 }
 .login-story:after {
-  border-color: #31537f;
+  border-color: var(--text-muted);
   box-shadow:
-    0 0 0 6vw #0b2549,
-    0 0 0 calc(6vw + 1px) #31537f;
+    0 0 0 6vw var(--text),
+    0 0 0 calc(6vw + 1px) var(--text-muted);
   opacity: 0.55;
 }
 .login-story h1 {
@@ -1473,7 +1471,7 @@ textarea:focus-visible {
 .login-story p:not(.eyebrow) {
   font-size: 0.93rem;
   line-height: 1.7;
-  color: #c9d8ee;
+  color: var(--border-strong);
 }
 .login-illustration {
   width: min(100%, 390px);
@@ -1499,16 +1497,16 @@ textarea:focus-visible {
   gap: 0.55rem;
 }
 .login-card .form label {
-  color: #2a3d5b;
+  color: var(--text-muted);
   font-size: 0.78rem;
 }
 .login-card .form input {
   height: 48px;
-  border-color: #bdccdf;
+  border-color: var(--border-strong);
   font-size: 0.9rem;
 }
 .login-card .form input::placeholder {
-  color: #667990;
+  color: var(--text-muted);
 }
 .login-card .button {
   min-height: 48px;
@@ -1521,7 +1519,7 @@ textarea:focus-visible {
   margin-top: 1.5rem;
 }
 .login-card .fine-print {
-  color: #63758d;
+  color: var(--text-muted);
   line-height: 1.55;
 }
 .login-mobile-art {
@@ -1578,7 +1576,7 @@ textarea:focus-visible {
     color: var(--ink);
   }
   .close-menu:hover {
-    background: #f1f5fa;
+    background: var(--surface-muted);
   }
   .collapse-control {
     display: none;
@@ -1607,7 +1605,7 @@ textarea:focus-visible {
     border-radius: 8px;
   }
   .menu-toggle:hover {
-    background: #f1f5fa;
+    background: var(--surface-muted);
   }
   .content {
     padding: 1.25rem 1rem 1.5rem;
@@ -1628,12 +1626,12 @@ textarea:focus-visible {
     min-height: 58px;
     padding: 0.55rem 0.25rem 0.45rem;
     gap: 0.2rem;
-    color: #657790;
+    color: var(--text-muted);
     font-size: 0.66rem;
     font-weight: 700;
   }
   .bottom-nav-item.active {
-    color: #0752ce;
+    color: var(--primary-hover);
   }
   .bottom-nav-item svg {
     transition: transform 0.2s ease;
@@ -1748,11 +1746,11 @@ textarea:focus-visible {
   border: 0;
   border-radius: 6px;
   background: transparent;
-  color: #536984;
+  color: var(--text-muted);
 }
 .sidebar-toggle:hover {
-  background: #edf4ff;
-  color: #0752ce;
+  background: var(--primary-faint);
+  color: var(--primary-hover);
 }
 .sidebar nav {
   display: flex;
@@ -1764,7 +1762,7 @@ textarea:focus-visible {
   overflow-x: hidden;
   padding: 0.25rem 0.15rem 1rem;
   scrollbar-width: thin;
-  scrollbar-color: #cbd8e8 transparent;
+  scrollbar-color: var(--border-strong) transparent;
 }
 .sidebar-nav-group {
   display: block;
@@ -1778,7 +1776,7 @@ textarea:focus-visible {
 }
 .nav-title {
   margin: 0.45rem 0.65rem;
-  color: #62748e;
+  color: var(--text-muted);
 }
 .nav-group-trigger {
   display: flex;
@@ -1791,19 +1789,19 @@ textarea:focus-visible {
   border-left: 3px solid transparent;
   border-radius: 6px;
   background: transparent;
-  color: #3f5574;
+  color: var(--text-muted);
   font-size: 0.83rem;
   font-weight: 750;
   text-align: left;
 }
 .nav-group-trigger:hover {
-  background: #f2f6fb;
+  background: var(--surface-muted);
   color: var(--ink);
 }
 .nav-group-trigger.active {
-  color: #0752ce;
-  background: #f3f7ff;
-  border-left-color: #a9c9fa;
+  color: var(--primary-hover);
+  background: var(--info-bg);
+  border-left-color: var(--primary-ring);
 }
 .nav-group-label {
   flex: 1;
@@ -1814,7 +1812,7 @@ textarea:focus-visible {
 .nav-group-chevron {
   display: grid;
   place-items: center;
-  color: #72839b;
+  color: var(--text-subtle);
   transition: transform 0.2s ease;
 }
 .nav-group-chevron.open {
@@ -1828,7 +1826,7 @@ textarea:focus-visible {
   display: none !important;
 }
 .sidebar-nav-group:not(:first-child) .nav-group-items {
-  border-left: 1px solid #d9e3ef;
+  border-left: 1px solid var(--border);
   margin: 0.22rem 0 0.25rem 1.35rem;
   padding-left: 0.4rem;
 }
@@ -1861,9 +1859,9 @@ textarea:focus-visible {
   display: none;
 }
 .nav-link.active {
-  background: #edf4ff;
-  color: #0752ce;
-  box-shadow: inset 2px 0 #075bff;
+  background: var(--primary-faint);
+  color: var(--primary-hover);
+  box-shadow: inset 2px 0 var(--primary);
 }
 .sidebar-foot {
   position: relative;
@@ -1896,7 +1894,7 @@ textarea:focus-visible {
 .account-trigger:hover,
 .account-trigger[aria-expanded="true"],
 .account-settings:hover {
-  background: #f0f5fb;
+  background: var(--surface-muted);
 }
 .account-avatar {
   display: grid;
@@ -1905,8 +1903,8 @@ textarea:focus-visible {
   height: 36px;
   flex: none;
   border-radius: 7px;
-  background: #075bff;
-  color: #fff;
+  background: var(--primary);
+  color: var(--surface);
   font-size: 0.72rem;
   font-weight: 800;
 }
@@ -1924,18 +1922,18 @@ textarea:focus-visible {
 }
 .account-meta small {
   font-size: 0.62rem;
-  color: #5d708a;
+  color: var(--text-muted);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .account-meta .account-scope {
-  color: #75869b;
+  color: var(--text-subtle);
 }
 .account-trigger > svg {
   flex: none;
   transform: rotate(-90deg);
-  color: #71839a;
+  color: var(--text-subtle);
 }
 .account-settings {
   display: grid;
@@ -1946,7 +1944,7 @@ textarea:focus-visible {
   border: 0;
   border-radius: 6px;
   background: transparent;
-  color: #536984;
+  color: var(--text-muted);
 }
 .account-menu {
   position: absolute;
@@ -1959,7 +1957,7 @@ textarea:focus-visible {
   padding: 0.45rem;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fff;
+  background: var(--surface);
   box-shadow: 0 14px 35px rgba(6, 28, 61, 0.16);
   animation: account-menu-in 0.16s ease both;
 }
@@ -1990,7 +1988,7 @@ textarea:focus-visible {
 .account-menu p {
   margin: 0.25rem 0.65rem 0.2rem;
   padding-top: 0.35rem;
-  color: #667992;
+  color: var(--text-muted);
   font-size: 0.66rem;
   font-weight: 800;
   line-height: 1.2;
@@ -2007,13 +2005,13 @@ textarea:focus-visible {
   border: 0;
   border-radius: 6px;
   background: transparent;
-  color: #344b6b;
+  color: var(--text-muted);
   text-align: left;
   font-size: 0.78rem;
   font-weight: 650;
 }
 .account-menu button:hover {
-  background: #f2f6fb;
+  background: var(--surface-muted);
 }
 .account-menu-divider {
   height: 1px;
@@ -2021,10 +2019,10 @@ textarea:focus-visible {
   background: var(--line);
 }
 .account-menu .account-signout {
-  color: #a42b3b;
+  color: var(--danger);
 }
 .account-menu .account-signout:hover {
-  background: #fff1f2;
+  background: var(--danger-bg);
 }
 .shell-collapsed {
   grid-template-columns: 56px minmax(0, 1fr);
@@ -2058,7 +2056,7 @@ textarea:focus-visible {
   left: 50%;
   transform: translateX(-50%);
   opacity: 0;
-  background: #edf4ff;
+  background: var(--primary-faint);
 }
 .shell-collapsed .sidebar-head:hover .brand,
 .shell-collapsed .sidebar-head:focus-within .brand {

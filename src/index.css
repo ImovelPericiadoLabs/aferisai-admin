@@ -1,3 +1,5 @@
+@import "./tokens.css";
+
 @font-face {
   font-family: "Lexend Deca";
   src: url("/fonts/lexend-deca-latin.woff2") format("woff2");
