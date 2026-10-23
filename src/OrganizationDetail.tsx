@@ -14,6 +14,7 @@ import {
   type OrganizationDetail as Detail,
 } from "./api";
 import "./detail.css";
+import { ConfirmDialog } from "./ConfirmDialog";
 import { ApplicationCreationWizard } from "./ApplicationCreationWizard";
 import { OrganizationApplicationsDirectory } from "./OrganizationApplicationsDirectory";
 import { ApplicationWorkspace } from "./ApplicationWorkspace";
@@ -22,6 +23,8 @@ import {
   applicationPermissionGlyph,
   applicationPermissionLabel,
 } from "./display-labels";
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 type Props = {
   organizationId: string;
@@ -76,6 +79,8 @@ export function OrganizationDetail({
     string | null
   >(null);
   const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteEditable, setInviteEditable] = useState(false);
+  const [inviteConfirm, setInviteConfirm] = useState(false);
   const [inviteBusy, setInviteBusy] = useState(false);
   const [inviteError, setInviteError] = useState("");
   const [inviteNotice, setInviteNotice] = useState("");
@@ -236,8 +241,20 @@ export function OrganizationDetail({
     }
   }
 
-  async function invitePartner(event: FormEvent<HTMLFormElement>) {
+  function requestInvite(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!isAdmin) return;
+    const email = inviteEmail.trim();
+    setInviteNotice("");
+    if (!EMAIL_PATTERN.test(email)) {
+      setInviteError("Informe um e-mail válido, como nome@empresa.com.br.");
+      return;
+    }
+    setInviteError("");
+    setInviteConfirm(true);
+  }
+
+  async function sendInvite() {
     if (!isAdmin || !inviteEmail.trim()) return;
     setInviteBusy(true);
     setInviteError("");
@@ -248,6 +265,7 @@ export function OrganizationDetail({
         "Convite enviado por e-mail. O link fica válido por 24 horas.",
       );
       setInviteEmail("");
+      setInviteEditable(false);
     } catch (cause) {
       if (cause instanceof ApiError && cause.status === 401) onUnauthorized();
       else
@@ -258,6 +276,7 @@ export function OrganizationDetail({
         );
     } finally {
       setInviteBusy(false);
+      setInviteConfirm(false);
     }
   }
 
@@ -459,18 +478,23 @@ export function OrganizationDetail({
                   autenticador antes de entrar na própria integração.
                 </p>
               </div>
-              <form onSubmit={(event) => void invitePartner(event)}>
+              <form noValidate onSubmit={requestInvite}>
                 <div className="field">
                   <label htmlFor="partner-invite-email">
                     E-mail do responsável
                   </label>
                   <input
                     id="partner-invite-email"
-                    type="email"
-                    autoComplete="email"
+                    name="responsible-contact"
+                    type="text"
+                    inputMode="email"
+                    autoComplete="off"
+                    autoCapitalize="none"
+                    spellCheck={false}
+                    readOnly={!inviteEditable}
+                    onFocus={() => setInviteEditable(true)}
                     value={inviteEmail}
                     onChange={(event) => setInviteEmail(event.target.value)}
-                    required
                   />
                 </div>
                 <button
@@ -480,6 +504,19 @@ export function OrganizationDetail({
                   {inviteBusy ? "Enviando…" : "Enviar convite"}
                 </button>
               </form>
+              <ConfirmDialog
+                open={inviteConfirm}
+                title="Enviar convite de acesso?"
+                description="O convite será enviado agora por e-mail e o link vale por 24 horas. Confira o endereço: se estiver errado, outra pessoa receberá o acesso."
+                details={[
+                  { label: "Parceria", value: detail?.name ?? "—" },
+                  { label: "Enviar para", value: inviteEmail.trim() },
+                ]}
+                confirmLabel="Enviar convite"
+                busy={inviteBusy}
+                onConfirm={() => void sendInvite()}
+                onCancel={() => setInviteConfirm(false)}
+              />
               {inviteError && (
                 <p className="error" role="alert">
                   {inviteError}

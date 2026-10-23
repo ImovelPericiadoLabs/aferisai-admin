@@ -7,6 +7,7 @@ import {
 } from "./api";
 import type { ToastKind } from "./useToast";
 import { scopeLabel } from "./display-labels";
+import { ConfirmDialog } from "./ConfirmDialog";
 import { EntityPicker } from "./EntityPicker";
 import {
   resolveApplication,
@@ -193,6 +194,7 @@ export function Connections({
           <EntityPicker
             id="org-filter"
             label="Organização"
+            hint="Escolha a organização para listar as aplicações dela."
             placeholder="Buscar organização"
             value={orgFilter}
             search={searchOrganizations}
@@ -218,7 +220,11 @@ export function Connections({
             onChange={setAppFilter}
           />
         </div>
-        <button type="submit" className="button secondary" disabled={loading}>
+        <button
+          type="submit"
+          className="button secondary"
+          disabled={loading || !appFilter}
+        >
           Filtrar
         </button>
         {activeFilter && (
@@ -346,87 +352,20 @@ export function Connections({
                   </td>
                   {canRevoke && (
                     <td>
-                      {confirmId === item.id ? (
-                        <div
-                          style={{
-                            display: "flex",
-                            flexDirection: "column",
-                            gap: "0.4rem",
-                            minWidth: "200px",
-                          }}
-                        >
-                          <p
-                            style={{
-                              fontSize: "0.75rem",
-                              margin: 0,
-                              color: "var(--text)",
-                            }}
-                          >
-                            Revogar a conexão{" "}
-                            <code
-                              style={{
-                                fontFamily: "ui-monospace, monospace",
-                                wordBreak: "break-all",
-                              }}
-                            >
-                              {item.id}
-                            </code>{" "}
-                            de{" "}
-                            <code
-                              style={{
-                                fontFamily: "ui-monospace, monospace",
-                                wordBreak: "break-all",
-                              }}
-                            >
-                              {item.user_id}
-                            </code>
-                            ?
-                          </p>
-                          <div style={{ display: "flex", gap: "0.4rem" }}>
-                            <button
-                              type="button"
-                              className="button secondary"
-                              style={{
-                                fontSize: "0.75rem",
-                                padding: "0.3rem 0.7rem",
-                              }}
-                              disabled={revokingId === item.id}
-                              onClick={() => void handleRevoke(item)}
-                            >
-                              {revokingId === item.id
-                                ? "Revogando…"
-                                : "Confirmar"}
-                            </button>
-                            <button
-                              type="button"
-                              className="button secondary"
-                              style={{
-                                fontSize: "0.75rem",
-                                padding: "0.3rem 0.7rem",
-                              }}
-                              disabled={revokingId === item.id}
-                              onClick={() => setConfirmId(null)}
-                            >
-                              Cancelar
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <button
-                          type="button"
-                          className="button secondary"
-                          style={{
-                            fontSize: "0.75rem",
-                            padding: "0.3rem 0.7rem",
-                          }}
-                          disabled={revokingId !== null}
-                          onClick={() => {
-                            setConfirmId(item.id);
-                          }}
-                        >
-                          Revogar
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        className="button secondary"
+                        style={{
+                          fontSize: "0.75rem",
+                          padding: "0.3rem 0.7rem",
+                        }}
+                        disabled={revokingId !== null}
+                        onClick={() => {
+                          setConfirmId(item.id);
+                        }}
+                      >
+                        Revogar
+                      </button>
                     </td>
                   )}
                 </tr>
@@ -435,6 +374,27 @@ export function Connections({
           </table>
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmId !== null}
+        tone="danger"
+        title="Revogar esta conexão?"
+        description="O titular perde o consentimento ativo para a aplicação. Para voltar a usar, ele precisará autorizar novamente."
+        details={[
+          { label: "Conexão", value: confirmId ?? "" },
+          {
+            label: "Titular",
+            value: items.find((item) => item.id === confirmId)?.user_id ?? "",
+          },
+        ]}
+        confirmLabel="Revogar conexão"
+        busy={revokingId !== null}
+        onConfirm={() => {
+          const target = items.find((item) => item.id === confirmId);
+          if (target) void handleRevoke(target);
+        }}
+        onCancel={() => setConfirmId(null)}
+      />
 
       {loading && items.length > 0 && (
         <p className="directory-state" role="status">

@@ -6,6 +6,7 @@ import {
 } from "./api";
 import { itemLabel, promotionKindLabel } from "./display-labels";
 import {
+  collectPages,
   filterOptions,
   type PickerOption,
   type PickerSearch,
@@ -15,6 +16,8 @@ const dateShort = new Intl.DateTimeFormat("pt-BR", {
   dateStyle: "short",
   timeZone: "America/Sao_Paulo",
 });
+
+const PAGE_CAP = 5;
 
 const money = (cents: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(
@@ -65,7 +68,10 @@ export const resolveApplication =
     ) ?? null;
 
 export const searchPromotionPolicies: PickerSearch = async (query) => {
-  const page = await listCommercialPolicies();
+  const page = await collectPages(
+    (cursor) => listCommercialPolicies(cursor),
+    PAGE_CAP,
+  );
   const options = page.items
     .filter(
       (policy) =>
@@ -78,17 +84,21 @@ export const searchPromotionPolicies: PickerSearch = async (query) => {
     }));
   return {
     options: filterOptions(options, query),
-    truncated: page.next_cursor !== null,
+    truncated: page.truncated,
   };
 };
 
 export const searchCommissionEntries =
   (organizationId: string, status: string): PickerSearch =>
   async (query) => {
-    const page = await listCommissionEntries(
-      undefined,
-      organizationId || undefined,
-      status || undefined,
+    const page = await collectPages(
+      (cursor) =>
+        listCommissionEntries(
+          cursor,
+          organizationId || undefined,
+          status || undefined,
+        ),
+      PAGE_CAP,
     );
     const options = page.items.map((entry) => ({
       id: entry.id,
@@ -97,13 +107,13 @@ export const searchCommissionEntries =
     }));
     return {
       options: filterOptions(options, query),
-      truncated: page.next_cursor !== null,
+      truncated: page.truncated,
     };
   };
 
 export const LIMIT_NOTES = {
   policies:
-    "A API de regras ainda não filtra por canal/estado nem busca por texto: só as 20 versões mais recentes são consideradas.",
+    "A API de regras ainda não filtra por canal/estado nem busca por texto: só as 100 versões mais recentes são consideradas.",
   entries:
-    "A API de comissões não busca por texto: só as 20 obrigações mais recentes do filtro são listadas.",
+    "A API de comissões não busca por texto: só as 100 obrigações mais recentes do filtro são listadas.",
 } as const;

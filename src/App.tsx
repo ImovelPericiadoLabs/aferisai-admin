@@ -42,6 +42,7 @@ import { TeamMembers } from "./TeamMembers";
 import type { PeopleTab } from "./people-model";
 import { AnalysisProviders } from "./AnalysisProviders";
 import { Passkeys } from "./Passkeys";
+import { installNoAutofill } from "./no-autofill";
 import { ShellIcon } from "./ShellIcon";
 import { DashboardOverview, DashboardReports } from "./DashboardOverview";
 import { teamRoleLabel } from "./display-labels";
@@ -1037,6 +1038,8 @@ function TeamApp() {
   >(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
+
+  useEffect(() => installNoAutofill(document.body), []);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>(
     () => {

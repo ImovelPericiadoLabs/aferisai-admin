@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { useDialogFocus } from "./useDialogFocus";
 import {
   ApiError,
   createCommercialPolicyDraft,
@@ -76,7 +77,8 @@ export function CommercialPolicies({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [preview, setPreview] = useState<CommercialPolicyPreview | null>(null);
   const [organizations, setOrganizations] = useState<OrganizationOption[]>([]);
-  const lastTrigger = useRef<HTMLElement | null>(null);
+  const panelRef = useRef<HTMLElement>(null);
+  const lastOpened = useRef<string | null>(null);
 
   useEffect(() => {
     let live = true;
@@ -130,27 +132,24 @@ export function CommercialPolicies({
     setDrawer("closed");
     setEditingId(null);
     setPreview(null);
-    lastTrigger.current?.focus();
   }
 
-  useEffect(() => {
-    if (drawer === "closed") return;
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") closeDrawer();
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [drawer]);
+  useDialogFocus(drawer !== "closed", panelRef, closeDrawer, {
+    returnFocus: () =>
+      document.querySelector<HTMLElement>(
+        `[data-row-id="${lastOpened.current}"]`,
+      ) ?? document.querySelector<HTMLElement>(".page-header .btn-primary"),
+  });
 
-  function openPolicy(id: string, trigger: HTMLElement) {
-    lastTrigger.current = trigger;
+  function openPolicy(id: string) {
+    lastOpened.current = id;
     setSelectedId(id);
     setPreview(null);
     setDrawer("view");
   }
 
-  function openNew(trigger: HTMLElement) {
-    lastTrigger.current = trigger;
+  function openNew() {
+    lastOpened.current = null;
     setForm(initialForm());
     setEditingId(null);
     setNotice("");
@@ -259,7 +258,7 @@ export function CommercialPolicies({
         <button
           className="btn btn-primary btn-md"
           type="button"
-          onClick={(event) => openNew(event.currentTarget)}
+          onClick={openNew}
         >
           <span aria-hidden="true">＋</span> Nova regra
         </button>
@@ -270,7 +269,7 @@ export function CommercialPolicies({
         não aplica estas versões nem emite cobrança.
       </div>
 
-      {error && (
+      {error && drawer === "closed" && (
         <div className="alert alert-danger rules-alert" role="alert">
           {error}
         </div>
@@ -352,7 +351,7 @@ export function CommercialPolicies({
             <button
               className="btn btn-primary btn-sm"
               type="button"
-              onClick={(event) => openNew(event.currentTarget)}
+              onClick={openNew}
             >
               Nova regra
             </button>
@@ -390,18 +389,17 @@ export function CommercialPolicies({
                         ? "selected"
                         : undefined
                     }
-                    onClick={(event) =>
-                      openPolicy(policy.id, event.currentTarget)
-                    }
+                    onClick={() => openPolicy(policy.id)}
                   >
                     <td data-label="Item">
                       <button
                         className="rules-cell-button"
+                        data-row-id={policy.id}
                         type="button"
                         aria-haspopup="dialog"
                         onClick={(event) => {
                           event.stopPropagation();
-                          openPolicy(policy.id, event.currentTarget);
+                          openPolicy(policy.id);
                         }}
                       >
                         <strong>{itemLabel(policy.item_code)}</strong>
@@ -481,6 +479,7 @@ export function CommercialPolicies({
             aria-modal="true"
             aria-labelledby="rules-panel-title"
             aria-hidden={drawer === "closed"}
+            ref={panelRef}
           >
             {drawer === "form" && (
               <CommercialPolicyForm
@@ -489,6 +488,7 @@ export function CommercialPolicies({
                 onChange={setForm}
                 editing={editingId !== null}
                 busy={busy}
+                error={error}
                 organizations={organizations}
                 onSubmit={() => void submit()}
                 onClose={closeDrawer}
@@ -500,6 +500,7 @@ export function CommercialPolicies({
                 policy={selected}
                 orgNames={orgNames}
                 busy={busy}
+                error={error}
                 preview={preview}
                 onClose={closeDrawer}
                 onEdit={openEdit}

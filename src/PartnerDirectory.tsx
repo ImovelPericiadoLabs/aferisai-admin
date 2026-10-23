@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { createPortal } from "react-dom";
+import { useDialogFocus } from "./useDialogFocus";
 import {
   ApiError,
   getOrganization,
@@ -56,7 +57,8 @@ export function PartnerDirectory({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detailState, setDetailState] = useState<DetailState | null>(null);
   const [detailRevision, setDetailRevision] = useState(0);
-  const closeRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLElement>(null);
+  const lastOpened = useRef<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -115,15 +117,12 @@ export function PartnerDirectory({
     };
   }, [selectedId, detailRevision, onUnauthorized]);
 
-  useEffect(() => {
-    if (!selectedId) return;
-    closeRef.current?.focus();
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setSelectedId(null);
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [selectedId]);
+  useDialogFocus(selectedId !== null, panelRef, () => setSelectedId(null), {
+    returnFocus: () =>
+      document.querySelector<HTMLElement>(
+        `[data-row-id="${lastOpened.current}"]`,
+      ),
+  });
 
   const selectedItem = items.find((item) => item.id === selectedId) ?? null;
   const detail = detailState?.id === selectedId ? detailState : null;
@@ -132,6 +131,7 @@ export function PartnerDirectory({
       .length ?? 0;
 
   function openSummary(id: string) {
+    lastOpened.current = id;
     setDetailState(null);
     setSelectedId(id);
   }
@@ -315,6 +315,7 @@ export function PartnerDirectory({
                   <td data-label="Parceiro">
                     <button
                       className="partner-dir-name"
+                      data-row-id={item.id}
                       type="button"
                       aria-haspopup="dialog"
                       onClick={(event) => {
@@ -382,6 +383,7 @@ export function PartnerDirectory({
             aria-modal="true"
             aria-labelledby="partner-summary-title"
             aria-hidden={!selectedId}
+            ref={panelRef}
           >
             <div className="detail-panel-header">
               <div className="partner-dir-summary-head">
@@ -403,7 +405,6 @@ export function PartnerDirectory({
                 </div>
               </div>
               <button
-                ref={closeRef}
                 className="btn btn-ghost btn-sm"
                 type="button"
                 aria-label="Fechar resumo"

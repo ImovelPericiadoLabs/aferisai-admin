@@ -19,6 +19,7 @@ type Props = {
   onChange: (next: FormState) => void;
   editing: boolean;
   busy: boolean;
+  error: string;
   organizations: OrganizationOption[];
   onSubmit: () => void;
   onClose: () => void;
@@ -35,6 +36,7 @@ export function CommercialPolicyForm({
   onChange,
   editing,
   busy,
+  error,
   organizations,
   onSubmit,
   onClose,
@@ -101,6 +103,11 @@ export function CommercialPolicyForm({
           onSubmit();
         }}
       >
+        {error && (
+          <div className="alert alert-danger form-alert" role="alert">
+            {error}
+          </div>
+        )}
         <fieldset className="form-section">
           <legend className="form-section-title">Onde vale</legend>
           <div

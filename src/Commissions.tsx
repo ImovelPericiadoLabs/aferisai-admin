@@ -9,6 +9,7 @@ import {
   type CommissionSettlement,
   type CreateSettlementBody,
 } from "./api";
+import { ConfirmDialog } from "./ConfirmDialog";
 import { EntityPicker } from "./EntityPicker";
 import {
   LIMIT_NOTES,
@@ -73,6 +74,7 @@ function EntriesTab({
   const [notice, setNotice] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [reverseReason, setReverseReason] = useState("");
+  const [reverseAskId, setReverseAskId] = useState<string | null>(null);
   const [selectedForSettlement, setSelectedForSettlement] = useState<
     Set<string>
   >(new Set());
@@ -140,6 +142,7 @@ function EntriesTab({
       else setError(errorMessage(cause));
     } finally {
       setBusy(false);
+      setReverseAskId(null);
     }
   }
 
@@ -285,7 +288,7 @@ function EntriesTab({
                             type="button"
                             className="button secondary"
                             disabled={busy || reverseReason.trim().length < 3}
-                            onClick={() => void reverse(entry.id)}
+                            onClick={() => setReverseAskId(entry.id)}
                           >
                             Reverter obrigação
                           </button>
@@ -297,6 +300,26 @@ function EntriesTab({
               ))}
             </ul>
           )}
+          <ConfirmDialog
+            open={reverseAskId !== null}
+            tone="danger"
+            title="Reverter esta obrigação?"
+            description="A comissão deixa de ser devida e o estado passa a Revertido. O motivo fica registrado e a ação não pode ser desfeita por aqui."
+            details={[
+              {
+                label: "Valor",
+                value: money(
+                  items.find((item) => item.id === reverseAskId)
+                    ?.amount_cents ?? 0,
+                ),
+              },
+              { label: "Motivo", value: reverseReason.trim() },
+            ]}
+            confirmLabel="Reverter obrigação"
+            busy={busy}
+            onConfirm={() => reverseAskId && void reverse(reverseAskId)}
+            onCancel={() => setReverseAskId(null)}
+          />
           {nextCursor && (
             <button
               className="button secondary"
@@ -350,6 +373,8 @@ function SettlementsTab({
     settledAt: "",
     entryIds: "",
   });
+  const [settleAsk, setSettleAsk] = useState(false);
+  const [settleOrgName, setSettleOrgName] = useState("");
   const entryIdList = useMemo(
     () => form.entryIds.split(/[\s,]+/).filter(Boolean),
     [form.entryIds],
@@ -400,8 +425,12 @@ function SettlementsTab({
     }
   }
 
-  async function submit(event: FormEvent<HTMLFormElement>) {
+  function requestSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setSettleAsk(true);
+  }
+
+  async function submit() {
     setBusy(true);
     setError("");
     setNotice("");
@@ -435,6 +464,7 @@ function SettlementsTab({
       if (cause instanceof ApiError && cause.status === 401) onUnauthorized();
       else setError(errorMessage(cause));
     } finally {
+      setSettleAsk(false);
       setBusy(false);
     }
   }
@@ -457,10 +487,7 @@ function SettlementsTab({
             {notice}
           </p>
         )}
-        <form
-          className="form commercial-form"
-          onSubmit={(event) => void submit(event)}
-        >
+        <form className="form commercial-form" onSubmit={requestSubmit}>
           <EntityPicker
             id="set-org"
             label="Organização beneficiária"
@@ -469,9 +496,10 @@ function SettlementsTab({
             value={form.organizationId}
             search={searchOrganizations}
             resolve={resolveOrganization}
-            onChange={(id) =>
-              setForm((f) => ({ ...f, organizationId: id, entryIds: "" }))
-            }
+            onChange={(id, option) => {
+              setSettleOrgName(option?.label ?? "");
+              setForm((f) => ({ ...f, organizationId: id, entryIds: "" }));
+            }}
           />
           <label htmlFor="set-ref">Referência externa (comprovante)</label>
           <input
@@ -541,6 +569,27 @@ function SettlementsTab({
             Registrar repasse
           </button>
         </form>
+        <ConfirmDialog
+          open={settleAsk}
+          title="Registrar este repasse?"
+          description="O repasse é um registro financeiro das obrigações selecionadas, com o comprovante informado. Confira os dados antes de continuar."
+          details={[
+            {
+              label: "Organização",
+              value: settleOrgName || form.organizationId,
+            },
+            {
+              label: "Valor transferido",
+              value: money(Math.round(Number(form.amountReais) * 100) || 0),
+            },
+            { label: "Obrigações", value: entryIdList.length },
+            { label: "Referência", value: form.externalReference.trim() },
+          ]}
+          confirmLabel="Registrar repasse"
+          busy={busy}
+          onConfirm={() => void submit()}
+          onCancel={() => setSettleAsk(false)}
+        />
       </section>
       <aside className="side-panel">
         <div className="commercial-decision" style={{ marginBottom: "1rem" }}>

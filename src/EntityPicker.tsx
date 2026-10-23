@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import {
   mergeOptions,
   nextIndex,
+  pickerKeyAction,
   type PickerOption,
   type PickerSearch,
 } from "./picker-model";
@@ -24,7 +25,7 @@ type Shared = {
 type Single = Shared & {
   multiple?: false;
   value: string;
-  onChange: (id: string) => void;
+  onChange: (id: string, option?: PickerOption) => void;
 };
 
 type Multiple = Shared & {
@@ -36,6 +37,7 @@ type Multiple = Shared & {
 type Props = Single | Multiple;
 
 type Loaded = {
+  key: string | undefined;
   query: string;
   options: PickerOption[];
   truncated: boolean;
@@ -76,8 +78,10 @@ export function EntityPicker(props: Props) {
     : props.value
       ? [props.value]
       : [];
-  const loading = open && loaded?.query !== query;
-  const options = loaded?.query === query ? loaded.options : [];
+  const current =
+    loaded?.query === query && loaded.key === cacheKey ? loaded : null;
+  const loading = open && current === null;
+  const options = current ? current.options : [];
   const labelFor = (optionId: string) =>
     labels.find((option) => option.id === optionId);
 
@@ -116,6 +120,7 @@ export function EntityPicker(props: Props) {
           .then((result) => {
             if (!live) return;
             setLoaded({
+              key: cacheKey,
               query,
               options: result.options,
               truncated: Boolean(result.truncated),
@@ -126,7 +131,13 @@ export function EntityPicker(props: Props) {
           })
           .catch(() => {
             if (live)
-              setLoaded({ query, options: [], truncated: false, failed: true });
+              setLoaded({
+                key: cacheKey,
+                query,
+                options: [],
+                truncated: false,
+                failed: true,
+              });
           });
       },
       query ? 250 : 0,
@@ -173,7 +184,7 @@ export function EntityPicker(props: Props) {
       setQuery("");
       inputRef.current?.focus();
     } else {
-      props.onChange(option.id);
+      props.onChange(option.id, option);
       close();
     }
   }
@@ -185,27 +196,25 @@ export function EntityPicker(props: Props) {
   }
 
   function onKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
-    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
-      event.preventDefault();
-      if (!open) setOpen(true);
-      else
-        setActive((index) =>
-          nextIndex(index, event.key === "ArrowDown" ? 1 : -1, options.length),
-        );
-    } else if (event.key === "Enter" && open && options[active]) {
-      event.preventDefault();
-      choose(options[active]);
-    } else if (event.key === "Escape" && open) {
-      event.stopPropagation();
-      close();
-    } else if (
-      event.key === "Backspace" &&
-      !query &&
-      props.multiple &&
-      props.value.length
-    ) {
+    const action = pickerKeyAction(event.key, {
+      open,
+      hasActive: Boolean(options[active]),
+      queryEmpty: !query,
+      multiple: Boolean(props.multiple),
+      hasValue: Boolean(props.multiple && props.value.length > 0),
+    });
+    if (action === "none") return;
+    if (action === "close") event.stopPropagation();
+    else event.preventDefault();
+    if (action === "open") setOpen(true);
+    else if (action === "next")
+      setActive((index) => nextIndex(index, 1, options.length));
+    else if (action === "prev")
+      setActive((index) => nextIndex(index, -1, options.length));
+    else if (action === "choose") choose(options[active]);
+    else if (action === "close") close();
+    else if (action === "removeLast" && props.multiple)
       remove(props.value[props.value.length - 1]);
-    }
   }
 
   const single = !props.multiple && props.value ? labelFor(props.value) : null;
@@ -216,7 +225,14 @@ export function EntityPicker(props: Props) {
       : (placeholder ?? "Buscar…");
 
   return (
-    <div className="form-field picker" ref={rootRef}>
+    <div
+      className="form-field picker"
+      ref={rootRef}
+      onBlur={(event) => {
+        if (!rootRef.current?.contains(event.relatedTarget as Node | null))
+          close();
+      }}
+    >
       <label className="form-field-label" htmlFor={id}>
         {label}
       </label>
@@ -282,6 +298,7 @@ export function EntityPicker(props: Props) {
           <ul
             className="picker-list"
             role="listbox"
+            tabIndex={-1}
             id={listId}
             aria-multiselectable={props.multiple}
           >

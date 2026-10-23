@@ -7,12 +7,14 @@ import {
   statusTone,
   validityState,
 } from "./commercial-model";
+import { ConfirmDialog } from "./ConfirmDialog";
 import { itemLabel, sourceLabel, statusLabel } from "./display-labels";
 
 type Props = {
   policy: CommercialPolicy;
   orgNames: Record<string, string>;
   busy: boolean;
+  error: string;
   preview: CommercialPolicyPreview | null;
   onClose: () => void;
   onEdit: (policy: CommercialPolicy) => void;
@@ -40,6 +42,7 @@ export function CommercialPolicyPanel({
   policy,
   orgNames,
   busy,
+  error,
   preview,
   onClose,
   onEdit,
@@ -47,6 +50,7 @@ export function CommercialPolicyPanel({
   onSimulate,
 }: Props) {
   const [deciding, setDeciding] = useState(false);
+  const [asking, setAsking] = useState(false);
   const [reason, setReason] = useState("");
   const [basePrice, setBasePrice] = useState("");
   const [count, setCount] = useState("1");
@@ -58,7 +62,9 @@ export function CommercialPolicyPanel({
 
   async function confirm() {
     if (reason.trim().length < 3) return;
-    if (await onDecide(policy, reason.trim())) {
+    const done = await onDecide(policy, reason.trim());
+    setAsking(false);
+    if (done) {
       setDeciding(false);
       setReason("");
     }
@@ -88,6 +94,11 @@ export function CommercialPolicyPanel({
         </button>
       </div>
       <div className="detail-panel-body">
+        {error && (
+          <div className="alert alert-danger form-alert" role="alert">
+            {error}
+          </div>
+        )}
         <section className="detail-panel-section">
           <h3 className="detail-panel-section-title">Onde vale</h3>
           <dl className="detail-panel-field">
@@ -225,6 +236,29 @@ export function CommercialPolicyPanel({
           </section>
         )}
       </div>
+      <ConfirmDialog
+        open={asking}
+        tone={policy.status === "draft" ? "primary" : "danger"}
+        title={
+          policy.status === "draft"
+            ? "Publicar esta regra?"
+            : "Suspender esta regra?"
+        }
+        description={
+          policy.status === "draft"
+            ? "A versão publicada fica registrada como condição aprovada e deixa de poder ser editada."
+            : "A regra deixa de ser usada em novas cotações. Versões já registradas continuam no histórico."
+        }
+        details={[
+          { label: "Item", value: itemLabel(policy.item_code) },
+          { label: "Escopo", value: scope.primary },
+          { label: "Motivo", value: reason.trim() },
+        ]}
+        confirmLabel={policy.status === "draft" ? "Publicar" : "Suspender"}
+        busy={busy}
+        onConfirm={() => void confirm()}
+        onCancel={() => setAsking(false)}
+      />
       <div className="detail-panel-footer">
         {deciding ? (
           <>
@@ -232,7 +266,7 @@ export function CommercialPolicyPanel({
               className={`btn btn-md ${policy.status === "draft" ? "btn-primary" : "btn-danger"}`}
               type="button"
               disabled={busy || reason.trim().length < 3}
-              onClick={() => void confirm()}
+              onClick={() => setAsking(true)}
             >
               Confirmar
             </button>

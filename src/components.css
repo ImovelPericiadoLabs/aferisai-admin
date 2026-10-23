@@ -621,3 +621,85 @@ textarea.input {
     width: 100vw;
   }
 }
+
+/* ── Confirmation dialog ─────────────────────────────────── */
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: var(--space-4);
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.confirm {
+  width: min(440px, 100%);
+  padding: var(--space-6);
+  border-radius: var(--radius-xl);
+  background: var(--surface);
+  box-shadow: 0 24px 64px rgba(15, 23, 42, 0.25);
+}
+
+.confirm-title {
+  margin: 0 0 var(--space-2);
+  color: var(--text);
+  font-size: var(--text-md);
+  font-weight: var(--weight-bold);
+  letter-spacing: -0.01em;
+}
+
+.confirm-description {
+  margin: 0 0 var(--space-4);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+
+.confirm-details {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-5);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--surface-muted);
+  font-size: var(--text-sm);
+}
+
+.confirm-details div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.confirm-details dt {
+  color: var(--text-muted);
+}
+
+.confirm-details dd {
+  margin: 0;
+  color: var(--text);
+  font-weight: var(--weight-semibold);
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+@media (max-width: 480px) {
+  .confirm-actions {
+    flex-direction: column-reverse;
+  }
+
+  .confirm-actions .btn {
+    width: 100%;
+  }
+}
+
+.form-alert {
+  margin-bottom: var(--space-4);
+}

@@ -34,3 +34,57 @@ export function nextIndex(current: number, step: 1 | -1, length: number) {
   if (current < 0) return step === 1 ? 0 : length - 1;
   return (current + step + length) % length;
 }
+
+export type PickerKeyAction =
+  | "next"
+  | "prev"
+  | "open"
+  | "choose"
+  | "swallow"
+  | "close"
+  | "removeLast"
+  | "none";
+
+export function pickerKeyAction(
+  key: string,
+  state: {
+    open: boolean;
+    hasActive: boolean;
+    queryEmpty: boolean;
+    multiple: boolean;
+    hasValue: boolean;
+  },
+): PickerKeyAction {
+  if (key === "ArrowDown" || key === "ArrowUp") {
+    if (!state.open) return "open";
+    return key === "ArrowDown" ? "next" : "prev";
+  }
+  if (key === "Enter" && state.open)
+    return state.hasActive ? "choose" : "swallow";
+  if (key === "Escape" && state.open) return "close";
+  if (
+    key === "Backspace" &&
+    state.queryEmpty &&
+    state.multiple &&
+    state.hasValue
+  )
+    return "removeLast";
+  return "none";
+}
+
+export async function collectPages<T>(
+  fetchPage: (
+    cursor?: string,
+  ) => Promise<{ items: T[]; next_cursor: string | null }>,
+  maxPages: number,
+): Promise<{ items: T[]; truncated: boolean }> {
+  const items: T[] = [];
+  let cursor: string | undefined;
+  for (let page = 0; page < maxPages; page += 1) {
+    const result = await fetchPage(cursor);
+    items.push(...result.items);
+    if (result.next_cursor === null) return { items, truncated: false };
+    cursor = result.next_cursor;
+  }
+  return { items, truncated: true };
+}

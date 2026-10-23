@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { useDialogFocus } from "./useDialogFocus";
 import { teamRoleLabel } from "./display-labels";
 import {
   accountAge,
@@ -60,7 +61,8 @@ export function PeopleDirectory({
   const [role, setRole] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const closeRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLElement>(null);
+  const lastOpened = useRef<string | null>(null);
 
   const status = serverStatusFilter ? serverStatusFilter.value : localStatus;
   const visible = useMemo(
@@ -73,15 +75,12 @@ export function PeopleDirectory({
   const suspendedCount = people.length - activeCount;
   const filtering = Boolean(query || status || role);
 
-  useEffect(() => {
-    if (!selectedId) return;
-    closeRef.current?.focus();
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setSelectedId(null);
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [selectedId]);
+  useDialogFocus(selectedId !== null, panelRef, () => setSelectedId(null), {
+    returnFocus: () =>
+      document.querySelector<HTMLElement>(
+        `[data-row-id="${lastOpened.current}"]`,
+      ),
+  });
 
   function changeStatus(value: string) {
     if (serverStatusFilter) serverStatusFilter.onChange(value);
@@ -259,15 +258,20 @@ export function PeopleDirectory({
                   key={person.id}
                   data-clickable
                   className={person.id === selectedId ? "selected" : undefined}
-                  onClick={() => setSelectedId(person.id)}
+                  onClick={() => {
+                    lastOpened.current = person.id;
+                    setSelectedId(person.id);
+                  }}
                 >
                   <td data-label="Conta">
                     <button
                       className="people-name"
+                      data-row-id={person.id}
                       type="button"
                       aria-haspopup="dialog"
                       onClick={(event) => {
                         event.stopPropagation();
+                        lastOpened.current = person.id;
                         setSelectedId(person.id);
                       }}
                     >
@@ -325,6 +329,7 @@ export function PeopleDirectory({
             aria-modal="true"
             aria-labelledby="people-detail-title"
             aria-hidden={!selected}
+            ref={panelRef}
           >
             <div className="detail-panel-header">
               <div className="people-detail-head">
@@ -346,7 +351,6 @@ export function PeopleDirectory({
                 </div>
               </div>
               <button
-                ref={closeRef}
                 className="btn btn-ghost btn-sm"
                 type="button"
                 aria-label="Fechar detalhes"
