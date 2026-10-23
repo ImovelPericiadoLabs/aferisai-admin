@@ -247,7 +247,9 @@ export function AnalysisProviders({
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [label, setLabel] = useState("");
-  const [kind, setKind] = useState<AnalysisProviderKind>("openai_api_key");
+  const [kind, setKind] = useState<AnalysisProviderKind>(
+    "vertex_service_account",
+  );
   const [model, setModel] = useState("");
   const [location, setLocation] = useState("");
   const [poolKey, setPoolKey] = useState("");
@@ -363,8 +365,9 @@ export function AnalysisProviders({
           <p className="eyebrow">Configuração interna</p>
           <h1>Provedores de análise</h1>
           <p className="muted">
-            Cadastre contas Gemini, OpenAI e APIs compatíveis. Defina limites
-            por conta para a execução das análises.
+            Cadastre várias contas Gemini, OpenAI ou de APIs compatíveis. Cada
+            cadastro fica em rascunho até a validação de perfil, custo e
+            capacidade no backend.
           </p>
         </div>
         <button
@@ -376,9 +379,11 @@ export function AnalysisProviders({
         </button>
       </header>
       <p className="provider-notice">
-        A soma das contas Gemini que compartilham o projeto do Imovel deve
-        respeitar a capacidade conjunta observada de 12 chamadas. O painel
-        configura limites; a API precisa aplicá-los no agendamento.
+        As contas cadastradas ainda não são usadas pelo worker. A troca
+        automática entre contas ou fornecedores não está ativa. Após uma chamada
+        de resultado incerto, outra conta não pode repetir o pedido sem
+        conciliação. Contas Gemini no projeto compartilhado com o Imovel devem
+        respeitar o limite conjunto observado de 12 chamadas.
       </p>
       {error && (
         <p className="error" role="alert">
