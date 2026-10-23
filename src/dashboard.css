@@ -6,7 +6,7 @@
   --dash-blue: var(--primary);
   --dash-blue-soft: var(--primary-faint);
   color: var(--dash-ink);
-  width: min(100%, 1380px);
+  width: min(100%, var(--content-max));
   margin: 0 auto;
   padding: clamp(0.875rem, 1.8vw, 1.5rem);
 }

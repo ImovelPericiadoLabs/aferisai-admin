@@ -577,7 +577,7 @@
 @media (min-width: 761px) {
   .main-area:where(:not(:has(.page))) .content,
   .main-area:where(:not(:has(.page))) .financial-exceptions {
-    max-width: 1380px;
+    max-width: var(--content-max);
     padding: 1.35rem clamp(1.35rem, 2.2vw, 2.25rem) 2.5rem;
   }
 

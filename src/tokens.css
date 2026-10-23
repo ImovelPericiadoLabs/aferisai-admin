@@ -57,7 +57,7 @@
   --sidebar-width: 60px;
   --sidebar-width-expanded: 220px;
   --topbar-height: 52px;
-  --content-max: 1360px;
+  --content-max: 1600px;
 }
 
 @media (max-width: 767px) {
