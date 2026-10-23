@@ -8,7 +8,7 @@
   "display": "standalone",
   "display_override": ["window-controls-overlay", "standalone"],
   "background_color": "#f5f7fb",
-  "theme_color": "#071a39",
+  "theme_color": "#ffffff",
   "orientation": "portrait-primary",
   "icons": [
     { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
@@ -18,7 +18,7 @@
   ],
   "shortcuts": [
     { "name": "Visão geral", "url": "/", "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }] },
-    { "name": "Análises", "url": "/?page=analyses", "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }] },
-    { "name": "Pedidos", "url": "/?page=requests", "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }] }
+    { "name": "Análises", "url": "/#analyses", "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Pedidos", "url": "/#requests", "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }] }
   ]
 }

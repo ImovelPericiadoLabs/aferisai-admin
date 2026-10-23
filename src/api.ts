@@ -1243,24 +1243,55 @@ export const listTeamConnections = (
 };
 
 export interface DashboardMetrics {
-  analyses: {
+  analyses?: {
     queued: number;
     running: number;
     completed: number;
     error: number;
   };
-  payments: { prepared: number; received: number; review: number };
-  registry_requests: {
+  payments?: { prepared: number; received: number; review: number };
+  registry_requests?: {
     pending: number;
     dispatched: number;
     confirmed: number;
     error: number;
   };
-  commissions: { provisional: number; owed: number; settled: number };
+  commissions?: { provisional: number; owed: number; settled: number };
 }
 
 export const getDashboardMetrics = () =>
   request<DashboardMetrics>("/v1/team/dashboard", { method: "GET" });
+
+export type DashboardDailyCount = { date: string; count: number };
+export type DashboardDailySeries = {
+  current: DashboardDailyCount[];
+  previous?: DashboardDailyCount[];
+};
+export type DashboardSeriesResponse = {
+  timezone: "UTC";
+  start_date: string;
+  end_date: string;
+  compare: boolean;
+  series: Partial<Record<keyof DashboardMetrics, DashboardDailySeries>>;
+};
+
+export const getDashboardSeries = (
+  startDate: string,
+  endDate: string,
+  compare: boolean,
+) => {
+  const params = new URLSearchParams({
+    start_date: startDate,
+    end_date: endDate,
+    compare: String(compare),
+  });
+  return request<DashboardSeriesResponse>(
+    `/v1/team/dashboard/series?${params.toString()}`,
+    {
+      method: "GET",
+    },
+  );
+};
 
 export type WebhookEndpoint = {
   id: string;

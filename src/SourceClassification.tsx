@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import {
   ApiError,
   classifyAnalysisOriginal,
@@ -46,6 +46,10 @@ export function SourceClassification({
   const [page, setPage] = useState(1);
   const [hasRead, setHasRead] = useState(false);
   const [visualConfirmed, setVisualConfirmed] = useState(false);
+  const [reviewStep, setReviewStep] = useState<"original" | "decision">(
+    "original",
+  );
+  const decisionStepRef = useRef<HTMLButtonElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -109,6 +113,7 @@ export function SourceClassification({
     setPreviewUrl("");
     setHasRead(false);
     setVisualConfirmed(false);
+    setReviewStep("original");
     try {
       const current = await getLatestSourceDecision(id);
       setActiveId(id);
@@ -342,140 +347,186 @@ export function SourceClassification({
         </p>
       )}
       {activeId && (
-        <div className="review-layout">
-          <div className="review-column">
-            <section
-              className="review-card"
-              aria-labelledby="source-original-title"
+        <>
+          <div
+            className="review-mobile-steps"
+            aria-label="Etapas da classificação"
+          >
+            <button
+              type="button"
+              aria-pressed={reviewStep === "original"}
+              className={reviewStep === "original" ? "is-active" : ""}
+              onClick={() => setReviewStep("original")}
             >
-              <h2 id="source-original-title">Original</h2>
-              <p className="review-help">
-                A API registra o motivo antes de entregar o arquivo. Confira as
-                páginas necessárias para identificar a natureza da fonte.
-              </p>
-              <label className="review-label">
-                Motivo da leitura
-                <textarea
-                  minLength={10}
-                  maxLength={500}
-                  value={readReason}
-                  onChange={(event) => setReadReason(event.target.value)}
-                  placeholder="Explique por que precisa conferir o original."
-                />
-              </label>
-              <button
-                className="button secondary"
-                type="button"
-                disabled={busy || readReason.trim().length < 10}
-                onClick={() => void openOriginal()}
-              >
-                {busy ? "Aguarde…" : "Abrir original auditado"}
-              </button>
-              {previewUrl && (
-                <ReviewPage
-                  key={previewUrl}
-                  url={previewUrl}
-                  mimeType={previewType}
-                  page={page}
-                  onPageChange={setPage}
-                  selectedCitationPage={null}
-                  box={null}
-                  onBox={() => undefined}
-                  helpText="Leia o original antes de registrar a natureza da fonte."
-                />
-              )}
-            </section>
+              <span>1</span> Original
+            </button>
+            <button
+              ref={decisionStepRef}
+              type="button"
+              aria-pressed={reviewStep === "decision"}
+              className={reviewStep === "decision" ? "is-active" : ""}
+              onClick={() => setReviewStep("decision")}
+            >
+              <span>2</span> Decisão
+            </button>
           </div>
-          <div className="review-column">
-            <section
-              className="review-card"
-              aria-labelledby="source-current-title"
+          <div className="review-layout">
+            <div
+              className={`review-column review-step-original${reviewStep === "original" ? " is-current" : ""}`}
             >
-              <h2 id="source-current-title">Última classificação</h2>
-              {latest ? (
-                <dl className="source-current">
-                  <div>
-                    <dt>Natureza</dt>
-                    <dd>{sourceLabels[latest.source_kind]}</dd>
-                  </div>
-                  <div>
-                    <dt>Revisão</dt>
-                    <dd>{latest.revision}</dd>
-                  </div>
-                  <div>
-                    <dt>Registrada em</dt>
-                    <dd>
-                      {new Date(latest.created_at).toLocaleString("pt-BR")}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>Motivo</dt>
-                    <dd>{latest.reason}</dd>
-                  </div>
-                </dl>
-              ) : (
+              <section
+                className="review-card"
+                aria-labelledby="source-original-title"
+              >
+                <h2 id="source-original-title">Original</h2>
                 <p className="review-help">
-                  Ainda não existe decisão para este arquivo.
+                  A API registra o motivo antes de entregar o arquivo. Confira
+                  as páginas necessárias para identificar a natureza da fonte.
                 </p>
-              )}
-            </section>
-            <form className="review-card review-decision" onSubmit={decide}>
-              <h2>
-                {latest ? "Corrigir classificação" : "Registrar classificação"}
-              </h2>
-              <p className="review-help">
-                {latest
-                  ? "Uma correção cria nova revisão. Abra o original novamente antes de registrar."
-                  : "Abra e confira o original antes de registrar a primeira decisão."}
-              </p>
-              <label className="review-label">
-                Natureza do original
-                <select
-                  value={sourceKind}
-                  onChange={(event) =>
-                    setSourceKind(event.target.value as SourceKind)
-                  }
+                <label className="review-label">
+                  Motivo da leitura
+                  <textarea
+                    minLength={10}
+                    maxLength={500}
+                    value={readReason}
+                    onChange={(event) => setReadReason(event.target.value)}
+                    placeholder="Explique por que precisa conferir o original."
+                  />
+                </label>
+                <button
+                  className="button secondary"
+                  type="button"
+                  disabled={busy || readReason.trim().length < 10}
+                  onClick={() => void openOriginal()}
                 >
-                  <option value="unverified">Não foi possível verificar</option>
-                  <option value="third_party_report">Relatório derivado</option>
-                  <option value="registry_record">Documento registral</option>
-                </select>
-              </label>
-              <label className="review-label">
-                Motivo da classificação
-                <textarea
-                  required
-                  minLength={10}
-                  maxLength={500}
-                  value={decisionReason}
-                  onChange={(event) => setDecisionReason(event.target.value)}
-                  placeholder="Descreva o que foi observado no arquivo."
-                />
-              </label>
-              <label className="source-confirmation">
-                <input
-                  type="checkbox"
-                  checked={visualConfirmed}
-                  disabled={!hasRead || busy}
-                  onChange={(event) => setVisualConfirmed(event.target.checked)}
-                />
-                Conferi visualmente o original e as páginas relevantes para esta
-                classificação.
-              </label>
-              <p className="review-help">
-                Documento registral declarado é apenas um requisito para a
-                futura cotação; a cobrança permanece indisponível.
-              </p>
+                  {busy ? "Aguarde…" : "Abrir original auditado"}
+                </button>
+                {previewUrl && (
+                  <ReviewPage
+                    key={previewUrl}
+                    url={previewUrl}
+                    mimeType={previewType}
+                    page={page}
+                    onPageChange={setPage}
+                    selectedCitationPage={null}
+                    box={null}
+                    onBox={() => undefined}
+                    helpText="Leia o original antes de registrar a natureza da fonte."
+                  />
+                )}
+              </section>
               <button
-                className="button primary"
-                type="submit"
-                disabled={busy || !hasRead || !visualConfirmed}
+                className="review-step-next"
+                type="button"
+                onClick={() => {
+                  setReviewStep("decision");
+                  requestAnimationFrame(() => decisionStepRef.current?.focus());
+                }}
               >
-                {busy ? "Registrando…" : "Registrar decisão"}
+                Ir para decisão <span aria-hidden="true">→</span>
               </button>
-            </form>
+            </div>
+            <div
+              className={`review-column review-step-decision${reviewStep === "decision" ? " is-current" : ""}`}
+            >
+              <section
+                className="review-card"
+                aria-labelledby="source-current-title"
+              >
+                <h2 id="source-current-title">Última classificação</h2>
+                {latest ? (
+                  <dl className="source-current">
+                    <div>
+                      <dt>Natureza</dt>
+                      <dd>{sourceLabels[latest.source_kind]}</dd>
+                    </div>
+                    <div>
+                      <dt>Revisão</dt>
+                      <dd>{latest.revision}</dd>
+                    </div>
+                    <div>
+                      <dt>Registrada em</dt>
+                      <dd>
+                        {new Date(latest.created_at).toLocaleString("pt-BR")}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Motivo</dt>
+                      <dd>{latest.reason}</dd>
+                    </div>
+                  </dl>
+                ) : (
+                  <p className="review-help">
+                    Ainda não existe decisão para este arquivo.
+                  </p>
+                )}
+              </section>
+              <form className="review-card review-decision" onSubmit={decide}>
+                <h2>
+                  {latest
+                    ? "Corrigir classificação"
+                    : "Registrar classificação"}
+                </h2>
+                <p className="review-help">
+                  {latest
+                    ? "Uma correção cria nova revisão. Abra o original novamente antes de registrar."
+                    : "Abra e confira o original antes de registrar a primeira decisão."}
+                </p>
+                <label className="review-label">
+                  Natureza do original
+                  <select
+                    value={sourceKind}
+                    onChange={(event) =>
+                      setSourceKind(event.target.value as SourceKind)
+                    }
+                  >
+                    <option value="unverified">
+                      Não foi possível verificar
+                    </option>
+                    <option value="third_party_report">
+                      Relatório derivado
+                    </option>
+                    <option value="registry_record">Documento registral</option>
+                  </select>
+                </label>
+                <label className="review-label">
+                  Motivo da classificação
+                  <textarea
+                    required
+                    minLength={10}
+                    maxLength={500}
+                    value={decisionReason}
+                    onChange={(event) => setDecisionReason(event.target.value)}
+                    placeholder="Descreva o que foi observado no arquivo."
+                  />
+                </label>
+                <label className="source-confirmation">
+                  <input
+                    type="checkbox"
+                    checked={visualConfirmed}
+                    disabled={!hasRead || busy}
+                    onChange={(event) =>
+                      setVisualConfirmed(event.target.checked)
+                    }
+                  />
+                  Conferi visualmente o original e as páginas relevantes para
+                  esta classificação.
+                </label>
+                <p className="review-help">
+                  Documento registral declarado é apenas um requisito para a
+                  futura cotação; a cobrança permanece indisponível.
+                </p>
+                <button
+                  className="button primary"
+                  type="submit"
+                  disabled={busy || !hasRead || !visualConfirmed}
+                >
+                  {busy ? "Registrando…" : "Registrar decisão"}
+                </button>
+              </form>
+            </div>
           </div>
-        </div>
+        </>
       )}
     </div>
   );

@@ -350,14 +350,6 @@
   color: var(--muted);
   margin-top: 0.25rem;
 }
-/*
- * REGRA DE CONTRASTE — dark mode
- * Todo elemento interativo (input, select, textarea, button) DEVE declarar
- * explicitamente suas variáveis de cor em :root[data-theme="dark"] e em
- * @media (prefers-color-scheme: dark) :root:not([data-theme="light"]).
- * Nunca confiar no default do browser para esses elementos em dark mode.
- * Contraste mínimo: 4.5:1 para texto (WCAG AA).
- */
 .detail-error {
   display: flex;
   gap: 0.7rem;
@@ -366,49 +358,6 @@
 }
 .detail-error > .error {
   margin: 0;
-}
-@media (prefers-color-scheme: dark) {
-  .credential-issued {
-    background: #052e16;
-    border-color: #166534;
-    color: #d8e3f0;
-  }
-
-  .credential-recovery {
-    background: #2c1f0a;
-    border-color: #92400e;
-    color: #d8e3f0;
-  }
-
-  .permission-chips li {
-    background: #0d1e3d;
-    color: #93b4f0;
-  }
-
-  .catalog-list strong {
-    color: #7ba7ea;
-  }
-
-  .profile-saved {
-    color: #4ade80 !important;
-  }
-
-  .credential-panel .error {
-    color: #fca5a5;
-  }
-
-  .detail-logo {
-    background: #0d1e3d;
-    color: #93b4f0;
-  }
-
-  .redirect-uris textarea,
-  .profile-form textarea,
-  .permission-description-form input {
-    background: #132035;
-    border-color: #1e3050;
-    color: #d8e3f0;
-  }
 }
 @media (max-width: 760px) {
   .detail-grid {

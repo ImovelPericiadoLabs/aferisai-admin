@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { statusLabel } from "./display-labels";
 import {
   ApiError,
   claimPaymentException,
@@ -401,7 +402,10 @@ export function FinancialExceptions({
               <div role="status">
                 <p>
                   Decisão registrada: {outcome(active.resolution)}. Execução:{" "}
-                  {active.execution_status ?? "a iniciar"}.
+                  {active.execution_status
+                    ? statusLabel(active.execution_status)
+                    : "A iniciar"}
+                  .
                 </p>
                 {canConfirm &&
                   assignedId === memberId &&

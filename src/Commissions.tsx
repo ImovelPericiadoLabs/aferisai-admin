@@ -10,6 +10,7 @@ import {
   type CreateSettlementBody,
 } from "./api";
 import "./commercial-policies.css";
+import { itemLabel, statusLabel as genericStatusLabel } from "./display-labels";
 
 type View = "entries" | "settlements";
 
@@ -30,7 +31,7 @@ function statusLabel(status: string): string {
   if (status === "owed") return "Devido";
   if (status === "settled") return "Liquidado";
   if (status === "reversed") return "Revertido";
-  return status;
+  return genericStatusLabel(status);
 }
 
 function statusClass(status: string): string {
@@ -227,7 +228,7 @@ function EntriesTab({
                     </span>
                   </div>
                   <small>
-                    {entry.item_kind} · {dateTime(entry.created_at)}
+                    {itemLabel(entry.item_kind)} · {dateTime(entry.created_at)}
                   </small>
                   <small>Org: {entry.beneficiary_organization_id}</small>
                   <button

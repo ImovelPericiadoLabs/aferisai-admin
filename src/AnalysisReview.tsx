@@ -20,6 +20,11 @@ import {
   type ReviewPacket,
 } from "./api";
 import { ReviewPage, type ReviewBox } from "./ReviewPage";
+import {
+  analysisWorkStatusLabel,
+  itemLabel,
+  statusLabel,
+} from "./display-labels";
 import "./review.css";
 
 type Tab = "requests" | "classify" | "review" | "attention";
@@ -101,7 +106,9 @@ function CitationFields({
           <div className="review-citation-head">
             <span className="review-index">{index + 1}</span>
             <div>
-              <strong>{citationLabels[citation.kind] ?? citation.kind}</strong>
+              <strong>
+                {citationLabels[citation.kind] ?? "Trecho citado"}
+              </strong>
               <p>
                 Página {citation.page} · {statusLabels[citation.status]}
               </p>
@@ -259,6 +266,11 @@ export function AnalysisReview({
   const [selectedCitationIndex, setSelectedCitationIndex] = useState<
     number | null
   >(null);
+  const [reviewStep, setReviewStep] = useState<"original" | "decision">(
+    "original",
+  );
+  const originalStepRef = useRef<HTMLButtonElement>(null);
+  const decisionStepRef = useRef<HTMLButtonElement>(null);
   const [outcome, setOutcome] = useState<"approved" | "inconclusive">(
     "inconclusive",
   );
@@ -462,6 +474,7 @@ export function AnalysisReview({
     setPreviewUrl("");
     setPreviewPage(1);
     setSelectedCitationIndex(null);
+    setReviewStep("original");
     try {
       const result = await getAnalysisReview(id);
       setPacket(result);
@@ -718,13 +731,13 @@ export function AnalysisReview({
                             className={`pill ${docStateBadge[item.document_state] ?? "badge-gray"}`}
                           >
                             {docStateLabel[item.document_state] ??
-                              item.document_state}
+                              statusLabel(item.document_state)}
                           </span>
                         </td>
                         <td>
                           {item.payment_status ? (
                             <span className="pill badge-gray">
-                              {item.payment_status}
+                              {statusLabel(item.payment_status)}
                             </span>
                           ) : (
                             <span className="muted">—</span>
@@ -733,7 +746,7 @@ export function AnalysisReview({
                         <td>
                           {item.work_status ? (
                             <span className="pill badge-blue">
-                              {item.work_status}
+                              {analysisWorkStatusLabel(item.work_status)}
                             </span>
                           ) : (
                             <span className="muted">—</span>
@@ -888,7 +901,7 @@ export function AnalysisReview({
                   {latestSourceDecision?.decision && (
                     <div className="review-existing-decision">
                       <strong>Classificação atual:</strong>{" "}
-                      {latestSourceDecision.decision.source_kind} —{" "}
+                      {itemLabel(latestSourceDecision.decision.source_kind)} —{" "}
                       {latestSourceDecision.decision.reason}
                     </div>
                   )}
@@ -1180,8 +1193,33 @@ export function AnalysisReview({
                       </strong>
                     </div>
                   </section>
+                  <div
+                    className="review-mobile-steps"
+                    aria-label="Etapas da revisão"
+                  >
+                    <button
+                      ref={originalStepRef}
+                      type="button"
+                      aria-pressed={reviewStep === "original"}
+                      className={reviewStep === "original" ? "is-active" : ""}
+                      onClick={() => setReviewStep("original")}
+                    >
+                      <span>1</span> Original
+                    </button>
+                    <button
+                      ref={decisionStepRef}
+                      type="button"
+                      aria-pressed={reviewStep === "decision"}
+                      className={reviewStep === "decision" ? "is-active" : ""}
+                      onClick={() => setReviewStep("decision")}
+                    >
+                      <span>2</span> Decisão
+                    </button>
+                  </div>
                   <div className="review-layout">
-                    <div className="review-column">
+                    <div
+                      className={`review-column review-step-original${reviewStep === "original" ? " is-current" : ""}`}
+                    >
                       <section
                         className="review-card"
                         aria-labelledby="review-original-title"
@@ -1244,9 +1282,21 @@ export function AnalysisReview({
                         )}
                       </section>
                       <Findings packet={packet} />
+                      <button
+                        className="review-step-next"
+                        type="button"
+                        onClick={() => {
+                          setReviewStep("decision");
+                          requestAnimationFrame(() =>
+                            decisionStepRef.current?.focus(),
+                          );
+                        }}
+                      >
+                        Ir para decisão <span aria-hidden="true">→</span>
+                      </button>
                     </div>
                     <form
-                      className="review-card review-decision"
+                      className={`review-card review-decision review-step-decision${reviewStep === "decision" ? " is-current" : ""}`}
                       onSubmit={decide}
                     >
                       <h2>Decisão</h2>
@@ -1330,6 +1380,11 @@ export function AnalysisReview({
                         onSelect={(index) => {
                           setSelectedCitationIndex(index);
                           setPreviewPage(packet.citation_checks[index].page);
+                          setReviewStep("original");
+                          if (window.matchMedia("(max-width: 640px)").matches)
+                            requestAnimationFrame(() =>
+                              originalStepRef.current?.focus(),
+                            );
                         }}
                       />
                       <label className="review-label">

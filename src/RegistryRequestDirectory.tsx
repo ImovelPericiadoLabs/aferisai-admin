@@ -5,6 +5,7 @@ import {
   type TeamRegistryRequestPage,
 } from "./api";
 import "./commercial-policies.css";
+import { sourceLabel, registryStatusLabel, itemLabel } from "./display-labels";
 
 type RegistryItem = TeamRegistryRequestPage["items"][number];
 
@@ -17,16 +18,6 @@ const productLabels: Record<string, string> = {
   inteiro_teor_simples: "Inteiro teor simples",
   inteiro_teor: "Inteiro teor",
   visualizacao: "Visualização",
-};
-
-const statusLabels: Record<string, string> = {
-  pending: "Pendente",
-  awaiting_input: "Aguardando",
-  dispatched: "Despachado",
-  confirmed: "Confirmado",
-  unavailable: "Indisponível",
-  failed: "Falhou",
-  unknown: "Incerto",
 };
 
 function statusClass(status: string): string {
@@ -140,13 +131,19 @@ export function RegistryRequestDirectory({
                 style={{ display: "block", width: "100%", marginTop: 6 }}
               >
                 <option value="">Todos</option>
-                <option value="pending">Pendente</option>
-                <option value="awaiting_input">Aguardando dados</option>
-                <option value="dispatched">Despachado</option>
-                <option value="confirmed">Confirmado</option>
-                <option value="unknown">Incerto</option>
-                <option value="failed">Falhou</option>
-                <option value="unavailable">Indisponível</option>
+                {[
+                  "pending",
+                  "awaiting_input",
+                  "dispatched",
+                  "confirmed",
+                  "unknown",
+                  "failed",
+                  "unavailable",
+                ].map((status) => (
+                  <option key={status} value={status}>
+                    {registryStatusLabel(status)}
+                  </option>
+                ))}
               </select>
             </label>
             <label>
@@ -192,13 +189,15 @@ export function RegistryRequestDirectory({
                       {item.id.slice(0, 8)}…
                     </span>
                     <span className={statusClass(item.status)}>
-                      {statusLabels[item.status] ?? item.status}
+                      {registryStatusLabel(item.status)}
                     </span>
                   </div>
                   <p>
-                    <strong>{sourceLabels[item.source] ?? item.source}</strong>
+                    <strong>
+                      {sourceLabels[item.source] ?? sourceLabel(item.source)}
+                    </strong>
                     {" · "}
-                    {productLabels[item.product] ?? item.product}
+                    {productLabels[item.product] ?? itemLabel(item.product)}
                     {" · "}
                     {item.item_count} {item.item_count === 1 ? "item" : "itens"}
                   </p>

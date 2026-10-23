@@ -105,14 +105,6 @@
 .commercial-list li {
   background: var(--surface);
 }
-@media (prefers-color-scheme: dark) {
-  .commercial-page select,
-  .commercial-page textarea {
-    background: var(--surface);
-    border-color: var(--line);
-    color: var(--ink);
-  }
-}
 @media (max-width: 600px) {
   .commercial-grid {
     grid-template-columns: 1fr;

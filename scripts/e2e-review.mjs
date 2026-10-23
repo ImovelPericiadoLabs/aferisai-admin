@@ -74,7 +74,7 @@ const context = await browser.newContext({
 });
 const page = await context.newPage();
 let pageErrors = 0;
-let consoleIssues = 0;
+const consoleIssues = [];
 let decisionBody;
 let originalBody;
 let sourceLatest = null;
@@ -85,7 +85,7 @@ page.on("pageerror", () => {
 });
 page.on("console", (entry) => {
   if (entry.type() === "error" || entry.type() === "warning")
-    consoleIssues += 1;
+    consoleIssues.push(`${entry.text()} ${entry.location().url}`);
 });
 await page.route("**/v1/team/**", async (route) => {
   const request = route.request();
@@ -100,6 +100,42 @@ await page.route("**/v1/team/**", async (route) => {
     return send({ csrf_token: "synthetic-csrf" });
   if (path === "/v1/team/sessions/current")
     return send({ id: workId, email: "equipe@example.test", role: "manager" });
+  if (path === "/v1/team/dashboard")
+    return send({
+      analyses: { queued: 0, running: 0, completed: 1, error: 0 },
+      registry_requests: { pending: 0, dispatched: 0, confirmed: 0, error: 0 },
+    });
+  if (path === "/v1/team/dashboard/series") {
+    const url = new URL(request.url());
+    const startDate = url.searchParams.get("start_date");
+    const endDate = url.searchParams.get("end_date");
+    const compare = url.searchParams.get("compare") === "true";
+    const first = new Date(`${startDate}T00:00:00Z`);
+    const days =
+      Math.round(
+        (Date.parse(`${endDate}T00:00:00Z`) - first.valueOf()) / 86400000,
+      ) + 1;
+    const make = (offset) =>
+      Array.from({ length: days }, (_, index) => ({
+        date: new Date(first.valueOf() + (index + offset) * 86400000)
+          .toISOString()
+          .slice(0, 10),
+        count: index % 4,
+      }));
+    const series = {
+      current: make(0),
+      ...(compare ? { previous: make(-days) } : {}),
+    };
+    return send({
+      timezone: "UTC",
+      start_date: startDate,
+      end_date: endDate,
+      compare,
+      series: { analyses: series, registry_requests: series },
+    });
+  }
+  if (path === "/v1/team/analysis-requests")
+    return send({ items: [], next_cursor: null });
   if (path === "/v1/team/analysis-works/pending-reviews")
     return send({
       items: packet.latest_decision_id
@@ -205,6 +241,16 @@ await page.route("**/v1/team/**", async (route) => {
 
 try {
   await page.goto(origin, { waitUntil: "networkidle" });
+  await page.getByRole("button", { name: /Relatórios/ }).click();
+  await page.locator(".dash-report-card").first().waitFor();
+  await page.waitForTimeout(800);
+  const donutOffset = await page.locator(".dash-report-card").first().evaluate((card) => {
+    const track = card.querySelector(".dash-donut-track")?.getBoundingClientRect();
+    const segment = card.querySelector(".dash-donut-segment")?.getBoundingClientRect();
+    return track && segment ? Math.abs((track.top + track.bottom) / 2 - (segment.top + segment.bottom) / 2) : Infinity;
+  });
+  if (donutOffset > 2) throw new Error(`Donut segments are displaced from the track by ${donutOffset}px`);
+  await page.locator(".dash-report-card").first().screenshot({ path: "/tmp/aferisai-donut-fixed.png" });
   await page.getByRole("button", { name: /Fontes/ }).click();
   await page
     .getByRole("heading", { name: "Aguardando classificação" })
@@ -299,25 +345,19 @@ try {
     fullPage: true,
   });
   await page.getByRole("button", { name: /Análises/ }).click();
-  await page.getByRole("heading", { name: "Revisar evidências" }).waitFor();
+  await page
+    .getByRole("button", { name: "Revisar análise", exact: true })
+    .click();
+  await page.getByRole("tab", { name: "Atenção" }).click();
   await page.getByRole("heading", { name: "Exigem atenção" }).waitFor();
-  await page
-    .getByText("Resultado incerto · analysis.work_interrupted")
-    .waitFor();
-  await page
-    .getByText("Revisão desatualizada · analysis.review_version_outdated")
-    .waitFor();
-  await page
-    .getByText("Revisão inconclusiva · analysis.review_inconclusive")
-    .waitFor();
-  await page
-    .getByText("Exceção da análise automática · analysis.automatic_exception")
-    .waitFor();
-  await page
-    .getByText(
-      "Revisão vencida sem decisão · analysis.review_expired_undecided",
-    )
-    .waitFor();
+  for (const code of [
+    "analysis.work_interrupted",
+    "analysis.review_version_outdated",
+    "analysis.review_inconclusive",
+    "analysis.automatic_exception",
+    "analysis.review_expired_undecided",
+  ])
+    await page.getByText(code, { exact: true }).waitFor();
   await page
     .getByRole("heading", { name: "Exigem atenção" })
     .scrollIntoViewIfNeeded();
@@ -338,6 +378,7 @@ try {
     path: "/tmp/aferisai-attention-mobile.png",
   });
   await page.setViewportSize({ width: 1440, height: 900 });
+  await page.getByRole("tab", { name: "Revisar análise" }).click();
   await page.getByRole("button", { name: "Conferir", exact: true }).click();
   await page
     .getByRole("heading", { name: "Achados para conferência" })
@@ -374,6 +415,14 @@ try {
     (await citation.getByLabel("Base").inputValue()) !== "700"
   )
     throw new Error("Drag did not fill normalized citation coordinates");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.locator(".review-mobile-steps").getByRole("button", { name: /Decisão/ }).click();
+  await page.getByRole("heading", { name: "Decisão", exact: true }).waitFor();
+  await citation.getByRole("button", { name: "Citação selecionada" }).click();
+  await page.getByRole("heading", { name: "Original", exact: true }).waitFor();
+  if ((await citation.getByLabel("Esquerda").inputValue()) !== "100")
+    throw new Error("Mobile step switch discarded citation coordinates");
+  await page.locator(".review-mobile-steps").getByRole("button", { name: /Decisão/ }).click();
   await citation
     .getByLabel("Motivo desta conferência")
     .fill("Nome localizado no original da página.");
@@ -381,9 +430,7 @@ try {
     .getByLabel("Motivo da decisão")
     .fill("Conferi a citação e as flags no original.");
   await page.getByRole("button", { name: "Registrar decisão" }).click();
-  await page
-    .getByText(`Decisão ${decisionId} registrada.`, { exact: false })
-    .waitFor();
+  await page.getByText("Aprovação registrada.").waitFor();
   if (originalBody.reason !== "Conferência visual da matrícula.")
     throw new Error("Original access reason was not sent");
   if (
@@ -409,10 +456,17 @@ try {
   });
   if (pageErrors)
     throw new Error(`Browser reported ${pageErrors} page error(s)`);
-  if (consoleIssues)
-    throw new Error(`Browser reported ${consoleIssues} console issue(s)`);
+  if (consoleIssues.length)
+    throw new Error(
+      `Browser reported ${consoleIssues.length} console issue(s): ${consoleIssues.join(" | ")}`,
+    );
   await page.setViewportSize({ width: 1440, height: 900 });
   originalMime = "application/pdf";
+  await page.getByLabel("ID do trabalho").fill(workId);
+  await page.getByRole("button", { name: "Consultar", exact: true }).click();
+  await page
+    .getByRole("heading", { name: "Achados para conferência" })
+    .waitFor();
   await page.getByRole("button", { name: "Abrir original auditado" }).click();
   await page.getByText("Página 1 de 2").waitFor();
   await page.getByLabel("Aprovar pacote factual").check();
@@ -462,9 +516,9 @@ try {
     throw new Error(
       `Browser reported ${pageErrors} page error(s) after PDF rendering`,
     );
-  if (consoleIssues)
+  if (consoleIssues.length)
     throw new Error(
-      `Browser reported ${consoleIssues} console issue(s) after PDF rendering`,
+      `Browser reported ${consoleIssues.length} console issue(s) after PDF rendering: ${consoleIssues.join(" | ")}`,
     );
   process.stdout.write(
     "Review UI: visual marking, decision, PDF pages and narrow layouts passed.\n",

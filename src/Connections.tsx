@@ -6,12 +6,13 @@ import {
   type TeamConnection,
 } from "./api";
 import type { ToastKind } from "./useToast";
+import { scopeLabel } from "./display-labels";
 
 function ScopeBadge({ scope }: { scope: string }) {
   const isAnalysis = scope.startsWith("analysis:");
   return (
     <span className={`badge ${isAnalysis ? "badge-blue" : "badge-gray"}`}>
-      {scope}
+      {scopeLabel(scope)}
     </span>
   );
 }

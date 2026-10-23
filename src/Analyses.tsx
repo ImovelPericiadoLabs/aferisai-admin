@@ -8,6 +8,7 @@ import {
 } from "./api";
 import { AnalysisReview } from "./AnalysisReview";
 import { SourceClassification } from "./SourceClassification";
+import { analysisWorkStatusLabel, statusLabel } from "./display-labels";
 import "./review.css";
 
 type Tab = "requests" | "classify" | "review" | "attention";
@@ -163,16 +164,9 @@ export function Analyses({
             Pedidos, classificação de fonte, revisão humana e itens de atenção.
           </p>
         </div>
-        <span className="pill">{canReview ? "Manager / Admin" : "Viewer"}</span>
+        <span className="pill">{canReview ? "Gestão" : "Leitura"}</span>
       </header>
-      <div
-        style={{
-          display: "flex",
-          gap: "0.5rem",
-          marginBottom: "1.5rem",
-          flexWrap: "wrap",
-        }}
-      >
+      <div className="analyses-tabs" aria-label="Áreas de análise">
         {tabs.map((t) => (
           <button
             key={t.id}
@@ -211,10 +205,12 @@ export function Analyses({
           {requests && (
             <>
               {requests.items.length === 0 ? (
-                <p className="muted">Nenhum pedido encontrado.</p>
+                <p className="analyses-empty" role="status">
+                  Nenhum pedido encontrado.
+                </p>
               ) : (
-                <div style={{ overflowX: "auto" }}>
-                  <table className="analyses-table">
+                <div className="analyses-table-wrap">
+                  <table className="analyses-table analyses-mobile-cards">
                     <thead>
                       <tr>
                         <th>ID</th>
@@ -228,41 +224,41 @@ export function Analyses({
                     <tbody>
                       {requests.items.map((item) => (
                         <tr key={item.request_id}>
-                          <td>
+                          <td data-label="ID">
                             <code title={item.request_id}>
                               {short(item.request_id)}
                             </code>
                           </td>
-                          <td>{item.page_count}</td>
-                          <td>
+                          <td data-label="Págs">{item.page_count}</td>
+                          <td data-label="Documento">
                             <span
                               className={docStateBadge(item.document_state)}
                             >
-                              {item.document_state}
+                              {statusLabel(item.document_state)}
                             </span>
                           </td>
-                          <td>{item.payment_status ?? "—"}</td>
-                          <td>
-                            {item.work_id ? (
-                              <code title={item.work_id}>
-                                {short(item.work_id)}
-                              </code>
-                            ) : (
-                              "—"
-                            )}
-                            {item.work_status && (
-                              <span
-                                style={{
-                                  marginLeft: "0.4rem",
-                                  color: "var(--muted)",
-                                  fontSize: "0.8rem",
-                                }}
-                              >
-                                {item.work_status}
-                              </span>
-                            )}
+                          <td data-label="Pagamento">
+                            {item.payment_status
+                              ? statusLabel(item.payment_status)
+                              : "—"}
                           </td>
-                          <td>
+                          <td data-label="Trabalho">
+                            <span className="analyses-work-cell">
+                              {item.work_id ? (
+                                <code title={item.work_id}>
+                                  {short(item.work_id)}
+                                </code>
+                              ) : (
+                                "—"
+                              )}
+                              {item.work_status && (
+                                <span className="analyses-work-status">
+                                  {analysisWorkStatusLabel(item.work_status)}
+                                </span>
+                              )}
+                            </span>
+                          </td>
+                          <td data-label="Criado em">
                             {new Date(item.created_at).toLocaleString("pt-BR")}
                           </td>
                         </tr>
@@ -334,10 +330,12 @@ export function Analyses({
               {attention && (
                 <>
                   {attention.items.length === 0 ? (
-                    <p className="muted">Nenhum item de atenção.</p>
+                    <p className="analyses-empty" role="status">
+                      Nenhum item de atenção.
+                    </p>
                   ) : (
-                    <div style={{ overflowX: "auto" }}>
-                      <table className="analyses-table">
+                    <div className="analyses-table-wrap">
+                      <table className="analyses-table analyses-mobile-cards">
                         <thead>
                           <tr>
                             <th>Trabalho</th>
@@ -350,23 +348,25 @@ export function Analyses({
                         <tbody>
                           {attention.items.map((item) => (
                             <tr key={item.work_id}>
-                              <td>
+                              <td data-label="Trabalho">
                                 <code title={item.work_id}>
                                   {short(item.work_id)}
                                 </code>
                               </td>
-                              <td>
+                              <td data-label="Pedido">
                                 <code title={item.request_id}>
                                   {short(item.request_id)}
                                 </code>
                               </td>
-                              <td>
+                              <td data-label="Status">
                                 <span className={attentionBadge(item.status)}>
-                                  {item.status}
+                                  {analysisWorkStatusLabel(item.status)}
                                 </span>
                               </td>
-                              <td>{item.error_code || "—"}</td>
-                              <td>
+                              <td data-label="Código de erro">
+                                {item.error_code ? "Falha registrada" : "—"}
+                              </td>
+                              <td data-label="Finalizado em">
                                 {item.finished_at
                                   ? new Date(item.finished_at).toLocaleString(
                                       "pt-BR",

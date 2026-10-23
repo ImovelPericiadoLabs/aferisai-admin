@@ -9,6 +9,10 @@ import {
   type PromotionCreateResult,
 } from "./api";
 import "./commercial-policies.css";
+import {
+  promotionKindLabel,
+  statusLabel as genericStatusLabel,
+} from "./display-labels";
 
 type FormState = {
   policyVersionId: string;
@@ -48,7 +52,7 @@ function statusLabel(status: string): string {
   if (status === "active") return "Ativo";
   if (status === "suspended") return "Suspenso";
   if (status === "expired") return "Expirado";
-  return status;
+  return genericStatusLabel(status);
 }
 
 export function Promotions({
@@ -190,7 +194,7 @@ export function Promotions({
             Código: <code>{createdAsset.plain_code}</code>
           </p>
           <p>
-            Tipo: {createdAsset.kind} · Limite:{" "}
+            Tipo: {promotionKindLabel(createdAsset.kind)} · Limite:{" "}
             {createdAsset.use_limit ?? "ilimitado"}
           </p>
           <button
@@ -295,7 +299,7 @@ export function Promotions({
               {items.map((asset) => (
                 <li key={asset.id}>
                   <div className="commercial-list-head">
-                    <strong>{asset.kind}</strong>
+                    <strong>{promotionKindLabel(asset.kind)}</strong>
                     <span className="pill">{statusLabel(asset.status)}</span>
                   </div>
                   <small>ID: {asset.id}</small>

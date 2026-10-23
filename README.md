@@ -1,5 +1,7 @@
 # AferisAI · Área da equipe
 
+O painel usa a identidade clara da AferisAI, com navegação agrupada por área no desktop e barra inferior mais gaveta no celular. A visão geral destaca pendências autorizadas ao papel; a biblioteca de relatórios mostra apenas a distribuição **instantânea** das contagens existentes. Gráficos e tabelas exibem a mesma resposta do backend, sem série histórica ou exportação presumida. `viewer`, `manager`, `financial` e `administrator` recebem módulos diferentes; a API continua responsável pela autorização. A experiência de parceiro permanece em identidade e superfície separadas, conforme [plano de design](../backend/docs/admin-dashboard-design-plan.md).
+
 Painel separado da interface do usuário comum. A equipe entra com senha e TOTP, consulta organizações, cadastra a primeira aplicação, edita perfil e descrição do catálogo, concede ou revoga permissões existentes e gerencia o logo privado. Administrador e gestor podem selecionar solicitações da fila pré-cobrança ou buscar por ID, abrir o original com auditoria e classificar a fonte. Também podem selecionar uma análise técnica da fila ou pelo ID, abrir o original com auditoria, marcar citações por página e registrar uma decisão motivada. As ações disponíveis dependem do papel recebido da API.
 
 ## Desenvolvimento local

@@ -20,6 +20,9 @@
   border-radius: 11px;
   padding: 1.25rem;
 }
+.review-page section[aria-labelledby="attention-title"] {
+  overflow-x: auto;
+}
 .review-card h2 {
   margin: 0 0 0.6rem;
 }
@@ -174,6 +177,10 @@
   grid-template-columns: minmax(0, 1.1fr) minmax(340px, 0.9fr);
   gap: 1.2rem;
   align-items: start;
+}
+.review-mobile-steps,
+.review-step-next {
+  display: none;
 }
 .review-column {
   display: grid;
@@ -344,6 +351,73 @@
   .review-coordinates {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+  .review-mobile-steps {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.35rem;
+    padding: 0.35rem;
+    border: 1px solid #d8e3f2;
+    border-radius: 0.85rem;
+    background: #f4f8fd;
+    box-shadow: 0 8px 20px rgba(12, 40, 77, 0.08);
+  }
+  .review-mobile-steps button {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.45rem;
+    min-height: 2.75rem;
+    border: 0;
+    border-radius: 0.6rem;
+    background: transparent;
+    color: #526983;
+    font: inherit;
+    font-size: 0.78rem;
+    font-weight: 750;
+    cursor: pointer;
+  }
+  .review-mobile-steps button.is-active {
+    background: #fff;
+    color: #1057bf;
+    box-shadow: 0 1px 5px rgba(12, 40, 77, 0.1);
+  }
+  .review-mobile-steps button span {
+    display: grid;
+    place-items: center;
+    width: 1.3rem;
+    height: 1.3rem;
+    border-radius: 50%;
+    border: 1px solid currentColor;
+    font-size: 0.65rem;
+  }
+  .review-mobile-steps button:focus-visible,
+  .review-step-next:focus-visible {
+    outline: 3px solid #075bff;
+    outline-offset: 2px;
+  }
+  .review-layout > .review-step-original:not(.is-current),
+  .review-layout > .review-step-decision:not(.is-current) {
+    display: none;
+  }
+  .review-step-next {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 2.75rem;
+    width: 100%;
+    padding: 0.6rem 0.9rem;
+    border: 1px solid #bcd3f6;
+    border-radius: 0.65rem;
+    background: #edf5ff;
+    color: #1057bf;
+    font: inherit;
+    font-size: 0.8rem;
+    font-weight: 750;
+    cursor: pointer;
+  }
 }
 .analyses-table {
   width: 100%;
@@ -382,7 +456,9 @@
   font-weight: 500;
   color: var(--muted);
   cursor: pointer;
-  transition: color 0.12s, border-color 0.12s;
+  transition:
+    color 0.12s,
+    border-color 0.12s;
 }
 .tab:hover {
   color: var(--text);

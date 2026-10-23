@@ -1,12 +1,6 @@
 import { useEffect, useState } from "react";
 import { ApiError, listTeamMembers, type TeamMemberListItem } from "./api";
-
-const roleLabel: Record<TeamMemberListItem["role"], string> = {
-  administrator: "Administrador",
-  manager: "Gestor",
-  viewer: "Leitor",
-  financial: "Financeiro",
-};
+import { teamRoleLabel } from "./display-labels";
 
 const roleBadge: Record<TeamMemberListItem["role"], string> = {
   administrator: "badge-blue",
@@ -177,7 +171,7 @@ export function TeamMembers({
                   <td>{item.email}</td>
                   <td>
                     <span className={`badge ${roleBadge[item.role]}`}>
-                      {roleLabel[item.role]}
+                      {teamRoleLabel(item.role)}
                     </span>
                   </td>
                   <td>

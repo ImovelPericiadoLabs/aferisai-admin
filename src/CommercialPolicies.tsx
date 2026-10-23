@@ -11,6 +11,7 @@ import {
   type CommercialPolicyPreview,
 } from "./api";
 import "./commercial-policies.css";
+import { itemLabel, sourceLabel, statusLabel } from "./display-labels";
 
 type FormState = {
   organizationId: string;
@@ -378,77 +379,96 @@ export function CommercialPolicies({
             <small id="policy-item-help">
               Código do item ou * para todos os itens da entrada.
             </small>
-            <div className="commercial-grid">
-              <label>
-                Início
-                <input
-                  type="datetime-local"
-                  value={form.validFrom}
-                  onChange={(event) => set("validFrom", event.target.value)}
-                  required
-                />
-              </label>
-              <label>
-                Fim
-                <input
-                  type="datetime-local"
-                  value={form.validUntil}
-                  onChange={(event) => set("validUntil", event.target.value)}
-                  required
-                />
-              </label>
-              <label>
-                Desconto %
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="0.01"
-                  value={form.discountPercent}
-                  onChange={(event) =>
-                    set("discountPercent", event.target.value)
-                  }
-                  required
-                />
-              </label>
-              <label>
-                Desconto R$
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={form.discountReais}
-                  onChange={(event) => set("discountReais", event.target.value)}
-                  required
-                />
-              </label>
-              <label>
-                Comissão %
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="0.01"
-                  value={form.commissionPercent}
-                  onChange={(event) =>
-                    set("commissionPercent", event.target.value)
-                  }
-                  required
-                />
-              </label>
-              <label>
-                Comissão R$
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={form.commissionReais}
-                  onChange={(event) =>
-                    set("commissionReais", event.target.value)
-                  }
-                  required
-                />
-              </label>
+            <div className="commercial-policy-groups">
+              <fieldset className="commercial-fieldset">
+                <legend>Vigência</legend>
+                <div className="commercial-pair commercial-period">
+                  <label>
+                    Início
+                    <input
+                      type="datetime-local"
+                      value={form.validFrom}
+                      onChange={(event) => set("validFrom", event.target.value)}
+                      required
+                    />
+                  </label>
+                  <label>
+                    Fim
+                    <input
+                      type="datetime-local"
+                      value={form.validUntil}
+                      onChange={(event) =>
+                        set("validUntil", event.target.value)
+                      }
+                      required
+                    />
+                  </label>
+                </div>
+              </fieldset>
+              <fieldset className="commercial-fieldset">
+                <legend>Desconto</legend>
+                <div className="commercial-pair">
+                  <label>
+                    Desconto %
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.01"
+                      value={form.discountPercent}
+                      onChange={(event) =>
+                        set("discountPercent", event.target.value)
+                      }
+                      required
+                    />
+                  </label>
+                  <label>
+                    Desconto R$
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={form.discountReais}
+                      onChange={(event) =>
+                        set("discountReais", event.target.value)
+                      }
+                      required
+                    />
+                  </label>
+                </div>
+              </fieldset>
+              <fieldset className="commercial-fieldset">
+                <legend>Comissão</legend>
+                <div className="commercial-pair">
+                  <label>
+                    Comissão %
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.01"
+                      value={form.commissionPercent}
+                      onChange={(event) =>
+                        set("commissionPercent", event.target.value)
+                      }
+                      required
+                    />
+                  </label>
+                  <label>
+                    Comissão R$
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={form.commissionReais}
+                      onChange={(event) =>
+                        set("commissionReais", event.target.value)
+                      }
+                      required
+                    />
+                  </label>
+                </div>
+              </fieldset>
             </div>
             <label htmlFor="policy-reason">Motivo</label>
             <textarea
@@ -488,7 +508,7 @@ export function CommercialPolicies({
               {items.map((policy) => (
                 <li key={policy.id}>
                   <div className="commercial-list-head">
-                    <strong>{policy.item_code}</strong>
+                    <strong>{itemLabel(policy.item_code)}</strong>
                     <span
                       className={
                         policy.status === "published"
@@ -498,12 +518,15 @@ export function CommercialPolicies({
                             : "badge-gray"
                       }
                     >
-                      {policy.status}
+                      {statusLabel(policy.status)}
                     </span>
                   </div>
                   <small>
-                    {policy.channel} · {policy.source} ·{" "}
-                    {policy.organization_id ?? "site"}
+                    {sourceLabel(policy.channel)} · {sourceLabel(policy.source)}{" "}
+                    ·{" "}
+                    {policy.organization_id
+                      ? "Organização vinculada"
+                      : "Site direto"}
                   </small>
                   <p>
                     Desconto {policy.discount_rate_bps / 100}% +{" "}

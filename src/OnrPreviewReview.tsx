@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
+import { decisionLabel, statusLabel } from "./display-labels";
 import {
   listOnrPreviewAttempts,
   getOnrOrdersInspection,
@@ -311,7 +312,7 @@ export function OnrPreviewReview({ csrf }: { csrf: string }) {
                         borderBottom: "1px solid var(--line)",
                       }}
                     >
-                      {o.status}
+                      {statusLabel(o.status)}
                     </td>
                   </tr>
                 ))}
@@ -330,7 +331,7 @@ export function OnrPreviewReview({ csrf }: { csrf: string }) {
               <li key={r.id}>
                 <div className="commercial-list-head">
                   <span className="pill" style={{ fontSize: "0.75rem" }}>
-                    {r.decision}
+                    {decisionLabel(r.decision)}
                   </span>
                   <small style={{ marginLeft: "0.7rem" }}>
                     {fmtDate(r.created_at)}
