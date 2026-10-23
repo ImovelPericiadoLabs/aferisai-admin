@@ -68,3 +68,33 @@ export function summarizeDelivery(delivery: WebhookDelivery | null): {
     };
   return { ...map[delivery.status], at: delivery.created_at };
 }
+
+/** Metrics over the deliveries actually loaded; never extrapolated. */
+export function summarizeDeliveries(items: WebhookDelivery[]): {
+  total: number;
+  delivered: number;
+  problems: number;
+  successRate: number | null;
+  averageMs: number | null;
+} {
+  const delivered = items.filter((item) => item.status === "delivered").length;
+  const problems = items.filter(
+    (item) => item.status === "attempted" || item.status === "unknown",
+  ).length;
+  const decided = delivered + problems;
+  const timed = items.filter(
+    (item): item is WebhookDelivery & { duration_ms: number } =>
+      item.duration_ms !== null,
+  );
+  return {
+    total: items.length,
+    delivered,
+    problems,
+    successRate: decided > 0 ? delivered / decided : null,
+    averageMs: timed.length
+      ? Math.round(
+          timed.reduce((sum, item) => sum + item.duration_ms, 0) / timed.length,
+        )
+      : null,
+  };
+}

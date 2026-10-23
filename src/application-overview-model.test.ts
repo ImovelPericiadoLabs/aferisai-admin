@@ -6,6 +6,7 @@ import type {
 } from "./api";
 import {
   summarizeCredentials,
+  summarizeDeliveries,
   summarizeDelivery,
   summarizeEndpoint,
   webhookHost,
@@ -142,5 +143,40 @@ describe("summarizeDelivery", () => {
       label: "Não enviada",
       tone: "badge-neutral",
     });
+  });
+});
+
+describe("summarizeDeliveries", () => {
+  it("is empty without deliveries", () => {
+    expect(summarizeDeliveries([])).toEqual({
+      total: 0,
+      delivered: 0,
+      problems: 0,
+      successRate: null,
+      averageMs: null,
+    });
+  });
+  it("computes the rate and the average duration over real deliveries", () => {
+    const items = [
+      delivery({ id: "1", duration_ms: 100 }),
+      delivery({ id: "2", duration_ms: 300 }),
+      delivery({ id: "3", status: "attempted", duration_ms: 600 }),
+      delivery({ id: "4", status: "pending", duration_ms: null }),
+    ];
+    expect(summarizeDeliveries(items)).toEqual({
+      total: 4,
+      delivered: 2,
+      problems: 1,
+      successRate: 2 / 3,
+      averageMs: 333,
+    });
+  });
+  it("ignores pending and skipped for the rate", () => {
+    expect(
+      summarizeDeliveries([
+        delivery({ status: "pending" }),
+        delivery({ status: "skipped" }),
+      ]).successRate,
+    ).toBeNull();
   });
 });

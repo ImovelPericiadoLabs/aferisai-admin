@@ -1,5 +1,7 @@
 import { useId, useState, type KeyboardEvent, type ReactNode } from "react";
+import { ApplicationHero } from "./ApplicationHero";
 import { ApplicationOverview } from "./ApplicationOverview";
+import { useApplicationSnapshot } from "./useApplicationSnapshot";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { FieldAction } from "./FieldAction";
 import { CredentialManagement } from "./CredentialManagement";
@@ -119,6 +121,12 @@ export function ApplicationWorkspace({
     applications.find((item) => item.id === selectedApplicationId) ??
     (applications.length === 1 ? applications[0] : undefined);
   const editable = canEdit && application?.status === "active";
+  const { data: snapshot, failed: snapshotFailed } = useApplicationSnapshot(
+    application?.id ?? "",
+    channel,
+    canManage && application !== undefined,
+    onUnauthorized,
+  );
 
   if (!application && applications.length > 1) {
     return (
@@ -235,62 +243,62 @@ export function ApplicationWorkspace({
       className={`appws${channel === "partner" ? " is-partner" : ""}`}
       aria-label={`Aplicação ${application.name}`}
     >
-      <header className="appws-head">
-        <div>
-          <h2 className="appws-title">{application.name}</h2>
-          <p className="page-subtitle">
-            {canManage
-              ? "Configure o destino dos eventos, acompanhe entregas e administre o acesso."
-              : "Consulte os acessos concedidos a esta aplicação."}
-          </p>
-        </div>
-        <span
-          className={`badge ${application.status === "active" ? "badge-success" : "badge-warning"}`}
-        >
-          {application.status === "active" ? "Ativa" : "Suspensa"}
-        </span>
-      </header>
-
-      {applications.length > 1 && (
-        <div className="appws-switch">
-          <FieldAction
-            id="appws-switch-select"
-            label="Trocar aplicação"
-            action={
-              hasMoreApplications && onLoadMoreApplications ? (
-                <button
-                  type="button"
-                  className="btn btn-secondary btn-md"
-                  disabled={loadingMoreApplications}
-                  onClick={onLoadMoreApplications}
+      <ApplicationHero
+        name={application.name}
+        active={application.status === "active"}
+        description={
+          canManage
+            ? "Configure o destino dos eventos, acompanhe entregas e administre o acesso."
+            : "Consulte os acessos concedidos a esta aplicação."
+        }
+        snapshot={snapshot}
+        failed={snapshotFailed}
+        grantedCount={grantedCount}
+        totalPermissions={permissions.length}
+        canManage={canManage}
+        switcher={
+          applications.length > 1 ? (
+            <div className="appws-switch">
+              <FieldAction
+                id="appws-switch-select"
+                label="Trocar aplicação"
+                action={
+                  hasMoreApplications && onLoadMoreApplications ? (
+                    <button
+                      type="button"
+                      className="btn btn-secondary btn-md"
+                      disabled={loadingMoreApplications}
+                      onClick={onLoadMoreApplications}
+                    >
+                      {loadingMoreApplications
+                        ? "Carregando…"
+                        : "Carregar mais aplicações"}
+                    </button>
+                  ) : null
+                }
+              >
+                <select
+                  id="appws-switch-select"
+                  className="input"
+                  value={application.id}
+                  onChange={(event) => {
+                    onSelectApplication(event.target.value);
+                    setPermissionToReview(null);
+                    setTab("overview");
+                  }}
                 >
-                  {loadingMoreApplications
-                    ? "Carregando…"
-                    : "Carregar mais aplicações"}
-                </button>
-              ) : null
-            }
-          >
-            <select
-              id="appws-switch-select"
-              className="input"
-              value={application.id}
-              onChange={(event) => {
-                onSelectApplication(event.target.value);
-                setPermissionToReview(null);
-                setTab("overview");
-              }}
-            >
-              {applications.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.name} ·{" "}
-                  {item.status === "active" ? "Ativa" : "Suspensa"}
-                </option>
-              ))}
-            </select>
-          </FieldAction>
-        </div>
-      )}
+                  {applications.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name} ·{" "}
+                      {item.status === "active" ? "Ativa" : "Suspensa"}
+                    </option>
+                  ))}
+                </select>
+              </FieldAction>
+            </div>
+          ) : null
+        }
+      />
 
       <div
         className="seg-tabs"
@@ -325,13 +333,11 @@ export function ApplicationWorkspace({
         {activeTab === "overview" &&
           (canManage ? (
             <ApplicationOverview
-              key={application.id}
-              applicationId={application.id}
-              channel={channel}
+              snapshot={snapshot}
+              failed={snapshotFailed}
               grantedCount={grantedCount}
               totalPermissions={permissions.length}
               onOpen={setTab}
-              onUnauthorized={onUnauthorized}
             />
           ) : (
             <div className="alert" role="note">

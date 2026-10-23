@@ -324,6 +324,12 @@ export function OrganizationDetail({
       [next]?.focus();
   }
 
+  const openApplication =
+    detail && section === "application" && selectedApplicationId
+      ? (detail.applications.find(
+          (item) => item.id === selectedApplicationId,
+        ) ?? null)
+      : null;
   const activeApplications = detail
     ? detail.applications.filter((item) => item.status === "active").length
     : 0;
@@ -354,7 +360,10 @@ export function OrganizationDetail({
       )}
       {!loading && detail && (
         <>
-          <header className="card partner-head">
+          <header
+            className="card partner-head"
+            data-compact={openApplication ? "true" : "false"}
+          >
             <div className="partner-logo">
               {logoBlobUrl ? (
                 <img
@@ -372,50 +381,62 @@ export function OrganizationDetail({
               <h1 className="page-title" id="detail-title">
                 {detail.name}
               </h1>
-              <p className="page-subtitle">{detail.slug}</p>
+              <p className="page-subtitle">
+                {openApplication ? (
+                  <span className="partner-crumb">
+                    {detail.slug} › {openApplication.name}
+                  </span>
+                ) : (
+                  detail.slug
+                )}
+              </p>
             </div>
             <span
               className={`badge ${detail.status === "active" ? "badge-success" : detail.status === "suspended" ? "badge-warning" : "badge-neutral"}`}
             >
               {statusLabel(detail.status)}
             </span>
-            <dl className="partner-stats">
-              <div>
-                <dt>Aplicações</dt>
-                <dd>{detail.applications.length}</dd>
-              </div>
-              <div>
-                <dt>Ativas</dt>
-                <dd>{activeApplications}</dd>
-              </div>
-              <div>
-                <dt>Ações no catálogo</dt>
-                <dd>{detail.permissions.length}</dd>
-              </div>
-            </dl>
+            <div className="partner-head-stats" aria-hidden={openApplication !== null}>
+              <dl className="partner-stats">
+                <div>
+                  <dt>Aplicações</dt>
+                  <dd>{detail.applications.length}</dd>
+                </div>
+                <div>
+                  <dt>Ativas</dt>
+                  <dd>{activeApplications}</dd>
+                </div>
+                <div>
+                  <dt>Ações no catálogo</dt>
+                  <dd>{detail.permissions.length}</dd>
+                </div>
+              </dl>
+            </div>
           </header>
-          <div
-            className="seg-tabs"
-            role="tablist"
-            aria-label="Área da parceria"
-            onKeyDown={onSectionKeyDown}
-          >
-            {sections.map((item) => (
-              <button
-                key={item.id}
-                id={`partner-tab-${item.id}`}
-                type="button"
-                role="tab"
-                className={`seg-tab${section === item.id ? " active" : ""}`}
-                aria-selected={section === item.id}
-                aria-controls={`partner-panel-${item.id}`}
-                tabIndex={section === item.id ? 0 : -1}
-                onClick={() => setSection(item.id)}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
+          {!openApplication && (
+            <div
+              className="seg-tabs"
+              role="tablist"
+              aria-label="Área da parceria"
+              onKeyDown={onSectionKeyDown}
+            >
+              {sections.map((item) => (
+                <button
+                  key={item.id}
+                  id={`partner-tab-${item.id}`}
+                  type="button"
+                  role="tab"
+                  className={`seg-tab${section === item.id ? " active" : ""}`}
+                  aria-selected={section === item.id}
+                  aria-controls={`partner-panel-${item.id}`}
+                  tabIndex={section === item.id ? 0 : -1}
+                  onClick={() => setSection(item.id)}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          )}
           {permissionError && (
             <div className="alert alert-danger" role="alert">
               {permissionError}

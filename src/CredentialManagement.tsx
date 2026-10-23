@@ -7,10 +7,12 @@ import {
   type IssuedPartnerCredential,
   type PartnerCredential,
 } from "./api";
+import { ConfirmDialog } from "./ConfirmDialog";
+import { Checkbox } from "./controls";
+import { SecretReveal } from "./SecretReveal";
 import { uuidv7 } from "./uuidv7";
 import {
   applicationPermissionDescription,
-  applicationPermissionGlyph,
   applicationPermissionLabel,
 } from "./display-labels";
 
@@ -236,36 +238,45 @@ export function CredentialManagement({
     (item) => item.status === "active" && !isExpired(item.expires_at),
   ).length;
 
+  const revokeTarget = items.find((item) => item.id === confirmRevoke);
+
   return (
-    <section className="credential-panel" aria-label="Credenciais da aplicação">
-      <div className="detail-card-head">
-        <h5>Credenciais</h5>
+    <section className="cred" aria-label="Credenciais da aplicação">
+      <header className="cred-head">
+        <div>
+          <h3 className="appws-section-title">Credenciais</h3>
+          <p className="form-hint">
+            Troque o segredo antes de revogar o anterior. Até duas credenciais
+            podem estar ativas durante a troca.
+          </p>
+        </div>
         <button
-          className="back-link"
+          className="btn btn-secondary btn-sm"
           type="button"
           disabled={busy}
           onClick={() => void refresh()}
         >
           Atualizar
         </button>
-      </div>
-      <p>
-        Troque o segredo antes de revogar o anterior. Até duas credenciais podem
-        estar ativas durante a troca.
-      </p>
-      {!loaded && <p role="status">Carregando credenciais…</p>}
+      </header>
+      {!loaded && (
+        <div className="rules-skeleton" role="status" aria-label="Carregando">
+          <span className="skeleton" />
+          <span className="skeleton" />
+        </div>
+      )}
       {error && (
-        <p className="error" role="alert">
+        <div className="alert alert-danger" role="alert">
           {error}
-        </p>
+        </div>
       )}
       {notice && (
-        <p className="profile-saved" role="status">
+        <div className="alert alert-success" role="status">
           {notice}
-        </p>
+        </div>
       )}
       {uncertain && (
-        <div className="credential-recovery" role="status">
+        <div className="alert alert-warning cred-recovery" role="status">
           <strong>Emissão com resultado desconhecido</strong>
           <p>
             Identificador da tentativa: <code>{uncertain}</code>
@@ -285,162 +296,97 @@ export function CredentialManagement({
               Atualize a lista para verificar se a credencial foi registrada.
             </p>
           )}
-          {reconciled &&
-            !orphan &&
-            !cursor &&
-            (confirmRecovery ? (
-              <div className="button-row">
-                <button
-                  className="button secondary"
-                  type="button"
-                  onClick={() => {
-                    setUncertain(null);
-                    setReconciled(false);
-                    setConfirmRecovery(false);
-                  }}
-                >
-                  Confirmar que não foi registrada
-                </button>
-                <button
-                  className="back-link"
-                  type="button"
-                  onClick={() => setConfirmRecovery(false)}
-                >
-                  Voltar
-                </button>
-              </div>
-            ) : (
-              <button
-                className="back-link"
-                type="button"
-                onClick={() => setConfirmRecovery(true)}
-              >
-                Revisei toda a lista; encerrar verificação
-              </button>
-            ))}
-        </div>
-      )}
-      {issued && (
-        <div className="credential-issued" role="status">
-          <strong>Credencial emitida · segredo exibido uma vez</strong>
-          <p>
-            Guarde em um cofre seguro e teste a nova credencial antes de revogar
-            a anterior.
-          </p>
-          <dl>
-            <div>
-              <dt>Identificador</dt>
-              <dd>{issued.client_id}</dd>
-            </div>
-            <div>
-              <dt>Segredo</dt>
-              <dd className="secret">{issued.client_secret}</dd>
-            </div>
-          </dl>
-          <button
-            className="button secondary"
-            type="button"
-            onClick={() => setIssued(null)}
-          >
-            Entendi, ocultar segredo
-          </button>
+          {reconciled && !orphan && !cursor && (
+            <button
+              className="btn btn-secondary btn-sm"
+              type="button"
+              onClick={() => setConfirmRecovery(true)}
+            >
+              Revisei toda a lista; encerrar verificação
+            </button>
+          )}
         </div>
       )}
       {loaded && items.length === 0 && !error && (
-        <p className="detail-empty">Nenhuma credencial registrada.</p>
+        <div className="empty-state" role="status">
+          <strong>Nenhuma credencial registrada</strong>
+          <span>Emita a primeira credencial para integrar seus sistemas.</span>
+        </div>
       )}
       {items.length > 0 && (
-        <ul className="credential-list">
-          {items.map((credential) => (
-            <li key={credential.id}>
-              <div className="credential-row">
-                <div>
-                  <strong>{credential.name || "Credencial sem nome"}</strong>
-                  <small>
-                    Emitida em {dateLabel(credential.created_at)} ·{" "}
-                    {credential.expires_at
-                      ? `Vence em ${dateLabel(credential.expires_at)}`
-                      : "Sem prazo definido"}
-                  </small>
-                  {!!credential.scopes?.length && (
-                    <small>
-                      {credential.scopes
-                        .map(applicationPermissionLabel)
-                        .join(" · ")}
-                    </small>
-                  )}
-                  {credential.revoked_at && (
-                    <small>
-                      Revogada em {dateLabel(credential.revoked_at)}
-                    </small>
-                  )}
-                </div>
-                <span className="pill">
-                  {credential.status === "revoked"
-                    ? "Revogada"
+        <div className="data-table-wrap">
+          <table className="data-table" aria-label="Credenciais">
+            <thead>
+              <tr>
+                <th scope="col">Credencial</th>
+                <th scope="col">Permissões</th>
+                <th scope="col">Estado</th>
+                <th scope="col">
+                  <span className="sr-only">Ações</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((credential) => {
+                const state =
+                  credential.status === "revoked"
+                    ? { label: "Revogada", tone: "badge-neutral" }
                     : isExpired(credential.expires_at)
-                      ? "Expirada"
-                      : "Ativa"}
-                </span>
-              </div>
-              <details className="credential-technical">
-                <summary>Detalhes técnicos</summary>
-                <dl>
-                  <div>
-                    <dt>Identificador público</dt>
-                    <dd>{credential.client_id}</dd>
-                  </div>
-                  {credential.issue_request_id && (
-                    <div>
-                      <dt>Emissão</dt>
-                      <dd>{credential.issue_request_id}</dd>
-                    </div>
-                  )}
-                </dl>
-              </details>
-              {credential.status === "active" &&
-                (confirmRevoke === credential.id ? (
-                  <div className="credential-confirm">
-                    <p>
-                      Revogar agora invalida imediatamente os tokens desta
-                      credencial. A nova já foi testada?
-                    </p>
-                    <div className="button-row">
-                      <button
-                        className="button secondary"
-                        type="button"
-                        disabled={busy}
-                        onClick={() => void revoke(credential.id)}
-                      >
-                        Confirmar revogação
-                      </button>
-                      <button
-                        className="back-link"
-                        type="button"
-                        disabled={busy}
-                        onClick={() => setConfirmRevoke(null)}
-                      >
-                        Cancelar
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <button
-                    className="back-link"
-                    type="button"
-                    disabled={busy}
-                    onClick={() => setConfirmRevoke(credential.id)}
-                  >
-                    Revogar credencial
-                  </button>
-                ))}
-            </li>
-          ))}
-        </ul>
+                      ? { label: "Expirada", tone: "badge-warning" }
+                      : { label: "Ativa", tone: "badge-success" };
+                return (
+                  <tr key={credential.id}>
+                    <td data-label="Credencial">
+                      <strong className="rules-cell-main">
+                        {credential.name || "Credencial sem nome"}
+                      </strong>
+                      <small className="rules-cell-sub">
+                        <code>{credential.client_id}</code>
+                      </small>
+                      <small className="rules-cell-sub">
+                        Emitida em {dateLabel(credential.created_at)} ·{" "}
+                        {credential.expires_at
+                          ? `Vence em ${dateLabel(credential.expires_at)}`
+                          : "Sem prazo definido"}
+                        {credential.revoked_at
+                          ? ` · Revogada em ${dateLabel(credential.revoked_at)}`
+                          : ""}
+                      </small>
+                    </td>
+                    <td data-label="Permissões">
+                      {credential.scopes?.length
+                        ? credential.scopes
+                            .map(applicationPermissionLabel)
+                            .join(" · ")
+                        : "—"}
+                    </td>
+                    <td data-label="Estado">
+                      <span className={`badge ${state.tone}`}>
+                        {state.label}
+                      </span>
+                    </td>
+                    <td className="appws-open">
+                      {credential.status === "active" && (
+                        <button
+                          className="btn btn-ghost-danger btn-sm"
+                          type="button"
+                          disabled={busy}
+                          onClick={() => setConfirmRevoke(credential.id)}
+                        >
+                          Revogar
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       )}
       {cursor && (
         <button
-          className="back-link"
+          className="btn btn-secondary btn-md cred-more"
           type="button"
           disabled={busy}
           onClick={() => void loadMore()}
@@ -455,102 +401,99 @@ export function CredentialManagement({
         !issued &&
         activeCount < 2 &&
         (confirmIssue ? (
-          <div className="credential-issue-form">
-            <h6>Emitir credencial</h6>
-            <p>
+          <section className="card cred-form" aria-labelledby="cred-form-title">
+            <h4 id="cred-form-title">Emitir credencial</h4>
+            <p className="form-hint">
               Identifique o sistema e escolha o prazo. O segredo completo
-              aparecerá uma única vez.
+              aparecerá uma única vez. Prepare um cofre seguro antes de
+              continuar.
             </p>
-            <div className="field">
-              <label htmlFor="credential-name">Nome da credencial</label>
-              <input
-                id="credential-name"
-                value={name}
-                maxLength={80}
-                placeholder="Ex.: Sistema de produção"
-                onChange={(event) => {
-                  setName(event.target.value);
-                  setFormError("");
-                }}
-                required
-              />
-            </div>
-            <div className="field">
-              <label htmlFor="credential-expiry">Validade</label>
-              <select
-                id="credential-expiry"
-                value={expiresInDays}
-                onChange={(event) =>
-                  setExpiresInDays(Number(event.target.value))
-                }
-              >
-                <option value={30}>30 dias</option>
-                <option value={90}>90 dias</option>
-                <option value={180}>180 dias</option>
-              </select>
-            </div>
-            <fieldset className="credential-scope-options">
-              <legend>Permissões</legend>
-              {availableScopes.map((scope, index) => (
-                <label key={scope}>
-                  <input
-                    type="checkbox"
-                    checked={selectedScopes.includes(scope)}
-                    onChange={(event) => {
-                      setSelectedScopes((current) =>
-                        event.target.checked
-                          ? [...current, scope]
-                          : current.filter((item) => item !== scope),
-                      );
-                      setFormError("");
-                    }}
-                  />
-                  <span className="credential-scope-icon" aria-hidden="true">
-                    {applicationPermissionGlyph(scope, index)}
-                  </span>
-                  <span>
-                    <strong>{applicationPermissionLabel(scope)}</strong>
-                    <small>
-                      {applicationPermissionDescription(
-                        scope,
-                        permissionDescriptions[scope],
-                      )}
-                    </small>
-                  </span>
+            <div className="form-row">
+              <div className="form-field">
+                <label className="form-field-label" htmlFor="credential-name">
+                  Nome da credencial
                 </label>
+                <input
+                  id="credential-name"
+                  className="input"
+                  value={name}
+                  maxLength={80}
+                  placeholder="Ex.: Sistema de produção"
+                  onChange={(event) => {
+                    setName(event.target.value);
+                    setFormError("");
+                  }}
+                  required
+                />
+              </div>
+              <div className="form-field">
+                <label className="form-field-label" htmlFor="credential-expiry">
+                  Validade
+                </label>
+                <select
+                  id="credential-expiry"
+                  className="input"
+                  value={expiresInDays}
+                  onChange={(event) =>
+                    setExpiresInDays(Number(event.target.value))
+                  }
+                >
+                  <option value={30}>30 dias</option>
+                  <option value={90}>90 dias</option>
+                  <option value={180}>180 dias</option>
+                </select>
+              </div>
+            </div>
+            <fieldset className="cred-scopes">
+              <legend className="form-section-title">Permissões</legend>
+              {availableScopes.map((scope) => (
+                <Checkbox
+                  key={scope}
+                  id={`cred-scope-${scope}`}
+                  label={applicationPermissionLabel(scope)}
+                  description={applicationPermissionDescription(
+                    scope,
+                    permissionDescriptions[scope],
+                  )}
+                  checked={selectedScopes.includes(scope)}
+                  onChange={(checked) => {
+                    setSelectedScopes((current) =>
+                      checked
+                        ? [...current, scope]
+                        : current.filter((item) => item !== scope),
+                    );
+                    setFormError("");
+                  }}
+                />
               ))}
             </fieldset>
             {formError && (
-              <small className="webhook-field-error" role="alert">
+              <span className="form-hint onboarding-error" role="alert">
                 {formError}
-              </small>
+              </span>
             )}
-            <p>
-              O novo segredo aparecerá uma vez. Prepare um cofre seguro antes de
-              continuar.
-            </p>
-            <div className="button-row">
+            <div className="appdir-actions">
               <button
-                className="button primary"
-                type="button"
-                disabled={busy || !name.trim() || selectedScopes.length === 0}
-                onClick={() => void issue()}
-              >
-                Confirmar emissão
-              </button>
-              <button
-                className="button secondary"
+                className="btn btn-ghost btn-md"
                 type="button"
                 disabled={busy}
                 onClick={() => setConfirmIssue(false)}
               >
                 Cancelar
               </button>
+              <button
+                className="btn btn-primary btn-md"
+                type="button"
+                disabled={busy || !name.trim() || selectedScopes.length === 0}
+                onClick={() => void issue()}
+              >
+                Confirmar emissão
+              </button>
             </div>
-          </div>
+          </section>
         ) : (
           <button
-            className="button primary"
+            className="btn btn-primary btn-md cred-more"
             type="button"
             disabled={busy}
             onClick={() => {
@@ -566,16 +509,60 @@ export function CredentialManagement({
           </button>
         ))}
       {loaded && activeCount >= 2 && (
-        <p>
+        <div className="alert" role="note">
           Limite de duas credenciais ativas. Revogue uma antiga antes de emitir
           outra.
-        </p>
+        </div>
       )}
       {loaded && !canIssue && (
-        <p>
+        <div className="alert" role="note">
           A organização e a aplicação precisam estar ativas para emitir uma
           credencial.
-        </p>
+        </div>
+      )}
+
+      <ConfirmDialog
+        open={confirmRevoke !== null}
+        tone="danger"
+        title="Revogar esta credencial?"
+        description="Revogar invalida imediatamente os tokens desta credencial. Confirme que a nova já foi testada."
+        details={
+          revokeTarget
+            ? [
+                {
+                  label: "Credencial",
+                  value: revokeTarget.name || "Credencial sem nome",
+                },
+                { label: "Identificador", value: revokeTarget.client_id },
+              ]
+            : []
+        }
+        confirmLabel="Revogar credencial"
+        busy={busy}
+        onConfirm={() => confirmRevoke && void revoke(confirmRevoke)}
+        onCancel={() => setConfirmRevoke(null)}
+      />
+      <ConfirmDialog
+        open={confirmRecovery}
+        title="Encerrar a verificação?"
+        description="Confirme que você revisou toda a lista e a credencial desta tentativa não foi registrada."
+        confirmLabel="Confirmar que não foi registrada"
+        onConfirm={() => {
+          setUncertain(null);
+          setReconciled(false);
+          setConfirmRecovery(false);
+        }}
+        onCancel={() => setConfirmRecovery(false)}
+      />
+      {issued && (
+        <SecretReveal
+          title="Credencial emitida"
+          description="Guarde o segredo em um cofre seguro e teste a nova credencial antes de revogar a anterior."
+          secretLabel="Segredo (client secret)"
+          secret={issued.client_secret}
+          details={[{ label: "Identificador", value: issued.client_id }]}
+          onDismiss={() => setIssued(null)}
+        />
       )}
     </section>
   );
