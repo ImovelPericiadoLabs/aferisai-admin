@@ -67,11 +67,17 @@ export function RequestDirectory({
   onUnauthorized,
   openSource,
   openReview,
+  readOnly = false,
+  embedded = false,
 }: {
   canRead: boolean;
   onUnauthorized: () => void;
   openSource: (requestId: string) => void;
   openReview: (workId: string) => void;
+  /** Hides the actions that need a reviewer role. */
+  readOnly?: boolean;
+  /** Inside another page: no title, no page padding. */
+  embedded?: boolean;
 }) {
   const [items, setItems] = useState<RequestRow[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
@@ -227,7 +233,10 @@ export function RequestDirectory({
   );
 
   return (
-    <section className="page ops" aria-labelledby="req-title">
+    <section
+      className={embedded ? "ops ops-embedded" : "page ops"}
+      aria-labelledby="req-title"
+    >
       <header className="ops-head">
         <div>
           <p className="ops-eyebrow">Operação</p>
@@ -376,7 +385,7 @@ export function RequestDirectory({
           density={prefs.density}
           selectedKey={selected?.request_id ?? null}
           rowTone={requestTone}
-          actions={rowActions}
+          actions={readOnly ? undefined : rowActions}
           onOpen={(item, element) => {
             trigger.current = element;
             setSelected(item);
@@ -475,27 +484,29 @@ export function RequestDirectory({
                 </div>
               </dl>
             </section>
-            <section className="detail-panel-section">
-              <h3 className="detail-panel-section-title">Ações</h3>
-              <div className="ops-actions">
-                <button
-                  type="button"
-                  className="btn btn-secondary btn-md"
-                  onClick={() => openSource(selected.request_id)}
-                >
-                  Conferir fonte
-                </button>
-                {selected.work_id && (
+            {!readOnly && (
+              <section className="detail-panel-section">
+                <h3 className="detail-panel-section-title">Ações</h3>
+                <div className="ops-actions">
                   <button
                     type="button"
                     className="btn btn-secondary btn-md"
-                    onClick={() => openReview(selected.work_id!)}
+                    onClick={() => openSource(selected.request_id)}
                   >
-                    Conferir análise
+                    Conferir fonte
                   </button>
-                )}
-              </div>
-            </section>
+                  {selected.work_id && (
+                    <button
+                      type="button"
+                      className="btn btn-secondary btn-md"
+                      onClick={() => openReview(selected.work_id!)}
+                    >
+                      Conferir análise
+                    </button>
+                  )}
+                </div>
+              </section>
+            )}
           </>
         )}
       </RecordDrawer>

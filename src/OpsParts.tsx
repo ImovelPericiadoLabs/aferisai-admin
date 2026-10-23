@@ -48,7 +48,7 @@ export function OpsViews({
   onPick,
   label,
 }: {
-  views: { id: string; label: string; count: number }[];
+  views: { id: string; label: string; count?: number }[];
   active: string;
   onPick: (id: string) => void;
   label: string;
@@ -64,7 +64,9 @@ export function OpsViews({
           onClick={() => onPick(view.id)}
         >
           {view.label}
-          <span className="ops-view-count">{view.count}</span>
+          {view.count !== undefined && (
+            <span className="ops-view-count">{view.count}</span>
+          )}
         </button>
       ))}
     </div>

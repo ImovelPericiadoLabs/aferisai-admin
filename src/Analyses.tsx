@@ -1,436 +1,398 @@
-import { useEffect, useState } from "react";
-import {
-  ApiError,
-  listAnalysisAttention,
-  listTeamAnalysisRequests,
-  type AttentionPage,
-  type RequestOperationPage,
-} from "./api";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { ApiError, listAnalysisAttention, type AttentionPage } from "./api";
 import { AnalysisReview } from "./AnalysisReview";
-import { SourceClassification } from "./SourceClassification";
-import { analysisWorkStatusLabel, statusLabel } from "./display-labels";
+import {
+  ATTENTION_VIEWS,
+  attentionKpis,
+  attentionTone,
+  attentionView,
+  attentionViewCounts,
+  type AttentionRow,
+  type AttentionViewId,
+} from "./attention-model";
+import { analysisWorkStatusLabel } from "./display-labels";
+import { matchesQuery } from "./ops-model";
+import { AgeBadge, OpsKpis, OpsViews } from "./OpsParts";
+import { OpsTable, type OpsColumn } from "./OpsTable";
 import { OriginalViewer, type OriginalTarget } from "./OriginalViewer";
+import { RequestDirectory } from "./RequestDirectory";
+import { useNow } from "./useNow";
 import "./review.css";
+import "./ops.css";
 
-type Tab = "requests" | "classify" | "review" | "attention";
+type Tab = "attention" | "review" | "requests";
 
-function errorMessage(cause: unknown): string {
-  return cause instanceof ApiError
-    ? cause.detail
-    : "Não foi possível consultar a API agora.";
-}
+const short = (id: string) => id.slice(0, 8);
 
-function docStateBadge(state: string): string {
-  if (state === "available") return "badge-green";
-  if (state === "purged") return "badge-red";
-  return "badge-gray";
-}
-
-function attentionBadge(status: string): string {
-  if (status === "failed") return "badge-red";
-  if (status === "unknown") return "badge-yellow";
-  if (status === "completed") return "badge-blue";
-  return "badge-gray";
-}
-
-function short(id: string): string {
-  return id.slice(0, 8);
-}
+const statusTone = (status: AttentionRow["status"]) =>
+  status === "failed" || status === "unknown"
+    ? "danger"
+    : status === "suspended"
+      ? "warning"
+      : "info";
 
 export function Analyses({
   csrf,
   canReview,
   onUnauthorized,
   initialWorkId,
+  openSource,
 }: {
   csrf: string;
   canReview: boolean;
   onUnauthorized: () => void;
   initialWorkId?: string;
+  openSource?: (requestId: string) => void;
 }) {
-  const [tab, setTab] = useState<Tab>(initialWorkId ? "review" : "requests");
-
-  const [requests, setRequests] = useState<RequestOperationPage | null>(null);
-  const [requestsError, setRequestsError] = useState("");
-  const [requestsBusy, setRequestsBusy] = useState(false);
-
-  const [attention, setAttention] = useState<AttentionPage | null>(null);
-  const [attentionError, setAttentionError] = useState("");
-  const [attentionBusy, setAttentionBusy] = useState(false);
+  const [tab, setTab] = useState<Tab>(
+    initialWorkId ? "review" : canReview ? "attention" : "requests",
+  );
+  const [reviewWorkId, setReviewWorkId] = useState(initialWorkId ?? "");
+  const [rows, setRows] = useState<AttentionPage["items"]>([]);
+  const [cursor, setCursor] = useState<string | null>(null);
+  const [loading, setLoading] = useState(canReview);
+  const [error, setError] = useState("");
+  const [view, setView] = useState<AttentionViewId>("all");
+  const [query, setQuery] = useState("");
   const [viewing, setViewing] = useState<OriginalTarget | null>(null);
+  const now = useNow();
+
+  const load = useCallback(
+    async (next?: string) => {
+      setLoading(true);
+      try {
+        const page = await listAnalysisAttention(next);
+        setRows((current) => (next ? [...current, ...page.items] : page.items));
+        setCursor(page.next_cursor);
+        setError("");
+      } catch (cause) {
+        if (cause instanceof ApiError && cause.status === 401) onUnauthorized();
+        else
+          setError(
+            cause instanceof ApiError
+              ? cause.detail
+              : "Não foi possível consultar a API agora.",
+          );
+      } finally {
+        setLoading(false);
+      }
+    },
+    [onUnauthorized],
+  );
 
   useEffect(() => {
-    if (tab !== "requests") return;
-    let live = true;
-    setRequestsBusy(true);
-    setRequestsError("");
-    listTeamAnalysisRequests()
-      .then((page) => {
-        if (!live) return;
-        setRequests(page);
-      })
-      .catch((cause: unknown) => {
-        if (!live) return;
-        if (cause instanceof ApiError && cause.status === 401) onUnauthorized();
-        else setRequestsError(errorMessage(cause));
-      })
-      .finally(() => {
-        if (live) setRequestsBusy(false);
-      });
-    return () => {
-      live = false;
-    };
-  }, [tab, onUnauthorized]);
+    if (canReview) queueMicrotask(() => void load());
+  }, [canReview, load]);
 
-  useEffect(() => {
-    if (tab !== "attention" || !canReview) return;
-    let live = true;
-    setAttentionBusy(true);
-    setAttentionError("");
-    listAnalysisAttention()
-      .then((page) => {
-        if (!live) return;
-        setAttention(page);
-      })
-      .catch((cause: unknown) => {
-        if (!live) return;
-        if (cause instanceof ApiError && cause.status === 401) onUnauthorized();
-        else setAttentionError(errorMessage(cause));
-      })
-      .finally(() => {
-        if (live) setAttentionBusy(false);
-      });
-    return () => {
-      live = false;
-    };
-  }, [tab, canReview, onUnauthorized]);
+  const counts = useMemo(() => attentionViewCounts(rows), [rows]);
+  const visible = useMemo(
+    () =>
+      rows.filter(
+        (row) =>
+          (view === "all" || attentionView(row) === view) &&
+          matchesQuery(
+            [row.work_id, row.request_id, analysisWorkStatusLabel(row.status)],
+            query,
+          ),
+      ),
+    [rows, view, query],
+  );
 
-  async function moreRequests() {
-    if (!requests?.next_cursor) return;
-    setRequestsBusy(true);
-    setRequestsError("");
-    try {
-      const page = await listTeamAnalysisRequests(requests.next_cursor);
-      setRequests((prev) =>
-        prev
-          ? {
-              items: [...prev.items, ...page.items],
-              next_cursor: page.next_cursor,
-            }
-          : page,
-      );
-    } catch (cause) {
-      if (cause instanceof ApiError && cause.status === 401) onUnauthorized();
-      else setRequestsError(errorMessage(cause));
-    } finally {
-      setRequestsBusy(false);
-    }
+  const columns: OpsColumn<AttentionRow>[] = useMemo(
+    () => [
+      {
+        id: "work",
+        label: "Trabalho",
+        locked: true,
+        render: (row) => (
+          <span className="ops-id">
+            <strong>{short(row.work_id)}</strong>
+            <small>pedido {short(row.request_id)}</small>
+          </span>
+        ),
+        text: (row) => row.work_id,
+      },
+      {
+        id: "status",
+        label: "Situação",
+        render: (row) => (
+          <span className={`badge badge-${statusTone(row.status)}`}>
+            {analysisWorkStatusLabel(row.status)}
+          </span>
+        ),
+        text: (row) => analysisWorkStatusLabel(row.status),
+      },
+      {
+        id: "error",
+        label: "Erro",
+        hideBelow: "tablet",
+        render: (row) => (row.error_code ? "Falha registrada" : "—"),
+        text: (row) => (row.error_code ? "Falha registrada" : ""),
+      },
+      {
+        id: "age",
+        label: "Parado há",
+        align: "end",
+        render: (row) =>
+          row.finished_at ? (
+            <AgeBadge
+              iso={row.finished_at}
+              now={now}
+              warnAfterHours={12}
+              dangerAfterHours={48}
+            />
+          ) : (
+            "—"
+          ),
+        text: (row) => row.finished_at ?? "",
+      },
+    ],
+    [now],
+  );
+
+  function seeDocument(row: AttentionRow) {
+    setViewing({
+      requestId: row.request_id,
+      title: "Documento do pedido",
+      facts: [
+        { label: "Trabalho", value: row.work_id },
+        { label: "Pedido", value: row.request_id },
+        { label: "Situação", value: analysisWorkStatusLabel(row.status) },
+      ],
+    });
   }
 
-  async function moreAttention() {
-    if (!attention?.next_cursor) return;
-    setAttentionBusy(true);
-    setAttentionError("");
-    try {
-      const page = await listAnalysisAttention(attention.next_cursor);
-      setAttention((prev) =>
-        prev
-          ? {
-              items: [...prev.items, ...page.items],
-              next_cursor: page.next_cursor,
-            }
-          : page,
-      );
-    } catch (cause) {
-      if (cause instanceof ApiError && cause.status === 401) onUnauthorized();
-      else setAttentionError(errorMessage(cause));
-    } finally {
-      setAttentionBusy(false);
-    }
+  function review(row: AttentionRow) {
+    setReviewWorkId(row.work_id);
+    setTab("review");
   }
 
-  const tabs: { id: Tab; label: string; restricted?: boolean }[] = [
+  const tabs: { id: Tab; label: string }[] = [
+    ...(canReview
+      ? [
+          { id: "attention" as const, label: "Atenção" },
+          { id: "review" as const, label: "Revisão" },
+        ]
+      : []),
     { id: "requests", label: "Pedidos" },
-    { id: "classify", label: "Classificar fonte", restricted: true },
-    { id: "review", label: "Revisar análise", restricted: true },
-    { id: "attention", label: "Atenção", restricted: true },
   ];
 
   return (
-    <div className="content">
-      <header className="page-head">
+    <section className="page ops" aria-labelledby="ana-title">
+      <header className="ops-head">
         <div>
-          <p className="eyebrow">Conferência interna</p>
-          <h1>Análises</h1>
-          <p className="muted">
-            Pedidos, classificação de fonte, revisão humana e itens de atenção.
+          <p className="ops-eyebrow">Operação</p>
+          <h1 className="page-title" id="ana-title">
+            Análises
+          </h1>
+          <p className="page-subtitle">
+            O que pede atenção, a revisão humana de cada análise e os pedidos de
+            arquivo. A classificação de fonte tem a própria fila.
           </p>
         </div>
-        <span className="pill">{canReview ? "Gestão" : "Leitura"}</span>
-      </header>
-      <div className="analyses-tabs" aria-label="Áreas de análise">
-        {tabs.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            className={`button ${tab === t.id ? "primary" : "secondary"}`}
-            disabled={t.restricted && !canReview}
-            onClick={() => setTab(t.id)}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
-
-      {tab === "requests" && (
-        <section>
-          {requestsError && (
-            <p className="error" role="alert">
-              {requestsError}
-            </p>
-          )}
-          {!requests && !requestsError && (
-            <div
-              className="skeleton-rows"
-              role="status"
-              aria-label="Carregando pedidos"
+        <div className="ops-head-actions">
+          {tab === "attention" && (
+            <button
+              type="button"
+              className="btn btn-secondary btn-md"
+              disabled={loading}
+              onClick={() => void load()}
             >
-              {[1, 2, 3].map((i) => (
-                <div
-                  key={i}
-                  className="skeleton"
-                  style={{ height: "2.5rem", marginBottom: "0.5rem" }}
-                />
-              ))}
+              Atualizar
+            </button>
+          )}
+          <span className="badge badge-neutral">
+            {canReview ? "Gestão" : "Leitura"}
+          </span>
+        </div>
+      </header>
+
+      <OpsViews
+        label="Áreas de análise"
+        active={tab}
+        onPick={(id) => setTab(id as Tab)}
+        views={tabs.map((entry) => ({
+          ...entry,
+          count: entry.id === "attention" ? counts.all : undefined,
+        }))}
+      />
+
+      {tab === "attention" && canReview && (
+        <>
+          <OpsKpis
+            items={attentionKpis(rows)}
+            active={view === "all" ? null : view}
+            onPick={(id) => setView((id as AttentionViewId | null) ?? "all")}
+          />
+          <OpsViews
+            label="Visões"
+            active={view}
+            onPick={(id) => setView(id as AttentionViewId)}
+            views={ATTENTION_VIEWS.map((entry) => ({
+              ...entry,
+              count: counts[entry.id],
+            }))}
+          />
+          <div className="ops-filters">
+            <div className="ops-search">
+              <label className="sr-only" htmlFor="ana-search">
+                Buscar trabalho ou pedido
+              </label>
+              <input
+                id="ana-search"
+                className="input"
+                type="search"
+                placeholder="Buscar pelo código do trabalho ou do pedido"
+                autoComplete="off"
+                spellCheck={false}
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+              />
+            </div>
+          </div>
+
+          {error && (
+            <div className="error-state" role="alert">
+              <strong>Não foi possível consultar as análises</strong>
+              <span>{error}</span>
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={() => void load()}
+              >
+                Tentar novamente
+              </button>
             </div>
           )}
-          {requests && (
-            <>
-              {requests.items.length === 0 ? (
-                <p className="analyses-empty" role="status">
-                  Nenhum pedido encontrado.
-                </p>
-              ) : (
-                <div className="analyses-table-wrap">
-                  <table className="analyses-table analyses-mobile-cards">
-                    <thead>
-                      <tr>
-                        <th>ID</th>
-                        <th>Págs</th>
-                        <th>Documento</th>
-                        <th>Pagamento</th>
-                        <th>Trabalho</th>
-                        <th>Criado em</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {requests.items.map((item) => (
-                        <tr key={item.request_id}>
-                          <td data-label="ID">
-                            <code title={item.request_id}>
-                              {short(item.request_id)}
-                            </code>
-                          </td>
-                          <td data-label="Págs">{item.page_count}</td>
-                          <td data-label="Documento">
-                            <span
-                              className={docStateBadge(item.document_state)}
-                            >
-                              {statusLabel(item.document_state)}
-                            </span>
-                          </td>
-                          <td data-label="Pagamento">
-                            {item.payment_status
-                              ? statusLabel(item.payment_status)
-                              : "—"}
-                          </td>
-                          <td data-label="Trabalho">
-                            <span className="analyses-work-cell">
-                              {item.work_id ? (
-                                <code title={item.work_id}>
-                                  {short(item.work_id)}
-                                </code>
-                              ) : (
-                                "—"
-                              )}
-                              {item.work_status && (
-                                <span className="analyses-work-status">
-                                  {analysisWorkStatusLabel(item.work_status)}
-                                </span>
-                              )}
-                            </span>
-                          </td>
-                          <td data-label="Criado em">
-                            {new Date(item.created_at).toLocaleString("pt-BR")}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+
+          {loading && rows.length === 0 && !error ? (
+            <div
+              className="rules-skeleton"
+              role="status"
+              aria-label="Carregando atenção"
+            >
+              <span className="skeleton" />
+              <span className="skeleton" />
+              <span className="skeleton" />
+            </div>
+          ) : !error && visible.length === 0 ? (
+            <div className="empty-state" role="status">
+              <strong>
+                {rows.length === 0
+                  ? "Nada pede atenção agora"
+                  : "Nenhum trabalho nesta visão"}
+              </strong>
+              <span>
+                {rows.length === 0
+                  ? "Falhas, resultados incertos e análises suspensas aparecem aqui."
+                  : "Troque a visão ou limpe a busca."}
+              </span>
+            </div>
+          ) : (
+            <OpsTable
+              label="Trabalhos que pedem atenção"
+              columns={columns}
+              rows={visible}
+              rowKey={(row) => row.work_id}
+              hidden={[]}
+              density="comfortable"
+              selectedKey={null}
+              rowTone={attentionTone}
+              actions={(row) => (
+                <span className="ops-actions">
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    aria-haspopup="dialog"
+                    data-original-for={row.work_id}
+                    onClick={() => seeDocument(row)}
+                  >
+                    Ver documento
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-primary btn-sm"
+                    onClick={() => review(row)}
+                  >
+                    Revisar
+                  </button>
+                </span>
               )}
-              {requests.next_cursor && (
-                <button
-                  type="button"
-                  className="button secondary"
-                  style={{ marginTop: "1rem" }}
-                  disabled={requestsBusy}
-                  onClick={() => void moreRequests()}
-                >
-                  Mais
-                </button>
+              onOpen={review}
+              card={(row) => (
+                <>
+                  <span className="ops-card-top">
+                    <strong>{short(row.work_id)}</strong>
+                    {row.finished_at && (
+                      <AgeBadge
+                        iso={row.finished_at}
+                        now={now}
+                        warnAfterHours={12}
+                        dangerAfterHours={48}
+                      />
+                    )}
+                  </span>
+                  <span className="ops-card-badges">
+                    <span className={`badge badge-${statusTone(row.status)}`}>
+                      {analysisWorkStatusLabel(row.status)}
+                    </span>
+                  </span>
+                  <span className="ops-card-meta">
+                    Pedido {short(row.request_id)}
+                  </span>
+                </>
               )}
-            </>
+            />
           )}
-        </section>
+
+          <div className="ops-foot">
+            <span>
+              {visible.length === rows.length
+                ? `${rows.length} trabalhos carregados`
+                : `${visible.length} de ${rows.length} carregados`}
+              <span className="ops-hint">
+                {" "}
+                · J e K navegam, Enter abre a revisão
+              </span>
+            </span>
+            {cursor && (
+              <button
+                type="button"
+                className="btn btn-secondary btn-md"
+                disabled={loading}
+                onClick={() => void load(cursor)}
+              >
+                {loading ? "Carregando…" : "Carregar mais"}
+              </button>
+            )}
+          </div>
+        </>
       )}
 
-      {tab === "classify" && (
-        <SourceClassification
-          csrf={csrf}
-          canClassify={canReview}
-          onUnauthorized={onUnauthorized}
-        />
-      )}
-
-      {tab === "review" && (
+      {tab === "review" && canReview && (
         <AnalysisReview
+          key={reviewWorkId}
           csrf={csrf}
           canReview={canReview}
           onUnauthorized={onUnauthorized}
-          initialWorkId={initialWorkId}
+          initialWorkId={reviewWorkId || undefined}
         />
       )}
 
-      {tab === "attention" && (
-        <section>
-          {!canReview && (
-            <p className="muted">Seu papel não permite ver itens de atenção.</p>
-          )}
-          {canReview && (
-            <>
-              {attentionError && (
-                <p className="error" role="alert">
-                  {attentionError}
-                </p>
-              )}
-              {!attention && !attentionError && (
-                <div
-                  className="skeleton-rows"
-                  role="status"
-                  aria-label="Carregando atenção"
-                >
-                  {[1, 2, 3].map((i) => (
-                    <div
-                      key={i}
-                      className="skeleton"
-                      style={{ height: "2.5rem", marginBottom: "0.5rem" }}
-                    />
-                  ))}
-                </div>
-              )}
-              {attention && (
-                <>
-                  {attention.items.length === 0 ? (
-                    <p className="analyses-empty" role="status">
-                      Nenhum item de atenção.
-                    </p>
-                  ) : (
-                    <div className="analyses-table-wrap">
-                      <table className="analyses-table analyses-mobile-cards">
-                        <thead>
-                          <tr>
-                            <th>Trabalho</th>
-                            <th>Pedido</th>
-                            <th>Status</th>
-                            <th>Código de erro</th>
-                            <th>Finalizado em</th>
-                            <th>Documento</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {attention.items.map((item) => (
-                            <tr key={item.work_id}>
-                              <td data-label="Trabalho">
-                                <code title={item.work_id}>
-                                  {short(item.work_id)}
-                                </code>
-                              </td>
-                              <td data-label="Pedido">
-                                <code title={item.request_id}>
-                                  {short(item.request_id)}
-                                </code>
-                              </td>
-                              <td data-label="Status">
-                                <span className={attentionBadge(item.status)}>
-                                  {analysisWorkStatusLabel(item.status)}
-                                </span>
-                              </td>
-                              <td data-label="Código de erro">
-                                {item.error_code ? "Falha registrada" : "—"}
-                              </td>
-                              <td data-label="Finalizado em">
-                                {item.finished_at
-                                  ? new Date(item.finished_at).toLocaleString(
-                                      "pt-BR",
-                                    )
-                                  : "—"}
-                              </td>
-                              <td data-label="Documento">
-                                <button
-                                  type="button"
-                                  className="btn btn-secondary btn-sm"
-                                  aria-haspopup="dialog"
-                                  data-original-for={item.work_id}
-                                  onClick={() =>
-                                    setViewing({
-                                      requestId: item.request_id,
-                                      title: "Documento do pedido",
-                                      facts: [
-                                        {
-                                          label: "Trabalho",
-                                          value: item.work_id,
-                                        },
-                                        {
-                                          label: "Pedido",
-                                          value: item.request_id,
-                                        },
-                                        {
-                                          label: "Status",
-                                          value: analysisWorkStatusLabel(
-                                            item.status,
-                                          ),
-                                        },
-                                      ],
-                                    })
-                                  }
-                                >
-                                  Ver documento
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                  {attention.next_cursor && (
-                    <button
-                      type="button"
-                      className="button secondary"
-                      style={{ marginTop: "1rem" }}
-                      disabled={attentionBusy}
-                      onClick={() => void moreAttention()}
-                    >
-                      Mais
-                    </button>
-                  )}
-                </>
-              )}
-            </>
-          )}
-        </section>
+      {tab === "requests" && (
+        <RequestDirectory
+          canRead
+          embedded
+          readOnly={!canReview}
+          onUnauthorized={onUnauthorized}
+          openSource={openSource ?? (() => undefined)}
+          openReview={(workId) => {
+            setReviewWorkId(workId);
+            setTab("review");
+          }}
+        />
       )}
+
       <OriginalViewer
         target={viewing}
         csrf={csrf}
@@ -442,6 +404,6 @@ export function Analyses({
           )
         }
       />
-    </div>
+    </section>
   );
 }

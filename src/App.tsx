@@ -997,6 +997,10 @@ function TeamApp() {
               canReview={canReview}
               onUnauthorized={unauthorize}
               initialWorkId={selectedWorkId}
+              openSource={(requestId) => {
+                setSelectedRequestId(requestId);
+                navigate("sources");
+              }}
             />
           ) : currentPage === "financial" ? (
             <FinancialExceptions
@@ -1008,7 +1012,11 @@ function TeamApp() {
           ) : currentPage === "commissions" ? (
             <Commissions csrf={session.csrf} onUnauthorized={unauthorize} />
           ) : currentPage === "reconciliation" && canReview ? (
-            <RegistryReconciliation csrf={session.csrf} />
+            <RegistryReconciliation
+              csrf={session.csrf}
+              onUnauthorized={unauthorize}
+              onToast={showToast}
+            />
           ) : currentPage === "onr-review" && canReview ? (
             <OnrPreviewReview
               csrf={session.csrf}

@@ -1,239 +1,452 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  ApiError,
   listUncertainSubmissions,
   reconcileNoPurchase,
   reconcileProtocol,
-  type UncertainSubmissionItem,
 } from "./api";
-import "./commercial-policies.css";
+import { ConfirmDialog } from "./ConfirmDialog";
+import {
+  DECISIONS,
+  decisionError,
+  reconciliationKpis,
+  reconciliationTone,
+  type Decision,
+  type UncertainRow,
+} from "./reconciliation-model";
+import { AgeBadge, OpsKpis, RecordDrawer } from "./OpsParts";
+import { OpsTable, type OpsColumn } from "./OpsTable";
+import { RolePicker } from "./RolePicker";
+import type { ToastKind } from "./useToast";
+import { useNow } from "./useNow";
+import "./ops.css";
 
-type Action = "no-purchase" | "protocol" | null;
-type Expanded = { itemId: string; action: Action };
+const dateTime = new Intl.DateTimeFormat("pt-BR", {
+  dateStyle: "short",
+  timeStyle: "short",
+});
 
-function fmtDate(iso: string) {
-  try {
-    return new Date(iso).toLocaleString("pt-BR");
-  } catch {
-    return iso;
-  }
-}
+const shortId = (id: string) => id.slice(-8);
 
-export function RegistryReconciliation({ csrf }: { csrf: string }) {
-  const [items, setItems] = useState<UncertainSubmissionItem[]>([]);
+export function RegistryReconciliation({
+  csrf,
+  onUnauthorized,
+  onToast,
+}: {
+  csrf: string;
+  onUnauthorized: () => void;
+  onToast: (message: string, kind: ToastKind) => void;
+}) {
+  const [items, setItems] = useState<UncertainRow[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [listError, setListError] = useState("");
-  const [expanded, setExpanded] = useState<Expanded | null>(null);
-  const [reason, setReason] = useState("");
+  const [selected, setSelected] = useState<UncertainRow | null>(null);
+  const [decision, setDecision] = useState<Decision>("no_purchase");
   const [protocol, setProtocol] = useState("");
+  const [submitted, setSubmitted] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [actionError, setActionError] = useState("");
-  const [resolvedIds, setResolvedIds] = useState<Set<string>>(new Set());
+  const [saveError, setSaveError] = useState("");
+  const trigger = useRef<HTMLElement | null>(null);
+  const now = useNow();
 
-  async function load(cursor?: string) {
-    setLoading(true);
-    setListError("");
-    try {
-      const page = await listUncertainSubmissions(cursor);
-      setItems((prev) => (cursor ? [...prev, ...page.items] : page.items));
-      setNextCursor(page.next_cursor);
-    } catch (e) {
-      setListError(e instanceof Error ? e.message : "Erro ao carregar lista.");
-    } finally {
-      setLoading(false);
-    }
-  }
+  const load = useCallback(
+    async (cursor?: string) => {
+      setLoading(true);
+      try {
+        const page = await listUncertainSubmissions(cursor);
+        setItems((current) =>
+          cursor ? [...current, ...page.items] : page.items,
+        );
+        setNextCursor(page.next_cursor);
+        setListError("");
+      } catch (cause) {
+        if (cause instanceof ApiError && cause.status === 401) onUnauthorized();
+        else
+          setListError(
+            cause instanceof ApiError
+              ? cause.detail
+              : "Não foi possível carregar a fila.",
+          );
+      } finally {
+        setLoading(false);
+      }
+    },
+    [onUnauthorized],
+  );
 
   useEffect(() => {
-    void load();
-  }, []);
+    queueMicrotask(() => void load());
+  }, [load]);
 
-  function expand(item: UncertainSubmissionItem, action: Action) {
-    setExpanded({ itemId: item.item_id, action });
-    setReason("");
+  const sorted = useMemo(
+    () =>
+      [...items].sort((a, b) => a.attempted_at.localeCompare(b.attempted_at)),
+    [items],
+  );
+
+  const columns: OpsColumn<UncertainRow>[] = useMemo(
+    () => [
+      {
+        id: "operation",
+        label: "Operação",
+        locked: true,
+        render: (item) => (
+          <span className="ops-id">
+            <strong>{shortId(item.operation_id)}</strong>
+            <small>item {shortId(item.item_id)}</small>
+          </span>
+        ),
+        text: (item) => item.operation_id,
+      },
+      {
+        id: "provider",
+        label: "Fornecedor",
+        render: (item) => (
+          <span className="badge badge-neutral">{item.provider}</span>
+        ),
+        text: (item) => item.provider,
+      },
+      {
+        id: "attempted",
+        label: "Tentada em",
+        hideBelow: "tablet",
+        render: (item) => dateTime.format(new Date(item.attempted_at)),
+        text: (item) => item.attempted_at,
+      },
+      {
+        id: "age",
+        label: "Parada há",
+        align: "end",
+        render: (item) => (
+          <AgeBadge
+            iso={item.attempted_at}
+            now={now}
+            warnAfterHours={6}
+            dangerAfterHours={24}
+          />
+        ),
+        text: (item) => item.attempted_at,
+      },
+    ],
+    [now],
+  );
+
+  function open(item: UncertainRow, element: HTMLElement) {
+    trigger.current = element;
+    setSelected(item);
+    setDecision("no_purchase");
     setProtocol("");
-    setActionError("");
+    setSubmitted(false);
+    setSaveError("");
   }
 
-  function collapse() {
-    setExpanded(null);
-    setActionError("");
+  const error = decisionError(decision, protocol);
+
+  function review() {
+    setSubmitted(true);
+    if (error) return;
+    setConfirming(true);
   }
 
-  async function submit(e: FormEvent, item: UncertainSubmissionItem) {
-    e.preventDefault();
-    if (!expanded) return;
+  async function confirm(reason: string) {
+    if (!selected) return;
     setBusy(true);
-    setActionError("");
+    setSaveError("");
     try {
-      if (expanded.action === "no-purchase") {
-        await reconcileNoPurchase(item.item_id, reason, csrf);
-      } else {
-        await reconcileProtocol(item.item_id, protocol, reason, csrf);
-      }
-      setResolvedIds((prev) => new Set([...prev, item.item_id]));
-      setExpanded(null);
-    } catch (e) {
-      setActionError(
-        e instanceof Error ? e.message : "Erro ao registrar decisão.",
+      if (decision === "no_purchase")
+        await reconcileNoPurchase(selected.item_id, reason, csrf);
+      else
+        await reconcileProtocol(
+          selected.item_id,
+          protocol.trim(),
+          reason,
+          csrf,
+        );
+      setItems((current) =>
+        current.filter((row) => row.item_id !== selected.item_id),
       );
+      setConfirming(false);
+      setSelected(null);
+      onToast("Decisão registrada. O item saiu da fila.", "success");
+    } catch (cause) {
+      setConfirming(false);
+      if (cause instanceof ApiError && cause.status === 401) onUnauthorized();
+      else
+        setSaveError(
+          cause instanceof ApiError
+            ? cause.detail
+            : "Não foi possível registrar a decisão.",
+        );
     } finally {
       setBusy(false);
     }
   }
 
-  const visible = items.filter((i) => !resolvedIds.has(i.item_id));
-
   return (
-    <div className="content commercial-page">
-      <header className="page-head">
+    <section className="page ops" aria-labelledby="rec-title">
+      <header className="ops-head">
         <div>
-          <p className="eyebrow">Aquisição registral</p>
-          <h1>Conciliação de submissões incertas</h1>
-          <p className="muted">
-            Submissões ONR cujo resultado não pôde ser confirmado
-            automaticamente. Cada item exige decisão manual auditada antes de
-            qualquer nova tentativa.
+          <p className="ops-eyebrow">Operação</p>
+          <h1 className="page-title" id="rec-title">
+            Conciliação
+          </h1>
+          <p className="page-subtitle">
+            Envios ao fornecedor cujo resultado não pôde ser confirmado. Cada
+            item pede uma decisão manual e auditada antes de qualquer nova
+            tentativa. Os mais antigos aparecem primeiro.
           </p>
         </div>
-        <span className="pill">Gestor</span>
+        <div className="ops-head-actions">
+          <button
+            type="button"
+            className="btn btn-secondary btn-md"
+            disabled={loading}
+            onClick={() => void load()}
+          >
+            Atualizar
+          </button>
+        </div>
       </header>
+
+      <OpsKpis
+        items={reconciliationKpis(items, now)}
+        active={null}
+        onPick={() => undefined}
+      />
+
       {listError && (
-        <p className="error" role="alert">
-          {listError}
-        </p>
+        <div className="error-state" role="alert">
+          <strong>Não foi possível carregar a fila</strong>
+          <span>{listError}</span>
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            onClick={() => void load()}
+          >
+            Tentar novamente
+          </button>
+        </div>
       )}
-      {loading && <p className="muted">Carregando…</p>}
-      {!loading && visible.length === 0 && !listError && (
-        <p className="muted">Nenhuma submissão incerta no momento.</p>
-      )}
-      <ul className="commercial-list">
-        {visible.map((item) => {
-          const isOpen = expanded?.itemId === item.item_id;
-          return (
-            <li key={item.item_id}>
-              <div className="commercial-list-head">
-                <div>
-                  <strong>Operação</strong> <code>{item.operation_id}</code>
-                </div>
-                <div
-                  style={{
-                    display: "flex",
-                    gap: "1rem",
-                    alignItems: "center",
-                    flexWrap: "wrap",
-                    marginTop: "0.4rem",
-                  }}
-                >
-                  <span className="pill" style={{ fontSize: "0.75rem" }}>
-                    {item.provider}
-                  </span>
-                  <small>Tentada: {fmtDate(item.attempted_at)}</small>
-                </div>
-              </div>
-              {!isOpen && (
-                <div
-                  style={{
-                    display: "flex",
-                    gap: "0.7rem",
-                    marginTop: "0.8rem",
-                    flexWrap: "wrap",
-                  }}
-                >
-                  <button
-                    type="button"
-                    className="button secondary"
-                    onClick={() => expand(item, "no-purchase")}
-                  >
-                    Sem compra
-                  </button>
-                  <button
-                    type="button"
-                    className="button primary"
-                    onClick={() => expand(item, "protocol")}
-                  >
-                    Confirmar protocolo
-                  </button>
-                </div>
-              )}
-              {isOpen && expanded && (
-                <form
-                  onSubmit={(e) => void submit(e, item)}
-                  style={{
-                    marginTop: "0.8rem",
-                    display: "grid",
-                    gap: "0.8rem",
-                  }}
-                >
-                  {expanded.action === "no-purchase" ? (
-                    <p className="muted">
-                      Registrar que <strong>nenhuma compra</strong> foi
-                      realizada nesta submissão.
-                    </p>
-                  ) : (
-                    <label style={{ display: "grid", gap: "0.35rem" }}>
-                      Protocolo ONR confirmado
-                      <input
-                        type="text"
-                        maxLength={160}
-                        required
-                        value={protocol}
-                        onChange={(e) => setProtocol(e.target.value)}
-                        placeholder="Número do protocolo ONR"
-                      />
-                    </label>
-                  )}
-                  <label style={{ display: "grid", gap: "0.35rem" }}>
-                    Justificativa da decisão (20–2000 caracteres)
-                    <textarea
-                      required
-                      minLength={20}
-                      maxLength={2000}
-                      rows={3}
-                      value={reason}
-                      onChange={(e) => setReason(e.target.value)}
-                    />
-                  </label>
-                  {actionError && (
-                    <p className="error" role="alert">
-                      {actionError}
-                    </p>
-                  )}
-                  <div
-                    style={{ display: "flex", gap: "0.7rem", flexWrap: "wrap" }}
-                  >
-                    <button
-                      type="submit"
-                      className="button primary"
-                      disabled={busy}
-                    >
-                      {busy ? "Registrando…" : "Confirmar decisão"}
-                    </button>
-                    <button
-                      type="button"
-                      className="button secondary"
-                      onClick={collapse}
-                      disabled={busy}
-                    >
-                      Cancelar
-                    </button>
-                  </div>
-                </form>
-              )}
-            </li>
-          );
-        })}
-      </ul>
-      {nextCursor && (
-        <button
-          type="button"
-          className="button secondary"
-          disabled={loading}
-          onClick={() => void load(nextCursor)}
+
+      {loading && items.length === 0 && !listError ? (
+        <div
+          className="rules-skeleton"
+          role="status"
+          aria-label="Carregando fila"
         >
-          Carregar mais
-        </button>
+          <span className="skeleton" />
+          <span className="skeleton" />
+          <span className="skeleton" />
+        </div>
+      ) : !listError && sorted.length === 0 ? (
+        <div className="empty-state" role="status">
+          <strong>Nenhum envio incerto no momento</strong>
+          <span>
+            Quando um envio ficar sem resposta clara, ele aparece aqui para
+            decisão.
+          </span>
+        </div>
+      ) : (
+        <OpsTable
+          label="Envios incertos"
+          columns={columns}
+          rows={sorted}
+          rowKey={(item) => item.item_id}
+          hidden={[]}
+          density="comfortable"
+          selectedKey={selected?.item_id ?? null}
+          rowTone={(item) => reconciliationTone(item, now)}
+          actions={(item) => (
+            <button
+              type="button"
+              className="btn btn-primary btn-sm"
+              onClick={(event) => open(item, event.currentTarget)}
+            >
+              Decidir
+            </button>
+          )}
+          onOpen={open}
+          card={(item) => (
+            <>
+              <span className="ops-card-top">
+                <strong>{shortId(item.operation_id)}</strong>
+                <AgeBadge
+                  iso={item.attempted_at}
+                  now={now}
+                  warnAfterHours={6}
+                  dangerAfterHours={24}
+                />
+              </span>
+              <span className="ops-card-badges">
+                <span className="badge badge-neutral">{item.provider}</span>
+              </span>
+              <span className="ops-card-meta">
+                Tentada em {dateTime.format(new Date(item.attempted_at))}
+              </span>
+            </>
+          )}
+        />
       )}
-    </div>
+
+      <div className="ops-foot">
+        <span>
+          {sorted.length}{" "}
+          {sorted.length === 1 ? "envio carregado" : "envios carregados"}
+          <span className="ops-hint"> · J e K navegam, Enter abre</span>
+        </span>
+        {nextCursor && (
+          <button
+            type="button"
+            className="btn btn-secondary btn-md"
+            disabled={loading}
+            onClick={() => void load(nextCursor)}
+          >
+            {loading ? "Carregando…" : "Carregar mais"}
+          </button>
+        )}
+      </div>
+
+      <RecordDrawer
+        open={selected !== null}
+        title={selected ? `Operação ${shortId(selected.operation_id)}` : ""}
+        subtitle={
+          selected
+            ? `Tentada em ${dateTime.format(new Date(selected.attempted_at))}`
+            : undefined
+        }
+        badges={
+          selected && (
+            <span className="badge badge-warning">Resultado incerto</span>
+          )
+        }
+        onClose={() => !busy && setSelected(null)}
+        returnFocus={() => trigger.current}
+      >
+        {selected && (
+          <>
+            <section className="detail-panel-section">
+              <h3 className="detail-panel-section-title">O que aconteceu</h3>
+              <p className="ops-lead">
+                O envio ao fornecedor foi tentado, mas a resposta não permitiu
+                concluir se a compra ocorreu. Nada é reenviado automaticamente:
+                a decisão abaixo é a única forma de liberar o item.
+              </p>
+              <dl className="ops-facts">
+                <div>
+                  <dt>Operação</dt>
+                  <dd>
+                    <code>{selected.operation_id}</code>
+                  </dd>
+                </div>
+                <div>
+                  <dt>Item</dt>
+                  <dd>
+                    <code>{selected.item_id}</code>
+                  </dd>
+                </div>
+                <div>
+                  <dt>Fornecedor</dt>
+                  <dd>{selected.provider}</dd>
+                </div>
+                <div>
+                  <dt>Criado em</dt>
+                  <dd>{dateTime.format(new Date(selected.created_at))}</dd>
+                </div>
+              </dl>
+            </section>
+            <section className="detail-panel-section">
+              <h3 className="detail-panel-section-title">Decisão</h3>
+              {saveError && (
+                <p className="alert alert-danger" role="alert">
+                  {saveError}
+                </p>
+              )}
+              <RolePicker<Decision>
+                label="O que você verificou"
+                value={decision}
+                options={DECISIONS}
+                disabled={busy}
+                onChange={(next) => {
+                  setDecision(next);
+                  setSubmitted(false);
+                }}
+              />
+              {decision === "protocol_confirmed" && (
+                <div className="form-field ops-field">
+                  <label className="form-field-label" htmlFor="rec-protocol">
+                    Protocolo confirmado
+                  </label>
+                  <input
+                    id="rec-protocol"
+                    className="input"
+                    autoComplete="off"
+                    spellCheck={false}
+                    maxLength={160}
+                    placeholder="Número do protocolo no portal"
+                    value={protocol}
+                    disabled={busy}
+                    aria-invalid={submitted && error ? true : undefined}
+                    onChange={(event) => setProtocol(event.target.value)}
+                  />
+                  {submitted && error && (
+                    <span className="form-hint ops-error" role="alert">
+                      {error}
+                    </span>
+                  )}
+                </div>
+              )}
+              <div className="ops-actions">
+                <button
+                  type="button"
+                  className="btn btn-primary btn-md"
+                  aria-haspopup="dialog"
+                  disabled={busy}
+                  onClick={review}
+                >
+                  Revisar e registrar
+                </button>
+              </div>
+            </section>
+          </>
+        )}
+      </RecordDrawer>
+
+      <ConfirmDialog
+        open={confirming && selected !== null}
+        tone={decision === "no_purchase" ? "danger" : "primary"}
+        title={
+          decision === "no_purchase"
+            ? "Registrar que não houve compra?"
+            : "Confirmar o protocolo?"
+        }
+        description="A decisão é auditada e libera o item da fila. Ela não cria cobrança nem reenvia nada."
+        details={
+          selected
+            ? [
+                { label: "Operação", value: shortId(selected.operation_id) },
+                {
+                  label: "Decisão",
+                  value:
+                    DECISIONS.find((d) => d.value === decision)?.label ?? "",
+                },
+                ...(decision === "protocol_confirmed"
+                  ? [{ label: "Protocolo", value: protocol.trim() }]
+                  : []),
+              ]
+            : []
+        }
+        reason={{
+          label: "Justificativa (sem dados pessoais)",
+          min: 20,
+          max: 2000,
+        }}
+        confirmLabel="Registrar decisão"
+        busy={busy}
+        onConfirm={(reason) => void confirm(reason)}
+        onCancel={() => !busy && setConfirming(false)}
+      />
+    </section>
   );
 }

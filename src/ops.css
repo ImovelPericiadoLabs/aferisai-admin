@@ -566,3 +566,113 @@
   width: auto;
   min-width: 220px;
 }
+
+.ops-field {
+  margin-top: var(--space-4);
+}
+.ops-error {
+  color: var(--danger);
+}
+
+.ops-lead {
+  margin: 0 0 var(--space-4);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+
+/* Work bench: original on one side, decision on the other */
+.ops-back {
+  margin-bottom: var(--space-2);
+  padding-left: 0;
+}
+.ops-bench {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(320px, 1fr);
+  gap: var(--space-5);
+  align-items: start;
+}
+.ops-bench-col {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+.ops-bench-steps {
+  display: none;
+}
+.ops-block {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  min-width: 0;
+}
+.ops-block-title {
+  margin: 0;
+  font-size: var(--text-md, 1rem);
+}
+.ops-block .ops-lead {
+  margin: 0;
+}
+.ops-check {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+}
+.ops-lookup {
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+.ops-lookup summary {
+  cursor: pointer;
+  font-weight: var(--weight-medium);
+}
+.ops-lookup form {
+  margin-top: var(--space-3);
+  max-width: 560px;
+}
+
+@media (max-width: 1000px) {
+  .ops-bench {
+    grid-template-columns: 1fr;
+  }
+  .ops-bench-steps {
+    display: flex;
+  }
+  .ops-bench-col:not([data-current="true"]) {
+    display: none;
+  }
+}
+@media (min-width: 1001px) {
+  .ops-bench-next {
+    display: none;
+  }
+}
+
+@media (min-width: 1001px) {
+  .ops-bench-col:last-child {
+    position: sticky;
+    top: calc(var(--topbar-height, 56px) + var(--space-4));
+  }
+}
+
+.ops.ops-embedded {
+  display: grid;
+  gap: var(--space-4);
+}
+.ops-embedded .ops-head > div:first-child {
+  display: none;
+}
+.ops-embedded .ops-head {
+  justify-content: flex-end;
+}
+
+.ops-actions-col .ops-actions {
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+}
