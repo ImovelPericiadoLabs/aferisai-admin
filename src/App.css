@@ -748,67 +748,6 @@ textarea:focus-visible {
   animation: fade-in 0.22s ease both;
 }
 
-/* ── Status badges ────────────────────────────────────────────── */
-.badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  padding: 0.2rem 0.55rem;
-  border-radius: 999px;
-  font-size: 0.7rem;
-  font-weight: 700;
-  white-space: nowrap;
-}
-.badge::before {
-  content: "";
-  display: block;
-  width: 0.45rem;
-  height: 0.45rem;
-  border-radius: 50%;
-  background: currentColor;
-  flex: none;
-}
-.badge-green {
-  background: var(--success-bg);
-  color: var(--success);
-}
-.badge-yellow {
-  background: var(--warning-bg);
-  color: var(--danger);
-}
-.badge-red {
-  background: var(--danger-bg);
-  color: var(--danger);
-}
-.badge-blue {
-  background: var(--primary-faint);
-  color: var(--primary-hover);
-}
-.badge-gray {
-  background: var(--surface-muted);
-  color: var(--text-muted);
-}
-
-/* ── Card surface ─────────────────────────────────────────────── */
-.card {
-  background: var(--surface);
-  border-radius: 12px;
-  border: 1px solid var(--line);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
-  padding: 1.5rem;
-  transition: box-shadow 0.15s;
-}
-.card:hover {
-  box-shadow:
-    0 1px 3px rgba(0, 0, 0, 0.07),
-    0 4px 12px rgba(0, 0, 0, 0.04);
-}
-.card-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 1.25rem;
-}
 .card-title {
   font:
     700 1rem Manrope,
@@ -816,34 +755,6 @@ textarea:focus-visible {
     sans-serif;
   color: var(--ink);
   margin: 0;
-}
-
-/* ── Data table ───────────────────────────────────────────────── */
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-.data-table th {
-  padding: 0.75rem 1rem;
-  text-align: left;
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--muted);
-  border-bottom: 2px solid var(--line);
-  background: var(--bg);
-  position: sticky;
-  top: 0;
-  z-index: 1;
-}
-.data-table td {
-  padding: 0.75rem 1rem;
-  border-bottom: 1px solid var(--line);
-  font-size: 0.875rem;
-}
-.data-table tbody tr:hover td {
-  background: var(--info-bg);
 }
 
 /* ── Form field ───────────────────────────────────────────────── */
