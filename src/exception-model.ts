@@ -9,7 +9,7 @@ const DAY = 24 * HOUR;
 function span(ms: number): string {
   if (ms >= DAY) return `${Math.floor(ms / DAY)} d`;
   if (ms >= HOUR) return `${Math.floor(ms / HOUR)} h`;
-  return `${Math.max(0, Math.floor(ms / MIN))} min`;
+  return ms < MIN ? "menos de 1 min" : `${Math.floor(ms / MIN)} min`;
 }
 
 export function dueState(

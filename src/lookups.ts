@@ -3,8 +3,9 @@ import {
   listCommercialPolicies,
   listCommissionEntries,
   listOrganizations,
+  listTeamMembers,
 } from "./api";
-import { itemLabel, promotionKindLabel } from "./display-labels";
+import { itemLabel, promotionKindLabel, teamRoleLabel } from "./display-labels";
 import {
   filterOptions,
   pagedResult,
@@ -101,3 +102,20 @@ export const LIMIT_NOTES = {
   entries:
     "A API de comissões não busca por texto: a busca vale só para as páginas já carregadas. Use “Carregar mais resultados”.",
 } as const;
+
+export const searchTeamMembers =
+  (role: "manager" | "financial"): PickerSearch =>
+  (query) =>
+    pagedResult(
+      (cursor) => listTeamMembers(cursor),
+      (member) =>
+        member.status === "active" && member.role === role
+          ? {
+              id: member.id,
+              label: member.email,
+              hint: teamRoleLabel(member.role),
+            }
+          : null,
+      query,
+      true,
+    );

@@ -51,6 +51,14 @@ describe("dueState", () => {
       dueState(new Date(NOW - 10 * 60_000).toISOString(), NOW),
     ).toMatchObject({ label: "Atrasado há 10 min" });
   });
+  it("does not show zero minutes", () => {
+    expect(dueState(new Date(NOW - 5_000).toISOString(), NOW).label).toBe(
+      "Atrasado há menos de 1 min",
+    );
+    expect(dueState(new Date(NOW + 5_000).toISOString(), NOW).label).toBe(
+      "Vence em menos de 1 min",
+    );
+  });
   it("warns inside 24 hours and is neutral beyond", () => {
     expect(dueState(new Date(NOW + 5 * H).toISOString(), NOW)).toEqual({
       tone: "warning",

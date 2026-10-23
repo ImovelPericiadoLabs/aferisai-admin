@@ -1,16 +1,33 @@
-import { useCallback, useEffect, useState, type FormEvent } from "react";
-import { statusLabel } from "./display-labels";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   ApiError,
   claimPaymentException,
   confirmPaymentException,
   executePaymentException,
   listPaymentExceptions,
+  listTeamMembers,
   proposePaymentException,
   reassignPaymentException,
   type PaymentExceptionCase,
   type TeamMember,
 } from "./api";
+import {
+  dueState,
+  filterCases,
+  sortByUrgency,
+  stageLabel,
+  stageOf,
+  type CaseFilter,
+} from "./exception-model";
+import {
+  ExceptionPanel,
+  outcomeLabel,
+  type ExecuteAction,
+} from "./ExceptionPanel";
+import { stageTone } from "./status-tones";
+import { useDialogFocus } from "./useDialogFocus";
+import "./commercial-rules.css";
 import "./FinancialExceptions.css";
 
 type Props = {
@@ -20,19 +37,21 @@ type Props = {
   onUnauthorized: () => void;
 };
 
-const outcome = (value: "correct" | "refund" | null) =>
-  value === "correct"
-    ? "Corrigir entrega"
-    : value === "refund"
-      ? "Reembolsar"
-      : "A decidir";
+const money = (cents: number) =>
+  new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(
+    cents / 100,
+  );
 
-const dateTime = (value: string) =>
-  new Intl.DateTimeFormat("pt-BR", {
-    dateStyle: "short",
-    timeStyle: "short",
-    timeZone: "America/Sao_Paulo",
-  }).format(new Date(value));
+const tabs: { value: CaseFilter; label: string }[] = [
+  { value: "all", label: "Todos" },
+  { value: "overdue", label: "Atrasados" },
+  { value: "mine", label: "Meus" },
+  { value: "executing", label: "Em execução" },
+];
+
+function errorMessage(cause: unknown, fallback: string): string {
+  return cause instanceof ApiError ? cause.detail : fallback;
+}
 
 export function FinancialExceptions({
   csrf,
@@ -42,469 +61,419 @@ export function FinancialExceptions({
 }: Props) {
   const [cases, setCases] = useState<PaymentExceptionCase[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
-  const [listLoading, setListLoading] = useState(true);
-  const [selected, setSelected] = useState<string | null>(null);
-  const [reason, setReason] = useState("");
-  const [resolution, setResolution] = useState<"correct" | "refund">("correct");
-  const [reassignRole, setReassignRole] = useState<"manager" | "financial">(
-    "manager",
-  );
-  const [newMemberId, setNewMemberId] = useState("");
-  const [reassignReason, setReassignReason] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
+  const [filter, setFilter] = useState<CaseFilter>("all");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [panelError, setPanelError] = useState("");
   const [notice, setNotice] = useState("");
+  const [names, setNames] = useState<Record<string, string>>({});
+  const panelRef = useRef<HTMLElement>(null);
 
   const load = useCallback(
     async (cursor?: string) => {
-      if (!cursor) setListLoading(true);
       try {
         const page = await listPaymentExceptions(cursor);
         setCases((current) =>
           cursor ? [...current, ...page.items] : page.items,
         );
         setNextCursor(page.next_cursor);
+        setNow(Date.now());
+        setLoadFailed(false);
         setError("");
       } catch (cause) {
         if (cause instanceof ApiError && cause.status === 401) onUnauthorized();
-        else
-          setError(
-            cause instanceof ApiError
-              ? cause.detail
-              : "Não foi possível carregar os casos.",
-          );
+        else {
+          setLoadFailed(true);
+          setError(errorMessage(cause, "Não foi possível carregar os casos."));
+        }
       } finally {
-        setListLoading(false);
+        setLoading(false);
       }
     },
     [onUnauthorized],
   );
 
   useEffect(() => {
-    let active = true;
+    let live = true;
     queueMicrotask(() => {
-      if (active) void load();
+      if (live) void load();
     });
     return () => {
-      active = false;
+      live = false;
     };
   }, [load]);
 
-  const active = cases.find((item) => item.id === selected);
-  const canPropose = role === "manager" || role === "administrator";
-  const canConfirm = role === "financial";
-  const assignedId = active
-    ? canConfirm
-      ? active.financial_assignee_id
-      : active.manager_assignee_id
-    : null;
+  useEffect(() => {
+    if (role !== "administrator") return;
+    let live = true;
+    listTeamMembers()
+      .then((page) => {
+        if (live)
+          setNames(Object.fromEntries(page.items.map((m) => [m.id, m.email])));
+      })
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, [role]);
 
-  async function claim() {
-    if (!active) return;
+  const person = useCallback(
+    (id: string | null) => {
+      if (!id) return "Sem responsável";
+      if (id === memberId) return "Você";
+      return names[id] ?? "Outra pessoa";
+    },
+    [memberId, names],
+  );
+
+  const sorted = useMemo(() => sortByUrgency(cases, now), [cases, now]);
+  const visible = useMemo(
+    () => filterCases(sorted, filter, memberId, now),
+    [sorted, filter, memberId, now],
+  );
+  const counts = useMemo(
+    () => ({
+      all: cases.length,
+      overdue: filterCases(cases, "overdue", memberId, now).length,
+      mine: filterCases(cases, "mine", memberId, now).length,
+      executing: filterCases(cases, "executing", memberId, now).length,
+    }),
+    [cases, memberId, now],
+  );
+  const selected = cases.find((item) => item.id === selectedId) ?? null;
+
+  function close() {
+    setOpen(false);
+    setPanelError("");
+  }
+
+  useDialogFocus(open, panelRef, close, {
+    returnFocus: () =>
+      document.querySelector<HTMLElement>(`[data-row-id="${selectedId}"]`),
+  });
+
+  function openCase(id: string) {
+    setSelectedId(id);
+    setNotice("");
+    setPanelError("");
+    setOpen(true);
+  }
+
+  async function run(
+    work: () => Promise<unknown>,
+    success: string,
+    fallback: string,
+  ): Promise<boolean> {
     setBusy(true);
-    setError("");
+    setPanelError("");
     setNotice("");
     try {
-      await claimPaymentException(active.id, csrf);
+      const result = await work();
       await load();
-      setNotice("Caso atribuído à sua conta.");
+      setNotice(typeof result === "string" ? result : success);
+      return true;
     } catch (cause) {
       if (cause instanceof ApiError && cause.status === 401) onUnauthorized();
-      else
-        setError(
-          cause instanceof ApiError
-            ? cause.detail
-            : "Não foi possível assumir o caso.",
-        );
+      else setPanelError(errorMessage(cause, fallback));
+      await load();
+      return false;
     } finally {
       setBusy(false);
     }
   }
 
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!active) return;
-    setBusy(true);
-    setError("");
-    setNotice("");
-    try {
-      if (canPropose) {
-        await proposePaymentException(active.id, resolution, reason, csrf);
-        setNotice(
-          "Proposta do gestor registrada. Aguarda confirmação do financeiro.",
-        );
-      } else if (canConfirm && active.latest_proposal_id) {
-        await confirmPaymentException(
-          active.id,
-          active.latest_proposal_id,
-          reason,
-          csrf,
-        );
-        setNotice("Decisão financeira registrada. Execute a solução abaixo.");
-      }
-      setReason("");
-      await load();
-    } catch (cause) {
-      if (cause instanceof ApiError && cause.status === 401) onUnauthorized();
-      else
-        setError(
-          cause instanceof ApiError
-            ? cause.detail
-            : "Não foi possível registrar a decisão.",
-        );
-    } finally {
-      setBusy(false);
-    }
-  }
+  const claim = () =>
+    selected &&
+    void run(
+      () => claimPaymentException(selected.id, csrf),
+      "Caso atribuído à sua conta.",
+      "Não foi possível assumir o caso.",
+    );
 
-  async function reassign(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!active) return;
-    setBusy(true);
-    setError("");
-    setNotice("");
-    try {
-      await reassignPaymentException(
-        active.id,
-        reassignRole,
-        newMemberId,
-        reassignReason,
-        csrf,
-      );
-      setNewMemberId("");
-      setReassignReason("");
-      await load();
-      setNotice("Responsável alterado; o motivo foi registrado no histórico.");
-    } catch (cause) {
-      if (cause instanceof ApiError && cause.status === 401) onUnauthorized();
-      else
-        setError(
-          cause instanceof ApiError
-            ? cause.detail
-            : "Não foi possível reatribuir o caso.",
-        );
-    } finally {
-      setBusy(false);
-    }
-  }
+  const propose = (resolution: "correct" | "refund", reason: string) =>
+    selected
+      ? run(
+          () => proposePaymentException(selected.id, resolution, reason, csrf),
+          "Proposta registrada. Aguarda confirmação do financeiro.",
+          "Não foi possível registrar a proposta.",
+        )
+      : Promise.resolve(false);
 
-  async function execute(
-    action:
-      "refund-attempts" | "refund-reconciliations" | "correction-verifications",
-  ) {
-    if (!active) return;
-    setBusy(true);
-    setError("");
-    setNotice("");
-    try {
-      const execution = await executePaymentException(active.id, action, csrf);
-      await load();
-      setNotice(
-        execution.status === "done"
+  const confirm = (reason: string) =>
+    selected && selected.latest_proposal_id
+      ? run(
+          () =>
+            confirmPaymentException(
+              selected.id,
+              selected.latest_proposal_id as string,
+              reason,
+              csrf,
+            ),
+          "Decisão financeira registrada. Execute a solução.",
+          "Não foi possível registrar a decisão.",
+        )
+      : Promise.resolve(false);
+
+  const reassign = (
+    target: "manager" | "financial",
+    newMemberId: string,
+    reason: string,
+  ) =>
+    selected
+      ? run(
+          () =>
+            reassignPaymentException(
+              selected.id,
+              target,
+              newMemberId,
+              reason,
+              csrf,
+            ),
+          "Responsável alterado. O motivo foi registrado no histórico.",
+          "Não foi possível reatribuir o caso.",
+        )
+      : Promise.resolve(false);
+
+  const execute = (action: ExecuteAction) =>
+    selected &&
+    run(
+      async () => {
+        const result = await executePaymentException(selected.id, action, csrf);
+        return result.status === "done"
           ? "Solução confirmada."
-          : "Tentativa registrada. Consulte a conciliação para confirmar o resultado.",
-      );
-    } catch (cause) {
-      if (cause instanceof ApiError && cause.status === 401) onUnauthorized();
-      else
-        setError(
-          cause instanceof ApiError
-            ? cause.detail
-            : "Não foi possível executar a solução.",
-        );
-      await load();
-    } finally {
-      setBusy(false);
-    }
-  }
+          : "Tentativa registrada. Consulte a conciliação para confirmar o resultado.";
+      },
+      "",
+      "Não foi possível executar a solução.",
+    );
 
   return (
-    <section className="financial-exceptions">
-      <header>
-        <p className="eyebrow">Primeira venda · PIX sandbox</p>
-        <h1>Exceções financeiras</h1>
-        <p>
-          Casos pagos sem entrega. O prazo começa no primeiro bloqueio e exige
-          proposta do gestor e confirmação por uma pessoa do financeiro.
-        </p>
+    <section className="page exceptions" aria-labelledby="exc-title">
+      <header className="page-header">
+        <div>
+          <h1 className="page-title" id="exc-title">
+            Exceções financeiras
+          </h1>
+          <p className="page-subtitle">
+            Casos pagos sem entrega. O prazo começa no primeiro bloqueio e exige
+            proposta do gestor e confirmação do financeiro.
+          </p>
+        </div>
       </header>
-      {error && (
-        <p className="error" role="alert">
+
+      {error && !open && (
+        <div className="alert alert-danger rules-alert" role="alert">
           {error}
-        </p>
-      )}
-      {notice && (
-        <p className="profile-saved" role="status">
-          {notice}
-        </p>
-      )}
-      {listLoading && cases.length === 0 && (
-        <div
-          className="skeleton-rows"
-          role="status"
-          aria-label="Carregando casos"
-        >
-          {[1, 2, 3].map((i) => (
-            <div
-              key={i}
-              style={{
-                padding: "1rem",
-                border: "1px solid var(--line)",
-                borderRadius: "0.8rem",
-                display: "grid",
-                gap: "0.5rem",
-              }}
-            >
-              <div
-                className="skeleton"
-                style={{ height: "0.9rem", width: "60%" }}
-              />
-              <div
-                className="skeleton"
-                style={{ height: "0.75rem", width: "45%" }}
-              />
-              <div
-                className="skeleton"
-                style={{ height: "0.75rem", width: "50%" }}
-              />
-            </div>
-          ))}
+          {loadFailed && (
+            <>
+              {" "}
+              <button
+                className="btn btn-secondary btn-sm"
+                type="button"
+                onClick={() => {
+                  setLoading(true);
+                  void load();
+                }}
+              >
+                Tentar novamente
+              </button>
+            </>
+          )}
         </div>
       )}
-      {!listLoading && cases.length === 0 && !error && (
-        <p className="directory-state">Nenhum caso financeiro nesta página.</p>
+      {notice && !open && (
+        <div className="alert alert-success rules-alert" role="status">
+          {notice}
+        </div>
       )}
-      <div className="financial-grid">
-        <div className="financial-list" aria-label="Casos financeiros">
-          {cases.map((item) => (
+
+      <div className="rules-toolbar">
+        <div className="rules-tabs" role="group" aria-label="Filtrar casos">
+          {tabs.map((tab) => (
             <button
-              key={item.id}
+              key={tab.value}
               type="button"
-              className={
-                selected === item.id
-                  ? "financial-item selected"
-                  : "financial-item"
-              }
-              onClick={() => {
-                setSelected(item.id);
-                setReason("");
-                setNotice("");
-              }}
+              className="rules-tab"
+              aria-pressed={filter === tab.value}
+              onClick={() => setFilter(tab.value)}
             >
-              <strong>Caso {item.id}</strong>
-              <span>
-                Valor:{" "}
-                {(item.amount_cents / 100).toLocaleString("pt-BR", {
-                  style: "currency",
-                  currency: "BRL",
-                })}
-              </span>
-              <span>Prazo: {dateTime(item.due_at)}</span>
-              <span>
-                <span
-                  className={`badge ${item.financial_decision_id ? "badge-green" : item.latest_proposal_id ? "badge-blue" : "badge-gray"}`}
-                >
-                  {item.financial_decision_id
-                    ? `Decidido: ${outcome(item.resolution)}`
-                    : item.latest_proposal_id
-                      ? `Proposto: ${outcome(item.proposed_resolution)}`
-                      : "Sem proposta"}
-                </span>
-              </span>
+              {tab.label}
+              <span className="rules-tab-count">{counts[tab.value]}</span>
             </button>
           ))}
-          {nextCursor && (
-            <button type="button" onClick={() => void load(nextCursor)}>
-              Carregar mais
+        </div>
+      </div>
+
+      {loading && cases.length === 0 ? (
+        <div className="rules-skeleton" role="status" aria-label="Carregando">
+          {Array.from({ length: 4 }, (_, index) => (
+            <span className="skeleton" key={index} />
+          ))}
+        </div>
+      ) : visible.length === 0 && !loadFailed ? (
+        <div className="empty-state" role="status">
+          <strong>
+            {filter === "all"
+              ? "Nenhum caso financeiro"
+              : "Nenhum caso neste filtro"}
+          </strong>
+          <span>
+            {filter === "all"
+              ? "Quando um pagamento ficar sem entrega, o caso aparece aqui com prazo para decidir."
+              : "Escolha outro filtro para ver os demais casos."}
+          </span>
+          {filter !== "all" && (
+            <button
+              className="btn btn-secondary btn-sm"
+              type="button"
+              onClick={() => setFilter("all")}
+            >
+              Limpar filtro
             </button>
           )}
         </div>
-        {active && (
-          <article className="financial-detail">
-            <h2>Tratamento do caso</h2>
-            <dl>
-              <dt>Trabalho</dt>
-              <dd>{active.work_id}</dd>
-              <dt>Primeiro bloqueio</dt>
-              <dd>{dateTime(active.opened_at)}</dd>
-              <dt>Prazo para decidir</dt>
-              <dd>{dateTime(active.due_at)}</dd>
-              <dt>Código técnico</dt>
-              <dd>{active.reason_code}</dd>
-              <dt>Gestor responsável</dt>
-              <dd>{active.manager_assignee_id || "Aguardando atribuição"}</dd>
-              <dt>Financeiro responsável</dt>
-              <dd>{active.financial_assignee_id || "Aguardando atribuição"}</dd>
-            </dl>
-            {role === "administrator" && !active.financial_decision_id && (
-              <form
-                onSubmit={(event) => void reassign(event)}
-                className="financial-form"
-              >
-                <h3>Substituir responsável indisponível</h3>
-                <label>
-                  Função
-                  <select
-                    value={reassignRole}
-                    onChange={(event) =>
-                      setReassignRole(
-                        event.target.value as "manager" | "financial",
-                      )
-                    }
-                  >
-                    <option value="manager">Gestor</option>
-                    <option value="financial">Financeiro</option>
-                  </select>
-                </label>
-                <label>
-                  ID do novo membro ativo
-                  <input
-                    required
-                    value={newMemberId}
-                    onChange={(event) => setNewMemberId(event.target.value)}
-                  />
-                </label>
-                <label>
-                  Motivo
-                  <input
-                    required
-                    minLength={10}
-                    maxLength={500}
-                    value={reassignReason}
-                    onChange={(event) => setReassignReason(event.target.value)}
-                  />
-                </label>
-                <button
-                  type="submit"
-                  disabled={
-                    busy ||
-                    (reassignRole === "manager" &&
-                      Boolean(active.latest_proposal_id))
-                  }
-                >
-                  Reatribuir
-                </button>
-              </form>
-            )}
-            {active.latest_proposal_id && (
-              <div className="financial-proposal">
-                <strong>
-                  Proposta vigente: {outcome(active.proposed_resolution)}
-                </strong>
-                <p>{active.proposal_reason}</p>
-                <small>
-                  Gestor {active.proposal_actor_id} ·{" "}
-                  {active.proposal_at ? dateTime(active.proposal_at) : ""}
-                </small>
-              </div>
-            )}
-            {active.financial_decision_id ? (
-              <div role="status">
-                <p>
-                  Decisão registrada: {outcome(active.resolution)}. Execução:{" "}
-                  {active.execution_status
-                    ? statusLabel(active.execution_status)
-                    : "A iniciar"}
-                  .
-                </p>
-                {canConfirm &&
-                  assignedId === memberId &&
-                  active.resolution === "refund" &&
-                  !active.execution_status && (
-                    <button
-                      type="button"
-                      disabled={busy}
-                      onClick={() => void execute("refund-attempts")}
-                    >
-                      Iniciar estorno integral no Asaas sandbox
-                    </button>
-                  )}
-                {canConfirm &&
-                  assignedId === memberId &&
-                  active.resolution === "refund" &&
-                  active.execution_status &&
-                  active.execution_status !== "done" && (
-                    <button
-                      type="button"
-                      disabled={busy}
-                      onClick={() => void execute("refund-reconciliations")}
-                    >
-                      Conciliar estorno por GET
-                    </button>
-                  )}
-                {canConfirm &&
-                  assignedId === memberId &&
-                  active.resolution === "correct" &&
-                  active.execution_status !== "done" && (
-                    <button
-                      type="button"
-                      disabled={busy}
-                      onClick={() => void execute("correction-verifications")}
-                    >
-                      Verificar entrega corrigida
-                    </button>
-                  )}
-              </div>
-            ) : (canPropose || canConfirm) && !assignedId ? (
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => void claim()}
-              >
-                {busy ? "Atribuindo…" : "Assumir este caso"}
-              </button>
-            ) : (canPropose || canConfirm) && assignedId !== memberId ? (
-              <p>Este caso já foi atribuído a outra pessoa do seu papel.</p>
-            ) : canConfirm && !active.latest_proposal_id ? (
-              <p>Aguardando proposta do gestor.</p>
-            ) : canPropose || canConfirm ? (
-              <form className="form" onSubmit={(event) => void submit(event)}>
-                {canPropose && (
-                  <label>
-                    Encaminhamento
-                    <select
-                      value={resolution}
-                      onChange={(event) =>
-                        setResolution(
-                          event.target.value as "correct" | "refund",
-                        )
+      ) : (
+        visible.length > 0 && (
+          <div className="data-table-wrap">
+            <table className="data-table" aria-label="Casos financeiros">
+              <thead>
+                <tr>
+                  <th scope="col">Caso</th>
+                  <th scope="col">Valor</th>
+                  <th scope="col">Prazo</th>
+                  <th scope="col">Etapa</th>
+                  <th scope="col">Responsáveis</th>
+                </tr>
+              </thead>
+              <tbody>
+                {visible.map((item) => {
+                  const stage = stageOf(item);
+                  const due = dueState(item.due_at, now);
+                  return (
+                    <tr
+                      key={item.id}
+                      data-clickable
+                      className={
+                        item.id === selectedId && open ? "selected" : undefined
                       }
+                      onClick={() => openCase(item.id)}
                     >
-                      <option value="correct">Corrigir entrega</option>
-                      <option value="refund">Reembolsar</option>
-                    </select>
-                  </label>
-                )}
-                <label>
-                  Motivo da decisão
-                  <textarea
-                    value={reason}
-                    onChange={(event) => setReason(event.target.value)}
-                    minLength={10}
-                    maxLength={500}
-                    required
-                  />
-                </label>
-                <button
-                  type="submit"
-                  disabled={busy || reason.trim().length < 10}
-                >
-                  {busy
-                    ? "Registrando…"
-                    : canConfirm
-                      ? "Confirmar decisão financeira"
-                      : "Registrar proposta"}
-                </button>
-              </form>
-            ) : null}
-            <p className="financial-note">
-              Nenhum estorno PIX é automático. Confirme a execução e
-              reconciliação no Asaas antes de comunicar o encerramento ao
-              titular.
-            </p>
-          </article>
-        )}
-      </div>
+                      <td data-label="Caso">
+                        <button
+                          className="rules-cell-button"
+                          data-row-id={item.id}
+                          type="button"
+                          aria-haspopup="dialog"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            openCase(item.id);
+                          }}
+                        >
+                          <strong>Caso {item.id.slice(0, 8)}</strong>
+                          <small>Trabalho {item.work_id}</small>
+                        </button>
+                      </td>
+                      <td data-label="Valor">{money(item.amount_cents)}</td>
+                      <td data-label="Prazo">
+                        {stage === "done" ? (
+                          <span className="rules-cell-sub">Encerrado</span>
+                        ) : (
+                          <span
+                            className={`badge badge-${due.tone === "neutral" ? "neutral" : due.tone}`}
+                          >
+                            {due.label}
+                          </span>
+                        )}
+                      </td>
+                      <td data-label="Etapa">
+                        <span className="rules-cell-stack">
+                          <span>
+                            <span className={`badge ${stageTone(stage)}`}>
+                              {stageLabel[stage]}
+                            </span>
+                          </span>
+                          {(item.resolution ?? item.proposed_resolution) && (
+                            <small className="rules-cell-sub">
+                              {outcomeLabel(
+                                item.resolution ?? item.proposed_resolution,
+                              )}
+                            </small>
+                          )}
+                        </span>
+                      </td>
+                      <td data-label="Responsáveis">
+                        <span className="exc-people">
+                          <small className="rules-cell-sub">
+                            Gestor: {person(item.manager_assignee_id)}
+                          </small>
+                          <small className="rules-cell-sub">
+                            Financeiro: {person(item.financial_assignee_id)}
+                          </small>
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )
+      )}
+
+      {nextCursor && (
+        <footer className="rules-footer">
+          <span>{cases.length} casos carregados</span>
+          <button
+            className="btn btn-secondary btn-md"
+            type="button"
+            disabled={busy}
+            onClick={() => void load(nextCursor)}
+          >
+            Carregar mais
+          </button>
+        </footer>
+      )}
+
+      {createPortal(
+        <>
+          {open && <div className="detail-panel-overlay" onClick={close} />}
+          <aside
+            className={`detail-panel${open ? " open" : ""}`}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="exc-panel-title"
+            aria-hidden={!open}
+            ref={panelRef}
+          >
+            {open && selected && (
+              <ExceptionPanel
+                key={selected.id}
+                item={selected}
+                role={role}
+                memberId={memberId}
+                person={person}
+                busy={busy}
+                error={panelError}
+                notice={notice}
+                now={now}
+                onClose={close}
+                onUnauthorized={onUnauthorized}
+                onClaim={() => void claim()}
+                onPropose={propose}
+                onConfirm={confirm}
+                onReassign={reassign}
+                onExecute={(action) => void execute(action)}
+              />
+            )}
+          </aside>
+        </>,
+        document.body,
+      )}
     </section>
   );
 }

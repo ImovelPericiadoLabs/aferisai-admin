@@ -362,68 +362,6 @@
   font-size: 0.78rem;
 }
 
-.main-area:where(:not(:has(.page))) .financial-exceptions {
-  width: 100%;
-  max-width: 1600px;
-  margin: 0 auto;
-  padding: clamp(1.25rem, 2.5vw, 2.5rem);
-}
-.main-area:where(:not(:has(.page))) .financial-exceptions > header {
-  max-width: 70ch;
-  margin-bottom: 1.5rem;
-}
-.main-area:where(:not(:has(.page))) .financial-exceptions > header h1 {
-  font-size: clamp(1.55rem, 3vw, 2.4rem);
-  color: var(--ink);
-  margin: 0.15rem 0 0.4rem;
-}
-.main-area:where(:not(:has(.page)))
-  .financial-exceptions
-  > header
-  p:last-child {
-  font-size: 0.86rem;
-  line-height: 1.6;
-  color: var(--muted);
-  margin: 0;
-}
-.main-area:where(:not(:has(.page))) .financial-exceptions > .directory-state {
-  margin: 0;
-  padding: 1.5rem;
-  background: #fff;
-  border: 1px dashed #cbd6e6;
-  border-radius: 7px;
-  font-size: 0.85rem;
-}
-.main-area:where(:not(:has(.page))) .financial-item,
-.main-area:where(:not(:has(.page))) .financial-detail {
-  border: 1px solid var(--line);
-  border-radius: 7px;
-  box-shadow: none;
-}
-.main-area:where(:not(:has(.page))) .financial-item:hover {
-  background: #f7faff;
-}
-.main-area:where(:not(:has(.page))) .financial-item.selected {
-  border-color: #8db6f5;
-  background: #f1f6ff;
-  box-shadow: inset 3px 0 #075bff;
-}
-.main-area:where(:not(:has(.page))) .financial-item span,
-.main-area:where(:not(:has(.page))) .financial-item small {
-  color: var(--muted);
-}
-.main-area:where(:not(:has(.page))) .financial-proposal {
-  border-left: 3px solid #8db6f5;
-  background: #f3f7fd;
-  border-radius: 0;
-}
-.main-area:where(:not(:has(.page))) .financial-detail dt {
-  color: #3e5270;
-}
-.main-area:where(:not(:has(.page))) .financial-note {
-  color: var(--muted);
-}
-
 /* Commercial form sections keep related values together without nested cards. */
 .main-area:where(:not(:has(.page))) .commercial-policy-groups {
   display: grid;
