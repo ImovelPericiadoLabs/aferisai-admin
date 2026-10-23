@@ -408,7 +408,7 @@ function OverviewMetrics({ groups }: { groups: DashboardGroup[] }) {
   );
 }
 
-function Attention({
+export function Attention({
   data,
   role,
   navigate,

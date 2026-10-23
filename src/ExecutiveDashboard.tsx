@@ -23,6 +23,7 @@ import {
   successBps,
 } from "./executive-model";
 import { buildSampleReports, SAMPLE_LABEL } from "./executive-sample";
+import { Attention, type DashboardPageProps } from "./DashboardOverview";
 import { OrganizationAvatar } from "./OrganizationAvatar";
 import "./executive.css";
 
@@ -99,8 +100,10 @@ function download(filename: string, text: string) {
 
 export function ExecutiveDashboard({
   onUnauthorized,
+  navigate,
 }: {
   onUnauthorized: () => void;
+  navigate: DashboardPageProps["navigate"];
 }) {
   const [days, setDays] = useState<number>(30);
   const [compare, setCompare] = useState(true);
@@ -312,6 +315,10 @@ export function ExecutiveDashboard({
           </dl>
         )}
       </section>
+
+      {live && (
+        <Attention data={live} role="administrator" navigate={navigate} />
+      )}
 
       <section aria-label="Indicadores principais">
         <dl className="xe-kpis">

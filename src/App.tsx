@@ -46,6 +46,7 @@ import { DesignSystemGuide } from "./DesignSystemGuide";
 import { IntegrationMap } from "./IntegrationMap";
 import { Access } from "./Access";
 import { Passkeys } from "./Passkeys";
+import { homePageFor, showsOverview } from "./home-page";
 import { installNoAutofill } from "./no-autofill";
 import { ShellIcon } from "./ShellIcon";
 import { DashboardOverview } from "./DashboardOverview";
@@ -652,42 +653,43 @@ function TeamApp() {
     session.member.role === "manager";
   const isFinancial = session.member.role === "financial";
   const visibleNav = nav.filter((item) =>
-    isFinancial
-      ? item.page === "overview" ||
-        item.page === "reports" ||
-        item.page === "financial" ||
-        item.page === "commissions" ||
-        item.page === "passkeys"
-      : (item.page !== "financial" || canReview) &&
-        item.page !== "commissions" &&
-        (item.page !== "requests" || canReview) &&
-        (item.page !== "sources" || canReview) &&
-        (item.page !== "analyses" || canReview) &&
-        (item.page !== "commercial" ||
-          session.member.role === "administrator") &&
-        (item.page !== "promotions" ||
-          session.member.role === "administrator") &&
-        (item.page !== "reconciliation" || canReview) &&
-        (item.page !== "onr-review" || canReview) &&
-        (item.page !== "registry-requests" || canReview) &&
-        (item.page !== "connections" || canReview) &&
-        (item.page !== "users" || canReview) &&
-        (item.page !== "team-members" ||
-          session.member.role === "administrator") &&
-        (item.page !== "analysis-providers" ||
-          session.member.role === "administrator") &&
-        (item.page !== "registry-suppliers" ||
-          session.member.role === "administrator") &&
-        (item.page !== "executive" || session.member.role === "administrator"),
+    item.page === "overview" && !showsOverview(session.member.role)
+      ? false
+      : isFinancial
+        ? item.page === "overview" ||
+          item.page === "reports" ||
+          item.page === "financial" ||
+          item.page === "commissions" ||
+          item.page === "passkeys"
+        : (item.page !== "financial" || canReview) &&
+          item.page !== "commissions" &&
+          (item.page !== "requests" || canReview) &&
+          (item.page !== "sources" || canReview) &&
+          (item.page !== "analyses" || canReview) &&
+          (item.page !== "commercial" ||
+            session.member.role === "administrator") &&
+          (item.page !== "promotions" ||
+            session.member.role === "administrator") &&
+          (item.page !== "reconciliation" || canReview) &&
+          (item.page !== "onr-review" || canReview) &&
+          (item.page !== "registry-requests" || canReview) &&
+          (item.page !== "connections" || canReview) &&
+          (item.page !== "users" || canReview) &&
+          (item.page !== "team-members" ||
+            session.member.role === "administrator") &&
+          (item.page !== "analysis-providers" ||
+            session.member.role === "administrator") &&
+          (item.page !== "registry-suppliers" ||
+            session.member.role === "administrator") &&
+          (item.page !== "executive" ||
+            session.member.role === "administrator"),
   );
   const currentPage =
     visibleNav.some((item) => item.page === page) ||
     ((page === "design-system" || page === "integration-map") &&
       session.member.role === "administrator")
       ? page
-      : isFinancial
-        ? "financial"
-        : "overview";
+      : homePageFor(session.member.role);
   const currentItem = nav.find((item) => item.page === currentPage);
   const peopleTabs: PeopleTab[] = [
     ...(canReview ? [{ page: "users" as const, label: "Usuários" }] : []),
@@ -695,11 +697,14 @@ function TeamApp() {
       ? [{ page: "team-members" as const, label: "Equipe" }]
       : []),
   ];
+  const home: Page = showsOverview(session.member.role)
+    ? "overview"
+    : homePageFor(session.member.role);
   const mobileItems: Page[] = isFinancial
-    ? ["overview", "reports", "financial", "commissions"]
+    ? [home, "reports", "financial", "commissions"]
     : canReview
-      ? ["overview", "requests", "reports", "financial"]
-      : ["overview", "reports"];
+      ? [home, "requests", "reports", "financial"]
+      : [home, "reports"];
   const visibleMobileItems = mobileItems.filter((item) =>
     visibleNav.some((navItem) => navItem.page === item),
   );
@@ -934,7 +939,10 @@ function TeamApp() {
             <DashboardOverview role={session.member.role} navigate={navigate} />
           ) : currentPage === "executive" &&
             session.member.role === "administrator" ? (
-            <ExecutiveDashboard onUnauthorized={unauthorize} />
+            <ExecutiveDashboard
+              onUnauthorized={unauthorize}
+              navigate={navigate}
+            />
           ) : currentPage === "reports" ? (
             <ReportsHub role={session.member.role} navigate={navigate} />
           ) : currentPage === "organizations" ? (
@@ -1073,7 +1081,7 @@ function TeamApp() {
                 <ShellIcon name={item} size={21} />
               </span>
               <span>
-                {item === "overview"
+                {item === home
                   ? "Início"
                   : item === "financial"
                     ? "Exceções"
