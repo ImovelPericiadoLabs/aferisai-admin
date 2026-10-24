@@ -2299,6 +2299,55 @@ export const suspendRegistrySupplierAccount = (
   csrfToken: string,
 ) => supplierDecision(id, "suspend", expectedVersion, reason, csrfToken);
 
+export type RegistryVisualizationTariff = {
+  id: string;
+  infosimples_account_id: string;
+  onr_account_id: string;
+  order_fee_cents: number;
+  download_fee_cents: number;
+  download_budget_count: number;
+  monthly_minimum_reserve_cents: number;
+  budget_cents: number;
+  evidence_sha256: string;
+  reason: string;
+  verified_at: string;
+  valid_until: string;
+};
+export type RegistryVisualizationTariffPage = {
+  items: RegistryVisualizationTariff[];
+  next_cursor: string | null;
+};
+export type RegistryVisualizationTariffCreate = {
+  infosimples_account_id: string;
+  onr_account_id: string;
+  order_fee_cents: number;
+  download_fee_cents: number;
+  monthly_minimum_reserve_cents: number;
+  evidence_sha256: string;
+  reason: string;
+  contract_verified: true;
+  supplier_fee_covered: true;
+};
+
+export const listRegistryVisualizationTariffs = () =>
+  request<RegistryVisualizationTariffPage>(
+    "/v1/team/registry-visualization-tariffs?limit=20",
+    { method: "GET" },
+  );
+
+export const publishRegistryVisualizationTariff = (
+  body: RegistryVisualizationTariffCreate,
+  csrfToken: string,
+) =>
+  request<RegistryVisualizationTariff>(
+    "/v1/team/registry-visualization-tariffs",
+    {
+      method: "POST",
+      headers: { "X-CSRF-Token": csrfToken },
+      body: JSON.stringify(body),
+    },
+  );
+
 export type OnrEndpoint = {
   origin: string;
   mode: "official" | "proxy";
