@@ -17,6 +17,7 @@ import {
 } from "./SupplierUi";
 import { stepStates } from "./account-model";
 import {
+  COMMERCIAL_LIMITS,
   commercialErrors,
   type CommercialValues,
 } from "./commercial-form-model";
@@ -78,17 +79,17 @@ const fields: {
   {
     key: "onr_markup_bps",
     label: "Acréscimo sobre a matrícula ONR",
-    unit: "% (mínimo 50%)",
+    unit: "%",
   },
   {
     key: "markup_bps",
     label: "Acréscimo público sobre o custo total",
-    unit: "% (mínimo 50%)",
+    unit: "%",
   },
   {
     key: "tax_rate_bps",
     label: "Reserva tributária",
-    unit: "% (atual: 15,5%)",
+    unit: "%",
   },
   { key: "payment_fee_cents", label: "Tarifa fixa PIX", unit: "R$" },
   {
@@ -112,6 +113,21 @@ const fields: {
     unit: "R$",
   },
 ];
+
+/** "% · mínimo 50% · atual 6%": the limit and the current value come from data, not from copy. */
+function unitHint(key: NumericKey, unit: string, current: Terms): string {
+  const value = current[key];
+  const shown = unit.startsWith("%")
+    ? `${(value / 100).toLocaleString("pt-BR", { maximumFractionDigits: 2 })}%`
+    : `R$ ${displayNumber(value)}`;
+  const bound =
+    key === "onr_markup_bps" || key === "markup_bps"
+      ? ` · mínimo ${COMMERCIAL_LIMITS.minMarkupBps / 100}%`
+      : key === "tax_rate_bps" || key === "payment_fee_rate_bps"
+        ? ` · máximo ${COMMERCIAL_LIMITS.maxRateBps / 100}%`
+        : "";
+  return `${unit}${bound} · atual ${shown}`;
+}
 
 function draftFrom(terms: Terms): RegistryCommercialTermsCreate {
   return {
@@ -546,7 +562,10 @@ export function RegistryCommercialTerms({
               )}
               {fields.map(({ key, label, unit }) => (
                 <label key={key}>
-                  {label} <span className="sup-unit">{unit}</span>
+                  {label}{" "}
+                  <span className="sup-unit">
+                    {unitHint(key, unit, effective)}
+                  </span>
                   <input
                     className="input"
                     type="text"
