@@ -19,11 +19,15 @@ import {
 } from "./onr-endpoint-model";
 import { RolePicker } from "./RolePicker";
 import { RegistryVisualizationTariffs } from "./RegistryVisualizationTariffs";
-import { RegistryHistoricalPrices } from "./RegistryHistoricalPrices";
+import { AccountOverview } from "./AccountOverview";
+import { PriceComposition } from "./PriceComposition";
+import { readiness } from "./account-model";
+import { useAccountSnapshot } from "./useAccountSnapshot";
+import { useNow } from "./useNow";
 import { RegistryCommercialTerms } from "./RegistryCommercialTerms";
 import { RegistryOptionalTariffs } from "./RegistryOptionalTariffs";
 import { SupplierCredentialRenewal } from "./SupplierCredentialRenewal";
-import { FormModal, Metrics, SettingCard } from "./SupplierUi";
+import { InlinePanel, Metrics, SettingCard } from "./SupplierUi";
 import { supplierLabel, supplierStatusView } from "./supplier-model";
 import type { ToastKind } from "./useToast";
 import { useDialogFocus } from "./useDialogFocus";
@@ -98,11 +102,24 @@ export function SupplierAccountEditor({
   const [confirming, setConfirming] = useState(false);
   const [connectionOpen, setConnectionOpen] = useState(false);
   const [tab, setTab] = useState<
-    "credentials" | "connection" | "tariffs" | "preview" | "commercial"
-  >("credentials");
+    | "overview"
+    | "credentials"
+    | "connection"
+    | "tariffs"
+    | "commercial"
+    | "composition"
+  >("overview");
 
   const accountId = account?.id ?? null;
   const accountProvider = account?.provider ?? null;
+  const now = useNow();
+  const { snapshot, reload: reloadSnapshot } = useAccountSnapshot(
+    account,
+    onUnauthorized,
+  );
+  useEffect(() => {
+    if (accountId) reloadSnapshot();
+  }, [tab, accountId, reloadSnapshot]);
 
   const apply = useCallback((current: OnrEndpoint) => {
     setEndpoint(current);
@@ -142,40 +159,77 @@ export function SupplierAccountEditor({
   function close() {
     if (busy) return;
     setKey("");
-    setTab("credentials");
+    setTab("overview");
     onClose();
   }
 
   useDialogFocus(open, panelRef, () => !confirming && close(), { returnFocus });
 
-  const sections = account
-    ? ([
-        { id: "credentials", label: "Credenciais", hint: "Login e vínculo" },
-        ...(account.provider === "onr"
-          ? [
-              {
-                id: "connection",
-                label: "Conexão",
-                hint: "Origem das consultas",
-              },
-            ]
-          : []),
-        { id: "tariffs", label: "Tarifas", hint: "Custo da API" },
-        ...(account.provider === "onr"
-          ? [
-              {
-                id: "commercial",
-                label: "Preço e PIX",
-                hint: "Margens e impostos",
-              },
-              {
-                id: "preview",
-                label: "Prévia de preços",
-                hint: "Por cartório",
-              },
-            ]
-          : []),
-      ] as { id: typeof tab; label: string; hint: string }[])
+  const ready = account ? readiness(account, snapshot, now) : [];
+  const readyState = (id: string) => ready.find((row) => row.id === id)?.state;
+  const groups: {
+    title: string;
+    items: { id: typeof tab; label: string; hint: string; dot?: string }[];
+  }[] = account
+    ? [
+        {
+          title: "Geral",
+          items: [
+            {
+              id: "overview",
+              label: "Visão geral",
+              hint: "Prontidão e números",
+            },
+          ],
+        },
+        {
+          title: "Conta",
+          items: [
+            {
+              id: "credentials",
+              label: "Credenciais",
+              hint: "Login e vínculo",
+              dot: readyState("credential"),
+            },
+            ...(account.provider === "onr"
+              ? [
+                  {
+                    id: "connection" as const,
+                    label: "Conexão",
+                    hint: "Origem das consultas",
+                    dot: readyState("connection"),
+                  },
+                ]
+              : []),
+          ],
+        },
+        {
+          title: "Preços",
+          items: [
+            {
+              id: "tariffs",
+              label: "Tarifas da API",
+              hint: "Custo do fornecedor",
+              dot: readyState("tariff"),
+            },
+            ...(account.provider === "onr"
+              ? [
+                  {
+                    id: "commercial" as const,
+                    label: "Condições comerciais",
+                    hint: "Margens e impostos",
+                    dot: readyState("terms"),
+                  },
+                  {
+                    id: "composition" as const,
+                    label: "Composição do preço",
+                    hint: "Do custo cru ao preço",
+                  },
+                ]
+              : []),
+          ],
+        },
+      ]
     : [];
 
   const keyConfigured = endpoint?.proxy_key_configured ?? false;
@@ -316,21 +370,41 @@ export function SupplierAccountEditor({
                     className="sup-ed-nav"
                     aria-label="Configurações da conta"
                   >
-                    {sections.map((item) => (
-                      <button
-                        key={item.id}
-                        type="button"
-                        className="sup-ed-nav-item"
-                        aria-current={tab === item.id ? "page" : undefined}
-                        onClick={() => setTab(item.id)}
-                      >
-                        <span>{item.label}</span>
-                        <small>{item.hint}</small>
-                      </button>
+                    {groups.map((group) => (
+                      <div key={group.title} className="sup-ed-group">
+                        <p className="sup-ed-group-title">{group.title}</p>
+                        {group.items.map((item) => (
+                          <button
+                            key={item.id}
+                            type="button"
+                            className="sup-ed-nav-item"
+                            aria-current={tab === item.id ? "page" : undefined}
+                            onClick={() => setTab(item.id)}
+                          >
+                            <span>{item.label}</span>
+                            {item.dot && (
+                              <i
+                                className="sup-dot"
+                                data-state={item.dot}
+                                aria-hidden="true"
+                              />
+                            )}
+                            <small>{item.hint}</small>
+                          </button>
+                        ))}
+                      </div>
                     ))}
                   </nav>
 
                   <div className="sup-ed-content">
+                    {tab === "overview" && (
+                      <AccountOverview
+                        account={account}
+                        snapshot={snapshot}
+                        now={now}
+                        onGoto={(section) => setTab(section)}
+                      />
+                    )}
                     {tab === "credentials" && (
                       <SupplierCredentialRenewal
                         key={account.id}
@@ -442,10 +516,11 @@ export function SupplierAccountEditor({
                       />
                     )}
 
-                    {tab === "preview" && account.provider === "onr" && (
-                      <RegistryHistoricalPrices
+                    {tab === "composition" && account.provider === "onr" && (
+                      <PriceComposition
                         key={account.id}
                         accountId={account.id}
+                        terms={snapshot.terms}
                         onUnauthorized={onUnauthorized}
                       />
                     )}
@@ -458,7 +533,7 @@ export function SupplierAccountEditor({
         document.body,
       )}
 
-      <FormModal
+      <InlinePanel
         open={connectionOpen && endpoint !== null}
         title="Alterar conexão"
         onClose={() => !busy && setConnectionOpen(false)}
@@ -616,7 +691,7 @@ export function SupplierAccountEditor({
             )}
           </form>
         )}
-      </FormModal>
+      </InlinePanel>
 
       <ConfirmDialog
         open={confirming && endpoint !== null}

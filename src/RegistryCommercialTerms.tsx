@@ -6,7 +6,7 @@ import {
   type RegistryCommercialTerms as Terms,
   type RegistryCommercialTermsCreate,
 } from "./api";
-import { FormModal, Metrics, SettingCard } from "./SupplierUi";
+import { InlinePanel, Metrics, SettingCard } from "./SupplierUi";
 import type { ToastKind } from "./useToast";
 
 const money = (cents: number) =>
@@ -362,7 +362,7 @@ export function RegistryCommercialTerms({
         )}
       </SettingCard>
 
-      <FormModal
+      <InlinePanel
         open={historyOpen}
         title="Histórico da conta"
         onClose={() => setHistoryOpen(false)}
@@ -390,9 +390,9 @@ export function RegistryCommercialTerms({
             </li>
           ))}
         </ol>
-      </FormModal>
+      </InlinePanel>
 
-      <FormModal
+      <InlinePanel
         open={formOpen}
         title="Nova versão comercial"
         onClose={() => !busy && setFormOpen(false)}
@@ -502,7 +502,7 @@ export function RegistryCommercialTerms({
             )}
           </form>
         )}
-      </FormModal>
+      </InlinePanel>
     </>
   );
 }

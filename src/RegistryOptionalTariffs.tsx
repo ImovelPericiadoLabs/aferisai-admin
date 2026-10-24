@@ -10,7 +10,7 @@ import {
   type RegistryCertificateTariff,
   type RegistrySupplierAccount,
 } from "./api";
-import { FormModal, SettingCard } from "./SupplierUi";
+import { InlinePanel, SettingCard } from "./SupplierUi";
 import { supplierTariffValidityLabel } from "./supplier-tariff-validity";
 import type { ToastKind } from "./useToast";
 
@@ -335,7 +335,7 @@ export function RegistryOptionalTariffs({
               </button>
             )}
           </SettingCard>
-          <FormModal
+          <InlinePanel
             open={certOpen}
             title="Nova tarifa de certidão"
             onClose={() => !busy && setCertOpen(false)}
@@ -483,7 +483,7 @@ export function RegistryOptionalTariffs({
                 </button>
               )}
             </form>
-          </FormModal>
+          </InlinePanel>
         </>
       )}
       <SettingCard
@@ -530,7 +530,7 @@ export function RegistryOptionalTariffs({
           </button>
         )}
       </SettingCard>
-      <FormModal
+      <InlinePanel
         open={arispOpen}
         title="Nova tarifa da API de certidão"
         onClose={() => !busy && setArispOpen(false)}
@@ -671,7 +671,7 @@ export function RegistryOptionalTariffs({
             </button>
           )}
         </form>
-      </FormModal>
+      </InlinePanel>
     </div>
   );
 }

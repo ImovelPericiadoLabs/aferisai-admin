@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { FormModal, Metrics, SettingCard } from "./SupplierUi";
+import { InlinePanel, Metrics, SettingCard } from "./SupplierUi";
 import {
   ApiError,
   createRegistrySupplierAccount,
@@ -126,7 +126,7 @@ export function SupplierCredentialRenewal({
         />
       </SettingCard>
 
-      <FormModal
+      <InlinePanel
         open={open}
         title="Trocar credencial"
         onClose={() => !busy && setOpen(false)}
@@ -275,7 +275,7 @@ export function SupplierCredentialRenewal({
             )}
           </label>
         </form>
-      </FormModal>
+      </InlinePanel>
     </>
   );
 }

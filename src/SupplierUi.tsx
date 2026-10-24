@@ -1,6 +1,4 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
-import { createPortal } from "react-dom";
-import { useDialogFocus } from "./useDialogFocus";
 
 /** A small "?" that opens the explanation, so cards stay short. */
 export function HelpTip({
@@ -55,8 +53,8 @@ export function HelpTip({
   );
 }
 
-/** A centred dialog for forms and histories; the drawer stays visible behind it. */
-export function FormModal({
+/** A form or history that opens in place, under the card that asked for it. */
+export function InlinePanel({
   open,
   title,
   onClose,
@@ -69,36 +67,28 @@ export function FormModal({
   children: ReactNode;
   footer?: ReactNode;
 }) {
-  const ref = useRef<HTMLDivElement>(null);
+  const ref = useRef<HTMLElement>(null);
   const titleId = useId();
-  useDialogFocus(open, ref, onClose);
+  useEffect(() => {
+    if (open)
+      ref.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [open]);
   if (!open) return null;
-  return createPortal(
-    <div className="sup-modal-overlay" onClick={onClose}>
-      <div
-        ref={ref}
-        className="sup-modal"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        onClick={(event) => event.stopPropagation()}
-      >
-        <header className="sup-modal-head">
-          <h3 id={titleId}>{title}</h3>
-          <button
-            type="button"
-            className="btn btn-ghost btn-sm"
-            aria-label="Fechar"
-            onClick={onClose}
-          >
-            ✕
-          </button>
-        </header>
-        <div className="sup-modal-body">{children}</div>
-        {footer && <footer className="sup-modal-foot">{footer}</footer>}
-      </div>
-    </div>,
-    document.body,
+  return (
+    <section ref={ref} className="sup-inline" aria-labelledby={titleId}>
+      <header className="sup-inline-head">
+        <h3 id={titleId}>{title}</h3>
+        <button
+          type="button"
+          className="btn btn-ghost btn-sm"
+          onClick={onClose}
+        >
+          Fechar
+        </button>
+      </header>
+      <div className="sup-inline-body">{children}</div>
+      {footer && <footer className="sup-inline-foot">{footer}</footer>}
+    </section>
   );
 }
 

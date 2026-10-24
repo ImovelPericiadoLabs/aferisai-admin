@@ -17,7 +17,7 @@ import {
   tariffDraftBody,
   type TariffDraft,
 } from "./registry-tariff-model";
-import { FormModal, Metrics, SettingCard } from "./SupplierUi";
+import { InlinePanel, Metrics, SettingCard } from "./SupplierUi";
 import {
   supplierTariffIsCurrent,
   supplierTariffValidityLabel,
@@ -257,7 +257,7 @@ export function RegistryVisualizationTariffs({
         )}
       </SettingCard>
 
-      <FormModal
+      <InlinePanel
         open={historyOpen}
         title="Histórico de tarifas"
         onClose={() => setHistoryOpen(false)}
@@ -286,9 +286,9 @@ export function RegistryVisualizationTariffs({
             </li>
           ))}
         </ol>
-      </FormModal>
+      </InlinePanel>
 
-      <FormModal
+      <InlinePanel
         open={formOpen}
         title="Nova tarifa de visualização"
         onClose={() => !busy && setFormOpen(false)}
@@ -482,7 +482,7 @@ export function RegistryVisualizationTariffs({
             </div>
           ) : null}
         </form>
-      </FormModal>
+      </InlinePanel>
     </>
   );
 }
