@@ -6,6 +6,7 @@ import {
 import type { RegistryCommercialTerms, RegistrySupplierAccount } from "./api";
 import { Metrics, SettingCard } from "./SupplierUi";
 import { supplierLabel } from "./supplier-model";
+import { supplierTariffValidityLabel } from "./supplier-tariff-validity";
 
 const money = (cents: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(
@@ -162,6 +163,10 @@ export function AccountOverview({
                 {
                   label: "Reserva da API",
                   value: <strong>{money(tariff.budget_cents)}</strong>,
+                },
+                {
+                  label: "Validade",
+                  value: supplierTariffValidityLabel(tariff.valid_until),
                 },
               ]}
             />

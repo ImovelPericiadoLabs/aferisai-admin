@@ -5,6 +5,7 @@ import type {
   RegistrySupplierAccount,
   RegistryVisualizationTariff,
 } from "./api";
+import { supplierTariffValidityLabel } from "./supplier-tariff-validity";
 
 export type AccountSnapshot = {
   endpoint: OnrEndpoint | null;
@@ -25,7 +26,10 @@ export type ReadinessRow = {
 
 const HOUR = 3_600_000;
 
-function remaining(validUntil: string, now: number): { ms: number; text: string } {
+function remaining(
+  validUntil: string,
+  now: number,
+): { ms: number; text: string } {
   const ms = Date.parse(validUntil) - now;
   if (ms <= 0) return { ms, text: "vencida" };
   if (ms < 48 * HOUR) return { ms, text: `${Math.floor(ms / HOUR)} h` };
@@ -65,7 +69,8 @@ export function readiness(
     rows.push({
       id: "connection",
       label: "Conexão com o portal",
-      state: snapshot.loading && !endpoint ? "loading" : endpoint ? "ok" : "todo",
+      state:
+        snapshot.loading && !endpoint ? "loading" : endpoint ? "ok" : "todo",
       detail: endpoint
         ? endpoint.mode === "proxy"
           ? "Proxy protegido com chave no cofre"
@@ -77,16 +82,39 @@ export function readiness(
 
   const tariff = snapshot.tariff;
   if (snapshot.loading && !tariff)
-    rows.push({ id: "tariff", label: "Tarifa da API vigente", state: "loading", detail: "Consultando…", section: "tariffs" });
+    rows.push({
+      id: "tariff",
+      label: "Tarifa da API vigente",
+      state: "loading",
+      detail: "Consultando…",
+      section: "tariffs",
+    });
   else if (!tariff)
-    rows.push({ id: "tariff", label: "Tarifa da API vigente", state: "todo", detail: "Nenhuma tarifa publicada", section: "tariffs" });
+    rows.push({
+      id: "tariff",
+      label: "Tarifa da API vigente",
+      state: "todo",
+      detail: "Nenhuma tarifa publicada",
+      section: "tariffs",
+    });
   else {
+    const managed = tariff.valid_until.startsWith("9999-12-31");
     const left = remaining(tariff.valid_until, now);
     rows.push({
       id: "tariff",
       label: "Tarifa da API vigente",
-      state: left.ms <= 0 ? "warn" : left.ms < 24 * HOUR ? "warn" : "ok",
-      detail: left.ms <= 0 ? "Vencida: publique outra" : `Vale por mais ${left.text}`,
+      state: managed
+        ? "ok"
+        : left.ms <= 0
+          ? "warn"
+          : left.ms < 24 * HOUR
+            ? "warn"
+            : "ok",
+      detail: managed
+        ? supplierTariffValidityLabel(tariff.valid_until)
+        : left.ms <= 0
+          ? "Vencida: publique outra"
+          : `Vale por mais ${left.text}`,
       section: "tariffs",
     });
   }
@@ -94,16 +122,31 @@ export function readiness(
   if (account.provider === "onr") {
     const terms = snapshot.terms;
     if (snapshot.loading && !terms)
-      rows.push({ id: "terms", label: "Condições comerciais", state: "loading", detail: "Consultando…", section: "commercial" });
+      rows.push({
+        id: "terms",
+        label: "Condições comerciais",
+        state: "loading",
+        detail: "Consultando…",
+        section: "commercial",
+      });
     else if (!terms)
-      rows.push({ id: "terms", label: "Condições comerciais", state: "todo", detail: "Sem oferta completa vigente", section: "commercial" });
+      rows.push({
+        id: "terms",
+        label: "Condições comerciais",
+        state: "todo",
+        detail: "Sem oferta completa vigente",
+        section: "commercial",
+      });
     else {
       const left = remaining(terms.valid_until, now);
       rows.push({
         id: "terms",
         label: "Condições comerciais",
         state: left.ms <= 0 ? "warn" : "ok",
-        detail: left.ms <= 0 ? "Vencidas" : `${terms.version} · vale por mais ${left.text}`,
+        detail:
+          left.ms <= 0
+            ? "Vencidas"
+            : `${terms.version} · vale por mais ${left.text}`,
         section: "commercial",
       });
     }
@@ -151,11 +194,31 @@ export function priceBreakdown(item: RegistryHistoricalPrice): Breakdown {
     },
   ];
   if (item.indicative_api_fee_cents)
-    known.push({ id: "api", label: "Tarifa da API InfoSimples", cents: item.indicative_api_fee_cents, source: "backend" });
+    known.push({
+      id: "api",
+      label: "Tarifa da API InfoSimples",
+      cents: item.indicative_api_fee_cents,
+      source: "backend",
+    });
   known.push(
-    { id: "payment", label: "Tarifa do PIX", cents: item.indicative_payment_fee_cents ?? 0, source: "backend" },
-    { id: "tax", label: "Tributos", cents: item.indicative_tax_cents ?? 0, source: "backend" },
-    { id: "contribution", label: "Contribuição", cents: item.indicative_contribution_cents ?? 0, source: "backend" },
+    {
+      id: "payment",
+      label: "Tarifa do PIX",
+      cents: item.indicative_payment_fee_cents ?? 0,
+      source: "backend",
+    },
+    {
+      id: "tax",
+      label: "Tributos",
+      cents: item.indicative_tax_cents ?? 0,
+      source: "backend",
+    },
+    {
+      id: "contribution",
+      label: "Contribuição",
+      cents: item.indicative_contribution_cents ?? 0,
+      source: "backend",
+    },
   );
   const sum = known.reduce((acc, line) => acc + line.cents, 0);
   const remainder = total - sum;

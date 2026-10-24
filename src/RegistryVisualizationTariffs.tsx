@@ -35,11 +35,21 @@ function tariffStatus(item: RegistryVisualizationTariff) {
   return supplierTariffValidityLabel(item.valid_until);
 }
 
-function draftFor(account: RegistrySupplierAccount): TariffDraft {
+function draftFor(
+  account: RegistrySupplierAccount,
+  accounts: RegistrySupplierAccount[],
+): TariffDraft {
+  const only = (provider: RegistrySupplierAccount["provider"]) => {
+    const active = accounts.filter(
+      (item) => item.provider === provider && item.status === "active",
+    );
+    return active.length === 1 ? active[0].id : "";
+  };
   return {
     ...emptyTariffDraft,
-    onrAccountId: account.provider === "onr" ? account.id : "",
-    infosimplesAccountId: account.provider === "infosimples" ? account.id : "",
+    onrAccountId: account.provider === "onr" ? account.id : only("onr"),
+    infosimplesAccountId:
+      account.provider === "infosimples" ? account.id : only("infosimples"),
   };
 }
 
@@ -61,7 +71,9 @@ export function RegistryVisualizationTariffs({
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [draft, setDraft] = useState<TariffDraft>(() => draftFor(account));
+  const [draft, setDraft] = useState<TariffDraft>(() =>
+    draftFor(account, accounts),
+  );
   const [reviewing, setReviewing] = useState(false);
   const now = useNow();
   const [formOpen, setFormOpen] = useState(false);
@@ -132,7 +144,7 @@ export function RegistryVisualizationTariffs({
       const item = await publishRegistryVisualizationTariff(body, csrf);
       setReviewing(false);
       setFormOpen(false);
-      setDraft(draftFor(account));
+      setDraft(draftFor(account, accounts));
       setTariffs((current) => [item, ...current].slice(0, 20));
       setError("");
       onToast(
