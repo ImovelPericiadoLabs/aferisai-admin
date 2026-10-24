@@ -18,6 +18,7 @@ import {
 } from "./api";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { SupplierAccountEditor } from "./SupplierAccountEditor";
+import { RegistryVisualizationTariffs } from "./RegistryVisualizationTariffs";
 import {
   activationBlock,
   shortDigest,
@@ -442,6 +443,13 @@ export function RegistrySuppliers({
           </button>
         </footer>
       )}
+
+      <RegistryVisualizationTariffs
+        accounts={items}
+        csrf={csrf}
+        onUnauthorized={onUnauthorized}
+        onToast={onToast}
+      />
 
       <SupplierAccountEditor
         account={editing}

@@ -126,6 +126,8 @@ import {
   createRegistrySupplierAccount,
   getOnrEndpoint,
   listRegistrySupplierAccounts,
+  listRegistryVisualizationTariffs,
+  publishRegistryVisualizationTariff,
   resetOnrEndpoint,
   setOnrEndpoint,
   suspendRegistrySupplierAccount,
@@ -213,6 +215,37 @@ describe("registry supplier accounts API", () => {
       path: "/v1/team/registry-supplier-accounts/a1/onr-endpoint/reset",
       method: "POST",
       body: { expected_version: 3, reason: "Restaurar conexão oficial" },
+    });
+  });
+});
+
+describe("registry visualization tariff API", () => {
+  it("lists without CSRF and publishes with the same-origin session and CSRF", async () => {
+    const last = stub();
+    await listRegistryVisualizationTariffs();
+    expect(last()).toMatchObject({
+      path: "/v1/team/registry-visualization-tariffs",
+      method: "GET",
+    });
+    await publishRegistryVisualizationTariff(
+      {
+        infosimples_account_id: "info-account",
+        onr_account_id: "onr-account",
+        order_fee_cents: 28,
+        download_fee_cents: 20,
+        monthly_minimum_reserve_cents: 0,
+        evidence_sha256: "a".repeat(64),
+        reason: "Conferido no extrato autenticado.",
+        contract_verified: true,
+        supplier_fee_covered: true,
+      },
+      "csrf",
+    );
+    expect(last()).toMatchObject({
+      path: "/v1/team/registry-visualization-tariffs",
+      method: "POST",
+      headers: { "X-CSRF-Token": "csrf" },
+      body: { order_fee_cents: 28, download_fee_cents: 20 },
     });
   });
 });
