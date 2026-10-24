@@ -19,6 +19,8 @@ import { stepStates } from "./account-model";
 import {
   COMMERCIAL_LIMITS,
   commercialErrors,
+  resolveCommercialLimits,
+  type CommercialLimits,
   type CommercialValues,
 } from "./commercial-form-model";
 import type { ToastKind } from "./useToast";
@@ -114,18 +116,24 @@ const fields: {
   },
 ];
 
-/** "% · mínimo 50% · atual 6%": the limit and the current value come from data, not from copy. */
-function unitHint(key: NumericKey, unit: string, current: Terms): string {
+/** Show the current value and server-published field bounds. */
+function unitHint(
+  key: NumericKey,
+  unit: string,
+  current: Terms,
+  limits: CommercialLimits,
+): string {
   const value = current[key];
   const shown = unit.startsWith("%")
     ? `${(value / 100).toLocaleString("pt-BR", { maximumFractionDigits: 2 })}%`
     : `R$ ${displayNumber(value)}`;
-  const bound =
-    key === "onr_markup_bps" || key === "markup_bps"
-      ? ` · mínimo ${COMMERCIAL_LIMITS.minMarkupBps / 100}%`
-      : key === "tax_rate_bps" || key === "payment_fee_rate_bps"
-        ? ` · máximo ${COMMERCIAL_LIMITS.maxRateBps / 100}%`
-        : "";
+  const floor = limits[key].min;
+  const ceiling = limits[key].max;
+  const show = (amount: number) =>
+    unit.startsWith("%")
+      ? `${(amount / 100).toLocaleString("pt-BR", { maximumFractionDigits: 2 })}%`
+      : money(amount);
+  const bound = ` · mínimo ${show(floor)} · máximo ${show(ceiling)}`;
   return `${unit}${bound} · atual ${shown}`;
 }
 
@@ -161,6 +169,7 @@ export function RegistryCommercialTerms({
 }) {
   const [effective, setEffective] = useState<Terms | null>(null);
   const [history, setHistory] = useState<Terms[]>([]);
+  const [limits, setLimits] = useState<CommercialLimits>(COMMERCIAL_LIMITS);
   const [cursor, setCursor] = useState<string | null>(null);
   const [draft, setDraft] = useState<RegistryCommercialTermsCreate | null>(
     null,
@@ -188,14 +197,17 @@ export function RegistryCommercialTerms({
       ({ key }) => parseCommercialNumber(numericInputs[key]) === draft[key],
     );
   const errors = draft
-    ? commercialErrors({
-        values: draft as CommercialValues,
-        inputsMatch,
-        version: draft.version,
-        reason: draft.reason,
-        evidence: draft.payment_fee_evidence_sha256 ?? "",
-        feeChanged,
-      })
+    ? commercialErrors(
+        {
+          values: draft as CommercialValues,
+          inputsMatch,
+          version: draft.version,
+          reason: draft.reason,
+          evidence: draft.payment_fee_evidence_sha256 ?? "",
+          feeChanged,
+        },
+        limits,
+      )
     : {};
   const valuesBad = !!errors.values || fields.some(({ key }) => errors[key]);
   const identityBad = !!(errors.version || errors.reason || errors.evidence);
@@ -210,6 +222,7 @@ export function RegistryCommercialTerms({
       try {
         const page = await listRegistryCommercialTerms(accountId, next);
         setEffective(page.effective);
+        setLimits(resolveCommercialLimits(page.limits));
         setHistory((old) => (next ? [...old, ...page.items] : page.items));
         setCursor(page.next_cursor);
         if (!next) {
@@ -569,7 +582,7 @@ export function RegistryCommercialTerms({
                 <label key={key}>
                   {label}{" "}
                   <span className="sup-unit">
-                    {unitHint(key, unit, effective)}
+                    {unitHint(key, unit, effective, limits)}
                   </span>
                   <input
                     className="input"
