@@ -751,3 +751,386 @@
     white-space: normal;
   }
 }
+
+.sup-pad {
+  padding: var(--space-4);
+}
+
+/* Activity log */
+.sup-activity {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.sup-activity > li {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--border);
+}
+.sup-activity > li:last-child {
+  border-bottom: 0;
+}
+.sup-activity > li > .sup-dot {
+  margin: 6px 0 0;
+}
+.sup-activity-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-3);
+}
+.sup-activity-reason {
+  margin: var(--space-1) 0 0;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+.sup-activity-changes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  list-style: none;
+}
+.sup-activity-changes li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 2px var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-muted);
+  font-size: var(--text-caption);
+}
+.sup-activity-changes code {
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.sup-delta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--text-caption);
+  font-weight: var(--weight-semibold);
+}
+.sup-delta[data-dir="up"] {
+  color: var(--warning);
+}
+.sup-delta[data-dir="down"] {
+  color: var(--success);
+}
+.sup-delta small {
+  color: var(--text-muted);
+  font-weight: var(--weight-normal);
+}
+
+/* Composer */
+.sup-composer {
+  border: 1px solid var(--primary-ring);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  min-width: 0;
+}
+.sup-composer-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border);
+  background: var(--primary-faint);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+.sup-composer-head h3 {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-base);
+}
+.sup-composer-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.sup-composer-steps li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px var(--space-3) 2px 2px;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-medium);
+}
+.sup-composer-steps li > span {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--surface-muted);
+  font-size: 11px;
+  font-weight: var(--weight-bold);
+}
+.sup-composer-steps li[data-state="current"] {
+  color: var(--primary);
+  box-shadow: 0 0 0 1px var(--primary);
+}
+.sup-composer-steps li[data-state="current"] > span {
+  background: var(--primary);
+  color: #fff;
+}
+.sup-composer-steps li[data-state="done"] > span {
+  background: var(--success);
+  color: #fff;
+}
+.sup-composer-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(250px, 1fr);
+  gap: var(--space-5);
+  padding: var(--space-4);
+  align-items: start;
+}
+.sup-composer-form {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+}
+.sup-composer-summary {
+  position: sticky;
+  top: var(--space-3);
+}
+
+.sup-csection {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+.sup-csection[data-state="current"] {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-ring);
+}
+.sup-csection[data-state="todo"][data-open="false"] {
+  background: var(--surface-muted);
+}
+.sup-csection-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.sup-csection-title {
+  font-weight: var(--weight-semibold);
+}
+.sup-csection[data-state="todo"] .sup-csection-title {
+  color: var(--text-muted);
+}
+.sup-csection-recap {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sup-csection-action {
+  margin-left: auto;
+  color: var(--primary);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-semibold);
+}
+.sup-csection-body {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3) var(--space-4);
+  padding: var(--space-1) var(--space-3) var(--space-3);
+}
+.sup-csection-body label {
+  display: grid;
+  align-content: start;
+  gap: var(--space-1);
+  min-width: 0;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+}
+.sup-csection-body label small {
+  color: var(--text-muted);
+  font-weight: var(--weight-normal);
+}
+.sup-csection-body .input {
+  width: 100%;
+  min-width: 0;
+}
+.sup-csection-body textarea.input {
+  height: auto;
+  min-height: 72px;
+}
+.sup-csection-body .sup-span,
+.sup-csection-body label:has(textarea),
+.sup-csection-body label:has(input[maxlength="64"]),
+.sup-csection-body details,
+.sup-csection-body label:has(> input[type="checkbox"]) {
+  grid-column: 1 / -1;
+}
+.sup-csection-body label:has(> input[type="checkbox"]) {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  font-weight: var(--weight-normal);
+}
+.sup-csection-body details {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.sup-csection-body details > summary {
+  cursor: pointer;
+  font-weight: var(--weight-medium);
+}
+.sup-csection-body details[open] > summary {
+  margin-bottom: var(--space-3);
+}
+.sup-csection-body details label {
+  margin-top: var(--space-3);
+}
+
+.sup-csummary {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-muted);
+}
+.sup-csummary-title {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.sup-csummary-total {
+  margin: 0;
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-bold);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+.sup-csummary-delta {
+  margin: 0;
+}
+.sup-csummary-footer {
+  display: grid;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+.sup-csummary-footer .btn {
+  width: 100%;
+}
+.sup-csummary-footer .sup-review {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--primary-ring);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  font-size: var(--text-sm);
+}
+.sup-csummary-footer .sup-review p {
+  margin: 0;
+}
+
+@media (max-width: 1100px) {
+  .sup-composer-body {
+    grid-template-columns: 1fr;
+  }
+  .sup-composer-summary {
+    position: static;
+  }
+}
+@media (max-width: 640px) {
+  .sup-csection-body {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Focus mode: only the form being created stays on screen */
+.sup-ed-layout[data-focus="true"] {
+  grid-template-columns: 1fr;
+}
+.sup-ed-layout[data-focus="true"] .sup-ed-nav,
+.sup-ed-layout[data-focus="true"] .sup-ed-content > .sup-card,
+.sup-ed-layout[data-focus="true"] .sup-ed-content > .sup-inline,
+.sup-ed-layout[data-focus="true"]
+  .sup-ed-content
+  .sup-optional-tariffs
+  > .sup-card,
+.sup-ed-layout[data-focus="true"]
+  .sup-ed-content
+  .sup-optional-tariffs
+  > .sup-inline {
+  display: none;
+}
+.sup-ed-layout[data-focus="true"] .sup-composer {
+  max-width: 1040px;
+  margin-inline: auto;
+  width: 100%;
+}
+
+.sup-csection-body label small.sup-error,
+.sup-csection-body small.sup-error,
+.sup-csection-body p.sup-error {
+  color: var(--danger);
+  font-weight: var(--weight-medium);
+}
+.sup-csection-body .input[aria-invalid="true"] {
+  border-color: var(--danger);
+}
+.sup-unit {
+  color: var(--text-muted);
+  font-weight: var(--weight-normal);
+}
+
+/* Folding is CSS: a block stays open while focus is inside it */
+.sup-csection-collapse {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows 220ms ease;
+}
+.sup-csection-collapse > .sup-csection-body {
+  min-height: 0;
+  overflow: hidden;
+}
+/* The pause keeps a click that started in the previous block from landing on a moved target. */
+.sup-csection[data-open="false"]:not(:focus-within) .sup-csection-collapse {
+  grid-template-rows: 0fr;
+  visibility: hidden;
+  transition:
+    grid-template-rows 220ms ease 600ms,
+    visibility 0s linear 820ms;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sup-csection-collapse,
+  .sup-csection[data-open="false"]:not(:focus-within) .sup-csection-collapse {
+    transition-duration: 0.01s;
+  }
+}
+.sup-csection[data-open="true"] .sup-csection-recap,
+.sup-csection:focus-within .sup-csection-recap {
+  display: none;
+}

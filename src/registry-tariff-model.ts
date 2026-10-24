@@ -63,3 +63,51 @@ export function tariffDraftBody(draft: TariffDraft) {
     supplier_fee_covered: true as const,
   };
 }
+
+/** Values, evidence, confirmation: which of the three blocks of the form is finished. */
+export function tariffComplete(
+  draft: TariffDraft,
+): [boolean, boolean, boolean] {
+  const order = parseBrlCents(draft.orderFee);
+  const download = parseBrlCents(draft.downloadFee);
+  const reserve = parseBrlCents(draft.monthlyReserve);
+  const values =
+    !!draft.infosimplesAccountId &&
+    !!draft.onrAccountId &&
+    order !== null &&
+    order >= 1 &&
+    order <= 100_000 &&
+    download !== null &&
+    download >= 1 &&
+    download <= 100_000 &&
+    reserve !== null &&
+    reserve <= 100_000;
+  const evidence =
+    /^[0-9a-f]{64}$/.test(draft.evidenceSha256.trim()) &&
+    draft.reason.trim().length >= 10 &&
+    draft.reason.trim().length <= 500;
+  return [values, evidence, draft.contractVerified && draft.supplierFeeCovered];
+}
+
+/** What still blocks publishing, in words the person can act on. */
+export function tariffProblems(draft: TariffDraft): string[] {
+  const problems: string[] = [];
+  const inRange = (cents: number | null, min: number) =>
+    cents !== null && cents >= min && cents <= 100_000;
+  if (!draft.onrAccountId) problems.push("a conta RI Digital");
+  if (!draft.infosimplesAccountId) problems.push("a conta InfoSimples");
+  if (!inRange(parseBrlCents(draft.orderFee), 1))
+    problems.push("o valor do pedido");
+  if (!inRange(parseBrlCents(draft.downloadFee), 1))
+    problems.push("o valor de cada download");
+  if (!inRange(parseBrlCents(draft.monthlyReserve), 0))
+    problems.push("o mínimo mensal");
+  if (!/^[0-9a-f]{64}$/.test(draft.evidenceSha256.trim()))
+    problems.push("o SHA-256 da evidência (64 caracteres hexadecimais)");
+  const reason = draft.reason.trim().length;
+  if (reason < 10 || reason > 500)
+    problems.push("o motivo (mínimo 10 caracteres)");
+  if (!draft.contractVerified || !draft.supplierFeeCovered)
+    problems.push("as duas declarações");
+  return problems;
+}

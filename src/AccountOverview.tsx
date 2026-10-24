@@ -3,7 +3,11 @@ import {
   type AccountSnapshot,
   type ReadinessState,
 } from "./account-model";
-import type { RegistryCommercialTerms, RegistrySupplierAccount } from "./api";
+import type {
+  RegistryCommercialTerms,
+  RegistrySupplierAccount,
+  RegistryVisualizationTariff,
+} from "./api";
 import { Metrics, SettingCard } from "./SupplierUi";
 import { supplierLabel } from "./supplier-model";
 import { supplierTariffValidityLabel } from "./supplier-tariff-validity";
@@ -67,11 +71,15 @@ export function termsRows(terms: RegistryCommercialTerms) {
 export function AccountOverview({
   account,
   snapshot,
+  tariff,
+  terms,
   now,
   onGoto,
 }: {
   account: RegistrySupplierAccount;
   snapshot: AccountSnapshot;
+  tariff: RegistryVisualizationTariff | null;
+  terms: RegistryCommercialTerms | null;
   now: number;
   onGoto: (
     section: "credentials" | "connection" | "tariffs" | "commercial",
@@ -81,7 +89,7 @@ export function AccountOverview({
   const pending = rows.filter(
     (row) => row.state === "warn" || row.state === "todo",
   ).length;
-  const { tariff, terms } = snapshot;
+  const usage = snapshot.summary?.usage ?? null;
   return (
     <>
       <SettingCard
@@ -177,6 +185,35 @@ export function AccountOverview({
           )}
         </SettingCard>
       </div>
+
+      <SettingCard
+        title="Uso da conta"
+        help="Pedidos confirmados pela identidade desta conta. O custo real ainda não é conciliado por conta: o orçamento cotado não é gasto consumido, então não é somado aqui."
+        badge={
+          <span className="badge badge-neutral">Custo real não conciliado</span>
+        }
+      >
+        {usage ? (
+          <Metrics
+            items={[
+              { label: "Pedidos em 7 dias", value: usage.last_7_days.orders },
+              { label: "Pedidos em 30 dias", value: usage.last_30_days.orders },
+              {
+                label: "Última utilização",
+                value: usage.last_use_at
+                  ? dateTime.format(new Date(usage.last_use_at))
+                  : "Nunca usada",
+              },
+            ]}
+          />
+        ) : (
+          <p className="sup-muted">
+            {snapshot.loading
+              ? "Consultando…"
+              : "Não foi possível carregar o uso."}
+          </p>
+        )}
+      </SettingCard>
 
       {account.provider === "onr" && (
         <SettingCard

@@ -1,5 +1,5 @@
 import { Fragment, useState, type FormEvent } from "react";
-import { priceBreakdown } from "./account-model";
+import { breakdownLines } from "./account-model";
 import { termsRows } from "./AccountOverview";
 import { SettingCard } from "./SupplierUi";
 import {
@@ -261,11 +261,14 @@ export function PriceComposition({
 
 const LINE_TONE: Record<string, string> = {
   cost: "cost",
+  markup: "gain",
   api: "api",
+  analysis: "rest",
+  operations: "rest",
+  exception: "rest",
   payment: "fee",
   tax: "tax",
   contribution: "gain",
-  remainder: "rest",
 };
 
 function Breakdown({
@@ -275,18 +278,20 @@ function Breakdown({
   item: RegistryHistoricalPrice;
   terms: RegistryCommercialTerms | null;
 }) {
-  const breakdown = priceBreakdown(item);
-  if (breakdown.total === null)
+  const parts = item.breakdown ?? null;
+  if (!parts)
     return (
-      <p className="sup-muted">
-        Este cartório não tem preço calculável com a oferta e as tarifas atuais.
+      <p className="sup-muted sup-pad">
+        Este cartório não tem simulação de preço com a oferta e as tarifas
+        atuais.
       </p>
     );
+  const { lines, warning } = breakdownLines(parts);
   return (
     <div className="sup-breakdown">
       <div className="sup-breakdown-main">
         <div className="sup-stack" role="img" aria-label="Composição do preço">
-          {breakdown.lines
+          {lines
             .filter((line) => line.cents > 0)
             .map((line) => (
               <span
@@ -301,13 +306,12 @@ function Breakdown({
           <thead>
             <tr>
               <th>Parte do preço</th>
-              <th>Origem</th>
               <th className="sup-table-end">Valor</th>
               <th className="sup-table-end">% do preço</th>
             </tr>
           </thead>
           <tbody>
-            {breakdown.lines.map((line) => (
+            {lines.map((line) => (
               <tr key={line.id}>
                 <td>
                   <span
@@ -316,12 +320,6 @@ function Breakdown({
                     aria-hidden="true"
                   />
                   {line.label}
-                  {line.note && (
-                    <small className="sup-muted">{line.note}</small>
-                  )}
-                </td>
-                <td className="sup-muted">
-                  {line.source === "backend" ? "Backend" : "Calculado"}
                 </td>
                 <td className="sup-table-end">{money(line.cents)}</td>
                 <td className="sup-table-end">
@@ -336,23 +334,22 @@ function Breakdown({
           </tbody>
           <tfoot>
             <tr>
-              <td colSpan={2}>Preço indicativo</td>
-              <td className="sup-table-end">{money(breakdown.total)}</td>
+              <td>Preço indicativo</td>
+              <td className="sup-table-end">{money(parts.price_cents)}</td>
               <td className="sup-table-end">100,0%</td>
             </tr>
           </tfoot>
         </table>
-        {breakdown.warning && (
+        {warning && (
           <p className="alert alert-warning" role="alert">
-            {breakdown.warning}
+            {warning}
           </p>
         )}
-        {item.observed_at && (
-          <p className="sup-muted">
-            Custo cru observado em {date.format(new Date(item.observed_at))}
-            {item.cost_source ? ` · fonte ${item.cost_source}` : ""}.
-          </p>
-        )}
+        <p className="sup-muted">
+          Fórmula {parts.formula_version} · custo cru observado em{" "}
+          {date.format(new Date(parts.observed_at))} · fonte {parts.cost_source}
+          .
+        </p>
       </div>
       <aside className="sup-breakdown-side" aria-label="Condições aplicadas">
         <h4>Condições aplicadas</h4>

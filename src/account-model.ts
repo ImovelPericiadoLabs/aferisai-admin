@@ -1,16 +1,11 @@
 import type {
-  OnrEndpoint,
-  RegistryCommercialTerms,
-  RegistryHistoricalPrice,
+  RegistryPriceBreakdown,
   RegistrySupplierAccount,
-  RegistryVisualizationTariff,
+  SupplierAccountSummary,
 } from "./api";
-import { supplierTariffValidityLabel } from "./supplier-tariff-validity";
 
 export type AccountSnapshot = {
-  endpoint: OnrEndpoint | null;
-  tariff: RegistryVisualizationTariff | null;
-  terms: RegistryCommercialTerms | null;
+  summary: SupplierAccountSummary | null;
   loading: boolean;
 };
 
@@ -25,6 +20,7 @@ export type ReadinessRow = {
 };
 
 const HOUR = 3_600_000;
+const dateShort = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short" });
 
 function remaining(
   validUntil: string,
@@ -42,6 +38,8 @@ export function readiness(
   snapshot: AccountSnapshot,
   now: number,
 ): ReadinessRow[] {
+  const data = snapshot.summary;
+  const waiting = snapshot.loading && !data;
   const rows: ReadinessRow[] = [
     {
       id: "status",
@@ -59,29 +57,32 @@ export function readiness(
       id: "credential",
       label: "Credencial no cofre",
       state: "ok",
-      detail: `Cifrada · versão ${account.version}`,
+      detail: data?.last_credential_change_at
+        ? `Cifrada · versão ${account.version} · trocada em ${dateShort.format(new Date(data.last_credential_change_at))}`
+        : `Cifrada · versão ${account.version}`,
       section: "credentials",
     },
   ];
 
   if (account.provider === "onr") {
-    const endpoint = snapshot.endpoint;
+    const endpoint = data?.endpoint ?? null;
     rows.push({
       id: "connection",
       label: "Conexão com o portal",
-      state:
-        snapshot.loading && !endpoint ? "loading" : endpoint ? "ok" : "todo",
+      state: waiting ? "loading" : endpoint ? "ok" : "todo",
       detail: endpoint
         ? endpoint.mode === "proxy"
-          ? "Proxy protegido com chave no cofre"
+          ? endpoint.key_configured
+            ? "Proxy protegido com chave no cofre"
+            : "Proxy sem chave guardada"
           : "Portal original"
         : "Ainda não consultada",
       section: "connection",
     });
   }
 
-  const tariff = snapshot.tariff;
-  if (snapshot.loading && !tariff)
+  const tariff = data?.tariff ?? null;
+  if (waiting)
     rows.push({
       id: "tariff",
       label: "Tarifa da API vigente",
@@ -97,31 +98,29 @@ export function readiness(
       detail: "Nenhuma tarifa publicada",
       section: "tariffs",
     });
+  else if (tariff.managed || !tariff.valid_until)
+    rows.push({
+      id: "tariff",
+      label: "Tarifa da API vigente",
+      state: "ok",
+      detail: "Vigente até atualização do gestor",
+      section: "tariffs",
+    });
   else {
-    const managed = tariff.valid_until.startsWith("9999-12-31");
     const left = remaining(tariff.valid_until, now);
     rows.push({
       id: "tariff",
       label: "Tarifa da API vigente",
-      state: managed
-        ? "ok"
-        : left.ms <= 0
-          ? "warn"
-          : left.ms < 24 * HOUR
-            ? "warn"
-            : "ok",
-      detail: managed
-        ? supplierTariffValidityLabel(tariff.valid_until)
-        : left.ms <= 0
-          ? "Vencida: publique outra"
-          : `Vale por mais ${left.text}`,
+      state: left.ms <= 0 || left.ms < 24 * HOUR ? "warn" : "ok",
+      detail:
+        left.ms <= 0 ? "Vencida: publique outra" : `Vale por mais ${left.text}`,
       section: "tariffs",
     });
   }
 
   if (account.provider === "onr") {
-    const terms = snapshot.terms;
-    if (snapshot.loading && !terms)
+    const terms = data?.commercial_terms ?? null;
+    if (waiting)
       rows.push({
         id: "terms",
         label: "Condições comerciais",
@@ -155,89 +154,161 @@ export function readiness(
 }
 
 export type BreakdownLine = {
-  id: "cost" | "api" | "payment" | "tax" | "contribution" | "remainder";
+  id:
+    | "cost"
+    | "markup"
+    | "api"
+    | "analysis"
+    | "operations"
+    | "exception"
+    | "payment"
+    | "tax"
+    | "contribution";
   label: string;
   cents: number;
   shareBps: number;
-  /** Where the number comes from, so nothing looks invented. */
-  source: "backend" | "calculated";
-  note?: string;
-};
-
-export type Breakdown = {
-  total: number | null;
-  lines: BreakdownLine[];
-  warning: string | null;
 };
 
 const bps = (part: number, whole: number) =>
   whole > 0 ? Math.round((part / whole) * 10000) : 0;
 
-/**
- * The preview returns each component but not the reserves and margin; those are shown as the
- * difference to the indicative price, labelled as calculated.
- */
-export function priceBreakdown(item: RegistryHistoricalPrice): Breakdown {
-  const total = item.indicative_price_cents;
-  if (total === null) return { total: null, lines: [], warning: null };
-  const raw = item.observed_cost_cents ?? 0;
-  const known: Omit<BreakdownLine, "shareBps">[] = [
-    {
-      id: "cost",
-      label: "Custo do cartório (valor cru)",
-      cents: raw,
-      source: "backend",
-      note:
-        item.observed_cost_cents === null
-          ? "Sem observação de custo para este cartório"
-          : undefined,
-    },
+/** The official parts of one indicative price; they must close on the price. */
+export function breakdownLines(parts: RegistryPriceBreakdown): {
+  lines: BreakdownLine[];
+  warning: string | null;
+} {
+  const raw: [BreakdownLine["id"], string, number, boolean][] = [
+    [
+      "cost",
+      "Custo do cartório (valor cru)",
+      parts.onr_record_cost_cents,
+      true,
+    ],
+    ["markup", "Margem sobre o custo do ONR", parts.onr_markup_cents, false],
+    ["api", "Tarifa da API InfoSimples", parts.api_fee_cents, false],
+    ["analysis", "Reserva de IA", parts.analysis_reserve_cents, false],
+    [
+      "operations",
+      "Reserva de operações",
+      parts.operations_reserve_cents,
+      false,
+    ],
+    [
+      "exception",
+      "Reserva para exceções",
+      parts.exception_reserve_cents,
+      false,
+    ],
+    ["payment", "Tarifa do PIX", parts.payment_fee_cents, false],
+    ["tax", "Tributos", parts.tax_cents, false],
+    ["contribution", "Contribuição residual", parts.contribution_cents, false],
   ];
-  if (item.indicative_api_fee_cents)
-    known.push({
-      id: "api",
-      label: "Tarifa da API InfoSimples",
-      cents: item.indicative_api_fee_cents,
-      source: "backend",
-    });
-  known.push(
-    {
-      id: "payment",
-      label: "Tarifa do PIX",
-      cents: item.indicative_payment_fee_cents ?? 0,
-      source: "backend",
-    },
-    {
-      id: "tax",
-      label: "Tributos",
-      cents: item.indicative_tax_cents ?? 0,
-      source: "backend",
-    },
-    {
-      id: "contribution",
-      label: "Contribuição",
-      cents: item.indicative_contribution_cents ?? 0,
-      source: "backend",
-    },
-  );
-  const sum = known.reduce((acc, line) => acc + line.cents, 0);
-  const remainder = total - sum;
-  const lines: Omit<BreakdownLine, "shareBps">[] = [
-    ...known,
-    {
-      id: "remainder",
-      label: "Margem e reservas",
-      cents: Math.max(0, remainder),
-      source: "calculated",
-      note: "Preço indicativo menos os itens acima",
-    },
-  ];
+  const lines = raw
+    .filter(([, , cents, always]) => always || cents > 0)
+    .map(([id, label, cents]) => ({
+      id,
+      label,
+      cents,
+      shareBps: bps(cents, parts.price_cents),
+    }));
+  const sum = raw.reduce((acc, [, , cents]) => acc + cents, 0);
   return {
-    total,
-    lines: lines.map((line) => ({ ...line, shareBps: bps(line.cents, total) })),
+    lines,
     warning:
-      remainder < 0
-        ? "Os itens conhecidos somam mais que o preço indicativo. Confira a fórmula com o backend."
-        : null,
+      sum === parts.price_cents
+        ? null
+        : "As parcelas não fecham o preço informado. Confira a fórmula com o backend.",
   };
 }
+
+/** Change against the previous value, in basis points; null without a usable previous. */
+export function changeRatio(
+  current: number,
+  previous: number | null,
+): number | null {
+  if (previous === null || previous <= 0) return null;
+  return Math.round(((current - previous) / previous) * 10000);
+}
+
+const ACTIVITY_LABELS: Record<string, string> = {
+  created: "Conta cadastrada",
+  activated: "Conta ativada",
+  suspended: "Conta suspensa",
+  commercial_terms_published: "Condições comerciais publicadas",
+  visualization_tariff_published: "Tarifa de visualização publicada",
+  arisp_tariff_published: "Tarifa da API de certidão publicada",
+  certificate_tariff_published: "Tarifa de certidão publicada",
+  onr_endpoint_set: "Conexão com o portal alterada",
+  onr_endpoint_reset: "Conexão voltou ao portal original",
+};
+
+export const activityLabel = (action: string) =>
+  ACTIVITY_LABELS[action] ?? action;
+
+const brl = new Intl.NumberFormat("pt-BR", {
+  style: "currency",
+  currency: "BRL",
+});
+
+function formatValue(
+  key: string,
+  value: string | number | boolean | null | undefined,
+): string {
+  if (value === null || value === undefined) return "—";
+  if (typeof value === "boolean") return value ? "Sim" : "Não";
+  if (typeof value === "number") {
+    if (key.endsWith("_cents")) return brl.format(value / 100);
+    if (key.endsWith("_bps"))
+      return `${(value / 100).toLocaleString("pt-BR", { maximumFractionDigits: 2 })}%`;
+  }
+  return String(value);
+}
+
+export type DiffRow = { key: string; from: string; to: string };
+
+/** What an event changed, ready to read; secrets never reach these maps. */
+export function diffEntries(
+  before: Record<string, string | number | boolean | null>,
+  after: Record<string, string | number | boolean | null>,
+): DiffRow[] {
+  return Object.keys({ ...before, ...after })
+    .filter((key) => before[key] !== after[key])
+    .map((key) => ({
+      key,
+      from: formatValue(key, before[key]),
+      to: formatValue(key, after[key]),
+    }));
+}
+
+export type StepState = "done" | "current" | "todo";
+
+/** Where the person is in a form: done steps, the first open one as current, the rest ahead. */
+export function stepStates(complete: boolean[]): StepState[] {
+  const firstOpen = complete.findIndex((done) => !done);
+  return complete.map((done, index) =>
+    done ? "done" : index === firstOpen ? "current" : "todo",
+  );
+}
+
+const FIELD_LABELS: Record<string, string> = {
+  status: "Estado",
+  mode: "Origem",
+  key_configured: "Chave guardada",
+  budget_cents: "Reserva da API",
+  order_fee_cents: "Pedido",
+  download_fee_cents: "Download",
+  monthly_minimum_reserve_cents: "Mínimo mensal",
+  unit_cost_cents: "Custo por chamada",
+  onr_markup_bps: "Margem ONR",
+  markup_bps: "Margem geral",
+  tax_rate_bps: "Tributos",
+  payment_fee_cents: "Tarifa PIX",
+  payment_fee_rate_bps: "Tarifa PIX (%)",
+  analysis_reserve_cents: "Reserva de IA",
+  operations_reserve_cents: "Reserva de operações",
+  exception_reserve_cents: "Reserva para exceções",
+  minimum_contribution_cents: "Contribuição mínima",
+  version: "Versão",
+};
+
+export const fieldLabel = (key: string) => FIELD_LABELS[key] ?? key;

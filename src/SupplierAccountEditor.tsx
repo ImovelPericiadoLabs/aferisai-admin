@@ -20,6 +20,7 @@ import {
 import { RolePicker } from "./RolePicker";
 import { RegistryVisualizationTariffs } from "./RegistryVisualizationTariffs";
 import { AccountOverview } from "./AccountOverview";
+import { AccountActivity } from "./AccountActivity";
 import { PriceComposition } from "./PriceComposition";
 import { readiness } from "./account-model";
 import { useAccountSnapshot } from "./useAccountSnapshot";
@@ -103,6 +104,7 @@ export function SupplierAccountEditor({
   const [connectionOpen, setConnectionOpen] = useState(false);
   const [tab, setTab] = useState<
     | "overview"
+    | "activity"
     | "credentials"
     | "connection"
     | "tariffs"
@@ -113,10 +115,12 @@ export function SupplierAccountEditor({
   const accountId = account?.id ?? null;
   const accountProvider = account?.provider ?? null;
   const now = useNow();
-  const { snapshot, reload: reloadSnapshot } = useAccountSnapshot(
-    account,
-    onUnauthorized,
-  );
+  const {
+    snapshot,
+    tariff,
+    terms,
+    reload: reloadSnapshot,
+  } = useAccountSnapshot(account, onUnauthorized);
   useEffect(() => {
     if (accountId) reloadSnapshot();
   }, [tab, accountId, reloadSnapshot]);
@@ -178,8 +182,9 @@ export function SupplierAccountEditor({
             {
               id: "overview",
               label: "Visão geral",
-              hint: "Prontidão e números",
+              hint: "Prontidão e uso",
             },
+            { id: "activity", label: "Atividade", hint: "Quem mudou o quê" },
           ],
         },
         {
@@ -401,10 +406,20 @@ export function SupplierAccountEditor({
                       <AccountOverview
                         account={account}
                         snapshot={snapshot}
+                        tariff={tariff}
+                        terms={terms}
                         now={now}
                         onGoto={(section) => setTab(section)}
                       />
                     )}
+                    {tab === "activity" && (
+                      <AccountActivity
+                        key={account.id}
+                        accountId={account.id}
+                        onUnauthorized={onUnauthorized}
+                      />
+                    )}
+
                     {tab === "credentials" && (
                       <SupplierCredentialRenewal
                         key={account.id}
@@ -707,7 +722,7 @@ export function SupplierAccountEditor({
                       <PriceComposition
                         key={account.id}
                         accountId={account.id}
-                        terms={snapshot.terms}
+                        terms={terms}
                         onUnauthorized={onUnauthorized}
                       />
                     )}

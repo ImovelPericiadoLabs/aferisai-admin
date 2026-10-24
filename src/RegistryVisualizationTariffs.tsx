@@ -14,10 +14,22 @@ import {
 } from "./api";
 import {
   emptyTariffDraft,
+  parseBrlCents,
+  tariffComplete,
   tariffDraftBody,
+  tariffProblems,
   type TariffDraft,
 } from "./registry-tariff-model";
-import { InlinePanel, Metrics, SettingCard } from "./SupplierUi";
+import {
+  Composer,
+  ComposerSection,
+  ComposerSummary,
+  Delta,
+  InlinePanel,
+  Metrics,
+  SettingCard,
+} from "./SupplierUi";
+import { stepStates } from "./account-model";
 import {
   supplierTariffIsCurrent,
   supplierTariffValidityLabel,
@@ -86,6 +98,10 @@ export function RegistryVisualizationTariffs({
     (item) => item.provider === "infosimples" && item.status === "active",
   );
   const body = tariffDraftBody(draft);
+  const states = stepStates(tariffComplete(draft));
+  const orderCents = parseBrlCents(draft.orderFee);
+  const downloadCents = parseBrlCents(draft.downloadFee);
+  const reserveCents = parseBrlCents(draft.monthlyReserve);
 
   const load = useCallback(
     async (next?: string | null) => {
@@ -128,9 +144,7 @@ export function RegistryVisualizationTariffs({
   function review(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!body) {
-      setError(
-        "Confira as contas, os valores, o SHA-256, o motivo e as duas declarações.",
-      );
+      setError(`Falta ou está inválido: ${tariffProblems(draft).join("; ")}.`);
       return;
     }
     setError("");
@@ -171,6 +185,8 @@ export function RegistryVisualizationTariffs({
     accounts.find((item) => item.id === id)?.label ?? id.slice(0, 8);
 
   const current = tariffs[0];
+  const previousOf = (item: RegistryVisualizationTariff) =>
+    tariffs.find((other) => other.id === item.previous_id) ?? null;
 
   return (
     <>
@@ -252,7 +268,15 @@ export function RegistryVisualizationTariffs({
                 },
                 {
                   label: "Reserva da API",
-                  value: <strong>{money(current.budget_cents)}</strong>,
+                  value: (
+                    <>
+                      <strong>{money(current.budget_cents)}</strong>{" "}
+                      <Delta
+                        current={current.budget_cents}
+                        previous={previousOf(current)?.budget_cents}
+                      />
+                    </>
+                  ),
                 },
               ]}
             />
@@ -290,7 +314,13 @@ export function RegistryVisualizationTariffs({
           {tariffs.map((item) => (
             <li key={item.id}>
               <strong>{money(item.budget_cents)}</strong>
-              <span>{tariffStatus(item)}</span>
+              <span>
+                {tariffStatus(item)}{" "}
+                <Delta
+                  current={item.budget_cents}
+                  previous={previousOf(item)?.budget_cents}
+                />
+              </span>
               <small className="sup-clip">
                 {accountLabel(item.onr_account_id)} +{" "}
                 {accountLabel(item.infosimples_account_id)}
@@ -300,201 +330,268 @@ export function RegistryVisualizationTariffs({
         </ol>
       </InlinePanel>
 
-      <InlinePanel
-        open={formOpen}
-        title="Nova tarifa de visualização"
-        onClose={() => !busy && setFormOpen(false)}
-      >
-        {error && (
-          <div className="alert alert-danger" role="alert">
-            {error}
-          </div>
-        )}
-        <form className="sup-form-grid" onSubmit={review} noValidate>
-          <div className="vm-tariff-fields">
-            {account.provider !== "onr" && (
+      {formOpen && (
+        <Composer
+          title="Nova tarifa de visualização"
+          steps={[
+            { id: "values", label: "Valores", state: states[0] },
+            { id: "evidence", label: "Evidência", state: states[1] },
+            { id: "confirm", label: "Confirmação", state: states[2] },
+          ]}
+          onClose={() => !busy && setFormOpen(false)}
+          summary={
+            <ComposerSummary
+              title="Resumo da nova versão"
+              total={
+                orderCents !== null && downloadCents !== null
+                  ? money(orderCents + 3 * downloadCents + (reserveCents ?? 0))
+                  : "—"
+              }
+              delta={
+                orderCents !== null && downloadCents !== null && current ? (
+                  <>
+                    <Delta
+                      current={
+                        orderCents + 3 * downloadCents + (reserveCents ?? 0)
+                      }
+                      previous={current.budget_cents}
+                    />{" "}
+                    <small className="sup-muted">
+                      atual {money(current.budget_cents)}
+                    </small>
+                  </>
+                ) : undefined
+              }
+              rows={[
+                {
+                  label: "Pedido",
+                  value: orderCents === null ? "—" : money(orderCents),
+                },
+                {
+                  label: "3 × download",
+                  value:
+                    downloadCents === null ? "—" : money(3 * downloadCents),
+                },
+                {
+                  label: "Mínimo mensal",
+                  value: reserveCents === null ? "—" : money(reserveCents),
+                },
+                { label: "Vigência", value: "Até atualização" },
+              ]}
+              footer={
+                !reviewing ? (
+                  <button
+                    type="submit"
+                    form="vm-tariff-form"
+                    className="btn btn-primary btn-md"
+                    disabled={busy}
+                  >
+                    Revisar publicação
+                  </button>
+                ) : body ? (
+                  <div
+                    className="sup-review"
+                    role="group"
+                    aria-label="Confirmar tarifa"
+                  >
+                    <p>
+                      Publicar{" "}
+                      <strong>
+                        {money(
+                          body.order_fee_cents +
+                            3 * body.download_fee_cents +
+                            body.monthly_minimum_reserve_cents,
+                        )}
+                      </strong>{" "}
+                      para {accountLabel(body.onr_account_id)} e{" "}
+                      {accountLabel(body.infosimples_account_id)}. Fica na
+                      auditoria e vale até a próxima atualização.
+                    </p>
+                    <button
+                      ref={confirmRef}
+                      type="button"
+                      className="btn btn-primary btn-md"
+                      disabled={busy}
+                      onClick={() => void publish()}
+                    >
+                      {busy ? "Publicando…" : "Confirmar e publicar"}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-secondary btn-md"
+                      disabled={busy}
+                      onClick={() => setReviewing(false)}
+                    >
+                      Voltar
+                    </button>
+                  </div>
+                ) : null
+              }
+            />
+          }
+        >
+          {error && (
+            <div className="alert alert-danger" role="alert">
+              {error}
+            </div>
+          )}
+          <form
+            id="vm-tariff-form"
+            className="sup-composer-form"
+            onSubmit={review}
+            noValidate
+          >
+            <ComposerSection
+              title="Valores"
+              state={states[0]}
+              recap={`Pedido ${orderCents === null ? "—" : money(orderCents)} · download ${downloadCents === null ? "—" : money(downloadCents)} · mínimo ${reserveCents === null ? "—" : money(reserveCents)}`}
+            >
+              {account.provider !== "onr" && (
+                <label>
+                  Conta RI Digital ativa
+                  <select
+                    className="input"
+                    value={draft.onrAccountId}
+                    onChange={(event) =>
+                      set("onrAccountId", event.target.value)
+                    }
+                    disabled={busy}
+                  >
+                    <option value="">Selecione a conta</option>
+                    {activeOnr.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+              {account.provider !== "infosimples" && (
+                <label>
+                  Conta InfoSimples ativa
+                  <select
+                    className="input"
+                    value={draft.infosimplesAccountId}
+                    onChange={(event) =>
+                      set("infosimplesAccountId", event.target.value)
+                    }
+                    disabled={busy}
+                  >
+                    <option value="">Selecione a conta</option>
+                    {activeInfo.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
               <label>
-                Conta RI Digital ativa
-                <select
+                Pedido (R$)
+                <input
                   className="input"
-                  value={draft.onrAccountId}
-                  onChange={(event) => set("onrAccountId", event.target.value)}
+                  inputMode="decimal"
+                  value={draft.orderFee}
+                  placeholder="0,28"
+                  onChange={(event) => set("orderFee", event.target.value)}
                   disabled={busy}
-                  required
-                >
-                  <option value="">Selecione a conta</option>
-                  {activeOnr.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.label}
-                    </option>
-                  ))}
-                </select>
+                />
               </label>
-            )}
-            {account.provider !== "infosimples" && (
               <label>
-                Conta InfoSimples ativa
-                <select
+                Cada download (R$)
+                <input
                   className="input"
-                  value={draft.infosimplesAccountId}
+                  inputMode="decimal"
+                  value={draft.downloadFee}
+                  placeholder="0,20"
+                  onChange={(event) => set("downloadFee", event.target.value)}
+                  disabled={busy}
+                />
+              </label>
+              <label>
+                Mínimo mensal por venda (R$)
+                <input
+                  className="input"
+                  inputMode="decimal"
+                  value={draft.monthlyReserve}
                   onChange={(event) =>
-                    set("infosimplesAccountId", event.target.value)
+                    set("monthlyReserve", event.target.value)
                   }
                   disabled={busy}
-                  required
-                >
-                  <option value="">Selecione a conta</option>
-                  {activeInfo.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.label}
-                    </option>
-                  ))}
-                </select>
+                />
+                <small>Custo fixo da operação aprovado pelo responsável.</small>
               </label>
-            )}
-            <label>
-              Pedido de visualização (R$)
-              <input
-                className="input"
-                inputMode="decimal"
-                value={draft.orderFee}
-                placeholder="0,28"
-                onChange={(event) => set("orderFee", event.target.value)}
-                disabled={busy}
-                required
-              />
-            </label>
-            <label>
-              Cada download (R$)
-              <input
-                className="input"
-                inputMode="decimal"
-                value={draft.downloadFee}
-                placeholder="0,20"
-                onChange={(event) => set("downloadFee", event.target.value)}
-                disabled={busy}
-                required
-              />
-            </label>
-            <label>
-              Mínimo mensal por venda (R$)
-              <input
-                className="input"
-                inputMode="decimal"
-                value={draft.monthlyReserve}
-                onChange={(event) => set("monthlyReserve", event.target.value)}
-                disabled={busy}
-                required
-              />
-              <small>Custo fixo da operação aprovado pelo responsável.</small>
-            </label>
-            <label>
-              SHA-256 da evidência privada
-              <input
-                className="input"
-                value={draft.evidenceSha256}
-                maxLength={64}
-                autoCapitalize="none"
-                autoComplete="off"
-                spellCheck={false}
-                onChange={(event) => set("evidenceSha256", event.target.value)}
-                disabled={busy}
-                required
-              />
-              <small>Evidência guardada fora do repositório.</small>
-            </label>
-          </div>
-          <label>
-            Motivo da conferência
-            <textarea
-              className="input"
-              rows={3}
-              minLength={10}
-              maxLength={500}
-              value={draft.reason}
-              onChange={(event) => set("reason", event.target.value)}
-              disabled={busy}
-              required
-            />
-            <small>Fica na auditoria. Sem senhas, tokens ou matrículas.</small>
-          </label>
-          <label className="vm-tariff-check">
-            <input
-              type="checkbox"
-              checked={draft.contractVerified}
-              onChange={(event) =>
-                set("contractVerified", event.target.checked)
-              }
-              disabled={busy}
-            />
-            Conferi o uso das APIs de pedido e download nesta conta.
-          </label>
-          <label className="vm-tariff-check">
-            <input
-              type="checkbox"
-              checked={draft.supplierFeeCovered}
-              onChange={(event) =>
-                set("supplierFeeCovered", event.target.checked)
-              }
-              disabled={busy}
-            />
-            Os valores cobrem o pedido, três downloads e o mínimo mensal.
-          </label>
-          {body && (
-            <p className="vm-tariff-total" aria-live="polite">
-              Reserva da API:{" "}
-              <strong>
-                {money(
-                  body.order_fee_cents +
-                    3 * body.download_fee_cents +
-                    body.monthly_minimum_reserve_cents,
-                )}
-              </strong>
-            </p>
-          )}
-          {!reviewing ? (
-            <button
-              type="submit"
-              className="btn btn-primary btn-md"
-              disabled={busy || !activeOnr.length || !activeInfo.length}
+            </ComposerSection>
+
+            <ComposerSection
+              title="Evidência"
+              state={states[1]}
+              recap={`SHA ${draft.evidenceSha256.slice(0, 8)}… · ${draft.reason.trim().slice(0, 40)}`}
             >
-              Revisar publicação
-            </button>
-          ) : body ? (
-            <div
-              className="vm-tariff-review"
-              role="group"
-              aria-label="Confirmar tarifa"
+              <label>
+                SHA-256 da evidência privada
+                <input
+                  className="input"
+                  value={draft.evidenceSha256}
+                  maxLength={64}
+                  autoCapitalize="none"
+                  autoComplete="off"
+                  spellCheck={false}
+                  onChange={(event) =>
+                    set("evidenceSha256", event.target.value)
+                  }
+                  disabled={busy}
+                />
+                <small>Evidência guardada fora do repositório.</small>
+              </label>
+              <label>
+                Motivo da conferência
+                <textarea
+                  className="input"
+                  rows={3}
+                  minLength={10}
+                  maxLength={500}
+                  value={draft.reason}
+                  onChange={(event) => set("reason", event.target.value)}
+                  disabled={busy}
+                />
+                <small>
+                  Fica na auditoria. Sem senhas, tokens ou matrículas.
+                </small>
+              </label>
+            </ComposerSection>
+
+            <ComposerSection
+              title="Confirmação"
+              state={states[2]}
+              recap="Declarações confirmadas"
             >
-              <p>
-                Confirme {accountLabel(body.onr_account_id)} e{" "}
-                {accountLabel(body.infosimples_account_id)}: pedido{" "}
-                {money(body.order_fee_cents)}, três downloads de{" "}
-                {money(body.download_fee_cents)} e mínimo mensal{" "}
-                {money(body.monthly_minimum_reserve_cents)}. A versão ficará
-                vigente até nova atualização e permanecerá na auditoria.
-              </p>
-              <button
-                ref={confirmRef}
-                type="button"
-                className="btn btn-primary btn-md"
-                disabled={busy}
-                onClick={() => void publish()}
-              >
-                {busy ? "Publicando…" : "Confirmar e publicar"}
-              </button>
-              <button
-                type="button"
-                className="btn btn-secondary btn-md"
-                disabled={busy}
-                onClick={() => setReviewing(false)}
-              >
-                Voltar
-              </button>
-            </div>
-          ) : null}
-        </form>
-      </InlinePanel>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={draft.contractVerified}
+                  onChange={(event) =>
+                    set("contractVerified", event.target.checked)
+                  }
+                  disabled={busy}
+                />
+                Conferi o uso das APIs de pedido e download nesta conta.
+              </label>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={draft.supplierFeeCovered}
+                  onChange={(event) =>
+                    set("supplierFeeCovered", event.target.checked)
+                  }
+                  disabled={busy}
+                />
+                Os valores cobrem o pedido, três downloads e o mínimo mensal.
+              </label>
+            </ComposerSection>
+          </form>
+        </Composer>
+      )}
     </>
   );
 }

@@ -6,7 +6,20 @@ import {
   type RegistryCommercialTerms as Terms,
   type RegistryCommercialTermsCreate,
 } from "./api";
-import { InlinePanel, Metrics, SettingCard } from "./SupplierUi";
+import {
+  Composer,
+  ComposerSection,
+  ComposerSummary,
+  Delta,
+  InlinePanel,
+  Metrics,
+  SettingCard,
+} from "./SupplierUi";
+import { stepStates } from "./account-model";
+import {
+  commercialErrors,
+  type CommercialValues,
+} from "./commercial-form-model";
 import type { ToastKind } from "./useToast";
 
 const money = (cents: number) =>
@@ -146,6 +159,34 @@ export function RegistryCommercialTerms({
   const [formOpen, setFormOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [error, setError] = useState("");
+  const [attempted, setAttempted] = useState(false);
+  const feeChanged =
+    !!draft &&
+    !!effective &&
+    (draft.payment_fee_cents !== effective.payment_fee_cents ||
+      draft.payment_fee_rate_bps !== effective.payment_fee_rate_bps);
+  const inputsMatch =
+    !!draft &&
+    !!numericInputs &&
+    fields.every(
+      ({ key }) => parseCommercialNumber(numericInputs[key]) === draft[key],
+    );
+  const errors = draft
+    ? commercialErrors({
+        values: draft as CommercialValues,
+        inputsMatch,
+        version: draft.version,
+        reason: draft.reason,
+        evidence: draft.payment_fee_evidence_sha256 ?? "",
+        feeChanged,
+      })
+    : {};
+  const valuesBad = !!errors.values || fields.some(({ key }) => errors[key]);
+  const identityBad = !!(errors.version || errors.reason || errors.evidence);
+  const termStates = stepStates([!valuesBad, !identityBad, reviewing]);
+  /** Typed-in problems show at once; the untouched ones wait for a first attempt. */
+  const shown = (key: keyof typeof errors, typed: boolean) =>
+    errors[key] && (attempted || typed) ? errors[key] : undefined;
 
   const load = useCallback(
     async (next?: string) => {
@@ -208,28 +249,10 @@ export function RegistryCommercialTerms({
   function review(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!draft || !effective || !active) return;
-    const feeChanged =
-      draft.payment_fee_cents !== effective.payment_fee_cents ||
-      draft.payment_fee_rate_bps !== effective.payment_fee_rate_bps;
-    if (
-      !/^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,119}$/.test(draft.version) ||
-      draft.reason.trim().length < 10 ||
-      fields.some(
-        ({ key }) =>
-          !numericInputs ||
-          parseCommercialNumber(numericInputs[key]) !== draft[key] ||
-          !Number.isSafeInteger(draft[key]) ||
-          draft[key] < 0,
-      ) ||
-      draft.markup_bps < 5000 ||
-      draft.onr_markup_bps < 5000 ||
-      draft.payment_fee_cents <= 0 ||
-      draft.payment_fee_rate_bps + draft.tax_rate_bps >= 10000 ||
-      (feeChanged &&
-        !/^[0-9a-f]{64}$/.test(draft.payment_fee_evidence_sha256 ?? ""))
-    ) {
+    setAttempted(true);
+    if (Object.keys(errors).length > 0) {
       setError(
-        "Confira a versão, o motivo, os valores e a evidência da tarifa PIX quando ela mudar.",
+        "Há campos para corrigir. Eles estão destacados em vermelho, com o que falta.",
       );
       return;
     }
@@ -392,26 +415,138 @@ export function RegistryCommercialTerms({
         </ol>
       </InlinePanel>
 
-      <InlinePanel
-        open={formOpen}
-        title="Nova versão comercial"
-        onClose={() => !busy && setFormOpen(false)}
-      >
-        {error && (
-          <p className="alert alert-danger" role="alert">
-            {error}
-          </p>
-        )}
-        {draft && effective && numericInputs && (
-          <form className="sup-form-grid" onSubmit={review} noValidate>
-            <p className="sup-muted sup-span">
-              O orçamento de IA e o vencimento vêm da oferta vigente. Confira a
-              tarifa PIX real antes de alterá-la.
+      {formOpen && draft && effective && numericInputs && (
+        <Composer
+          title="Nova versão comercial"
+          steps={[
+            { id: "values", label: "Valores", state: termStates[0] },
+            {
+              id: "identity",
+              label: "Versão e evidência",
+              state: termStates[1],
+            },
+            { id: "review", label: "Revisão", state: termStates[2] },
+          ]}
+          onClose={() => !busy && setFormOpen(false)}
+          summary={
+            <ComposerSummary
+              title="Resumo da nova versão"
+              rows={[
+                {
+                  label: "Margem ONR",
+                  value: (
+                    <>
+                      {(draft.onr_markup_bps / 100).toLocaleString("pt-BR")}%{" "}
+                      <Delta
+                        current={draft.onr_markup_bps}
+                        previous={effective.onr_markup_bps}
+                      />
+                    </>
+                  ),
+                },
+                {
+                  label: "Tributos",
+                  value: (
+                    <>
+                      {(draft.tax_rate_bps / 100).toLocaleString("pt-BR")}%{" "}
+                      <Delta
+                        current={draft.tax_rate_bps}
+                        previous={effective.tax_rate_bps}
+                      />
+                    </>
+                  ),
+                },
+                {
+                  label: "Tarifa PIX",
+                  value: (
+                    <>
+                      {money(draft.payment_fee_cents)}{" "}
+                      <Delta
+                        current={draft.payment_fee_cents}
+                        previous={effective.payment_fee_cents}
+                      />
+                    </>
+                  ),
+                },
+                {
+                  label: "Contribuição mínima",
+                  value: money(draft.minimum_contribution_cents),
+                },
+                {
+                  label: "Reserva de IA",
+                  value: `${money(effective.analysis_reserve_cents)} (da oferta)`,
+                },
+                { label: "Versão", value: draft.version.trim() || "—" },
+              ]}
+              footer={
+                reviewing ? (
+                  <div
+                    className="sup-review"
+                    role="group"
+                    aria-label="Confirmar versão comercial"
+                  >
+                    <p>
+                      Publicar <strong>{draft.version.trim()}</strong>: ONR{" "}
+                      {(draft.onr_markup_bps / 100).toLocaleString("pt-BR")}% ·
+                      tributos{" "}
+                      {(draft.tax_rate_bps / 100).toLocaleString("pt-BR")}% ·
+                      PIX {money(draft.payment_fee_cents)}.
+                    </p>
+                    <button
+                      type="button"
+                      className="btn btn-primary btn-md"
+                      disabled={busy}
+                      onClick={() => void publish()}
+                    >
+                      {busy ? "Publicando…" : "Confirmar publicação"}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-secondary btn-md"
+                      disabled={busy}
+                      onClick={() => setReviewing(false)}
+                    >
+                      Voltar
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    type="submit"
+                    form="commercial-form"
+                    className="btn btn-primary btn-md"
+                    disabled={!active || busy}
+                  >
+                    Revisar publicação
+                  </button>
+                )
+              }
+            />
+          }
+        >
+          {error && (
+            <p className="alert alert-danger" role="alert">
+              {error}
             </p>
-            <div className="sup-commercial-fields">
+          )}
+          <form
+            id="commercial-form"
+            className="sup-composer-form"
+            onSubmit={review}
+            noValidate
+          >
+            <ComposerSection
+              title="Valores"
+              state={termStates[0]}
+              recap={`ONR ${(draft.onr_markup_bps / 100).toLocaleString("pt-BR")}% · tributos ${(draft.tax_rate_bps / 100).toLocaleString("pt-BR")}% · PIX ${money(draft.payment_fee_cents)}`}
+            >
+              {shown("values", true) && (
+                <p className="sup-error sup-span" role="alert">
+                  {errors.values}
+                </p>
+              )}
               {fields.map(({ key, label, unit }) => (
                 <label key={key}>
-                  {label} ({unit})
+                  {label} <span className="sup-unit">{unit}</span>
                   <input
                     className="input"
                     type="text"
@@ -420,89 +555,103 @@ export function RegistryCommercialTerms({
                     disabled={!active || busy}
                     onChange={(event) => setNumeric(key, event.target.value)}
                   />
-                  <small>
-                    {key.endsWith("bps")
-                      ? "Percentual da nova versão"
-                      : "Valor da nova versão"}
-                  </small>
+                  {shown(key, true) ? (
+                    <small className="sup-error" role="alert">
+                      {shown(key, true)}
+                    </small>
+                  ) : (
+                    <small>
+                      {key.endsWith("bps")
+                        ? "Percentual da nova versão"
+                        : "Valor da nova versão"}
+                    </small>
+                  )}
                 </label>
               ))}
-            </div>
-            <label>
-              Identificador da nova versão
-              <input
-                className="input"
-                value={draft.version}
-                maxLength={120}
-                disabled={!active || busy}
-                placeholder="direct-onr-2026-10-v2"
-                onChange={(event) => set("version", event.target.value)}
-              />
-            </label>
-            <label>
-              SHA-256 da evidência da tarifa PIX (se alterada)
-              <input
-                className="input"
-                value={draft.payment_fee_evidence_sha256 ?? ""}
-                maxLength={64}
-                disabled={!active || busy}
-                onChange={(event) =>
-                  set("payment_fee_evidence_sha256", event.target.value || null)
-                }
-              />
-            </label>
-            <label>
-              Motivo da publicação
-              <textarea
-                className="input"
-                rows={3}
-                maxLength={500}
-                value={draft.reason}
-                disabled={!active || busy}
-                onChange={(event) => set("reason", event.target.value)}
-              />
-            </label>
-            {reviewing ? (
-              <div
-                className="sup-commercial-review"
-                role="group"
-                aria-label="Confirmar versão comercial"
-              >
-                <strong>Confira antes de publicar</strong>
-                <span>
-                  ONR {(draft.onr_markup_bps / 100).toLocaleString("pt-BR")}% ·
-                  tributos {(draft.tax_rate_bps / 100).toLocaleString("pt-BR")}%
-                  · PIX {money(draft.payment_fee_cents)}
-                </span>
-                <button
-                  type="button"
-                  className="btn btn-primary btn-md"
-                  disabled={busy}
-                  onClick={() => void publish()}
-                >
-                  {busy ? "Publicando…" : "Confirmar publicação"}
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-ghost btn-sm"
-                  disabled={busy}
-                  onClick={() => setReviewing(false)}
-                >
-                  Voltar
-                </button>
-              </div>
-            ) : (
-              <button
-                type="submit"
-                className="btn btn-primary btn-md"
-                disabled={!active || busy}
-              >
-                Revisar publicação
-              </button>
-            )}
+            </ComposerSection>
+            <ComposerSection
+              title="Versão e evidência"
+              state={termStates[1]}
+              recap={`${draft.version.trim()} · ${draft.reason.trim().slice(0, 40)}`}
+            >
+              <label>
+                Identificador da nova versão
+                <input
+                  className="input"
+                  value={draft.version}
+                  maxLength={120}
+                  disabled={!active || busy}
+                  placeholder="direct-onr-2026-10-v2"
+                  aria-invalid={!!shown("version", draft.version.length > 0)}
+                  onChange={(event) => set("version", event.target.value)}
+                />
+                {shown("version", draft.version.length > 0) && (
+                  <small className="sup-error" role="alert">
+                    {shown("version", draft.version.length > 0)}
+                  </small>
+                )}
+              </label>
+              <label>
+                SHA-256 da evidência da tarifa PIX (se alterada)
+                <input
+                  className="input"
+                  value={draft.payment_fee_evidence_sha256 ?? ""}
+                  maxLength={64}
+                  disabled={!active || busy}
+                  aria-invalid={
+                    !!shown(
+                      "evidence",
+                      (draft.payment_fee_evidence_sha256 ?? "").length > 0,
+                    )
+                  }
+                  onChange={(event) =>
+                    set(
+                      "payment_fee_evidence_sha256",
+                      event.target.value || null,
+                    )
+                  }
+                />
+                {shown(
+                  "evidence",
+                  (draft.payment_fee_evidence_sha256 ?? "").length > 0,
+                ) ? (
+                  <small className="sup-error" role="alert">
+                    {errors.evidence}
+                  </small>
+                ) : (
+                  <small>
+                    {feeChanged
+                      ? "Obrigatório: a tarifa PIX mudou."
+                      : "Só é exigida quando a tarifa PIX muda."}
+                  </small>
+                )}
+              </label>
+              <label>
+                Motivo da publicação
+                <textarea
+                  className="input"
+                  rows={3}
+                  maxLength={500}
+                  value={draft.reason}
+                  disabled={!active || busy}
+                  aria-invalid={!!shown("reason", draft.reason.length > 0)}
+                  onChange={(event) => set("reason", event.target.value)}
+                />
+                {shown("reason", draft.reason.length > 0) ? (
+                  <small className="sup-error" role="alert">
+                    {errors.reason}
+                  </small>
+                ) : (
+                  <small>
+                    O orçamento de IA e o vencimento vêm da oferta vigente.
+                    Confira a tarifa PIX real antes de alterá-la.
+                  </small>
+                )}
+              </label>
+            </ComposerSection>
           </form>
-        )}
-      </InlinePanel>
+        </Composer>
+      )}
     </>
   );
 }

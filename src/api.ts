@@ -2311,7 +2311,9 @@ export type RegistryVisualizationTariff = {
   evidence_sha256: string;
   reason: string;
   verified_at: string;
-  valid_until: string;
+  valid_until: string; /** True when the tariff has no automatic expiry (valid_until is a technical sentinel). */
+  managed?: boolean;
+  previous_id?: string | null;
 };
 export type RegistryVisualizationTariffPage = {
   items: RegistryVisualizationTariff[];
@@ -2368,6 +2370,23 @@ export type RegistryHistoricalPrice = {
   indicative_tax_cents: number | null;
   indicative_contribution_cents: number | null;
   indicative_api_fee_cents: number | null;
+  breakdown?: RegistryPriceBreakdown | null;
+};
+export type RegistryPriceBreakdown = {
+  onr_record_cost_cents: number;
+  onr_markup_cents: number;
+  api_fee_cents: number;
+  analysis_reserve_cents: number;
+  operations_reserve_cents: number;
+  exception_reserve_cents: number;
+  payment_fee_cents: number;
+  tax_cents: number;
+  /** Residual contribution beyond the ONR markup; may be zero. */
+  contribution_cents: number;
+  price_cents: number;
+  formula_version: string;
+  observed_at: string;
+  cost_source: string;
 };
 export type RegistryHistoricalPricePage = {
   items: RegistryHistoricalPrice[];
@@ -2415,6 +2434,7 @@ export type RegistryCommercialTerms = {
   markup_bps: number;
   onr_markup_bps: number;
   commercial_evidence_sha256: string | null;
+  previous_id?: string | null;
 };
 export type RegistryCommercialTermsPage = {
   effective: RegistryCommercialTerms | null;
@@ -2480,7 +2500,9 @@ export type RegistryCertificateTariff = {
   actor_team_member_id: string;
   reason: string;
   verified_at: string;
-  valid_until: string;
+  valid_until: string; /** True when the tariff has no automatic expiry (valid_until is a technical sentinel). */
+  managed?: boolean;
+  previous_id?: string | null;
 };
 export type RegistryCertificateTariffPage = {
   items: RegistryCertificateTariff[];
@@ -2533,7 +2555,9 @@ export type RegistryArispTariff = {
   actor_team_member_id: string;
   reason: string;
   verified_at: string;
-  valid_until: string;
+  valid_until: string; /** True when the tariff has no automatic expiry (valid_until is a technical sentinel). */
+  managed?: boolean;
+  previous_id?: string | null;
 };
 export type RegistryArispTariffPage = {
   items: RegistryArispTariff[];
@@ -2788,3 +2812,51 @@ export const getTeamReport = <T>(
     method: "GET",
   });
 };
+
+export type SupplierAccountSummary = {
+  id: string;
+  provider: RegistrySupplierKind;
+  status: "draft" | "active" | "suspended";
+  version: number;
+  last_credential_change_at: string | null;
+  tariff: {
+    id: string;
+    kind: "visualization_api";
+    budget_cents: number;
+    managed: boolean;
+    valid_until: string | null;
+  } | null;
+  commercial_terms: { id: string; version: string; valid_until: string } | null;
+  endpoint: { mode: "official" | "proxy"; key_configured: boolean } | null;
+  usage: {
+    last_7_days: { orders: number; cost_cents: number | null };
+    last_30_days: { orders: number; cost_cents: number | null };
+    last_use_at: string | null;
+    cost_status: "not_reconciled";
+  };
+};
+
+export const getSupplierAccountSummary = (accountId: string) =>
+  request<SupplierAccountSummary>(
+    `/v1/team/registry-supplier-accounts/${encodeURIComponent(accountId)}/summary`,
+    { method: "GET" },
+  );
+
+export type SupplierAccountActivity = {
+  id: string;
+  action: string;
+  actor_team_member_id: string;
+  reason: string;
+  before: Record<string, string | number | boolean | null>;
+  after: Record<string, string | number | boolean | null>;
+  occurred_at: string;
+};
+
+export const listSupplierAccountEvents = (
+  accountId: string,
+  cursor?: string | null,
+) =>
+  request<{ items: SupplierAccountActivity[]; next_cursor: string | null }>(
+    `/v1/team/registry-supplier-accounts/${encodeURIComponent(accountId)}/events?limit=20${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`,
+    { method: "GET" },
+  );

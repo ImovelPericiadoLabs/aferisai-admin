@@ -1,55 +1,68 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   ApiError,
-  getOnrEndpoint,
+  getSupplierAccountSummary,
   listRegistryCommercialTerms,
   listRegistryVisualizationTariffs,
+  type RegistryCommercialTerms,
   type RegistrySupplierAccount,
+  type RegistryVisualizationTariff,
 } from "./api";
 import type { AccountSnapshot } from "./account-model";
 
-const EMPTY: AccountSnapshot = {
-  endpoint: null,
+type Loaded = {
+  snapshot: AccountSnapshot;
+  tariff: RegistryVisualizationTariff | null;
+  terms: RegistryCommercialTerms | null;
+};
+const EMPTY: Loaded = {
+  snapshot: { summary: null, loading: true },
   tariff: null,
   terms: null,
-  loading: true,
 };
 
-/** The few numbers every section of the account needs, loaded once for the whole panel. */
+/** The summary plus the two detailed records the overview and the price view show. */
 export function useAccountSnapshot(
   account: RegistrySupplierAccount | null,
   onUnauthorized: () => void,
 ) {
-  const [snapshot, setSnapshot] = useState<AccountSnapshot>(EMPTY);
+  const [state, setState] = useState<Loaded>(EMPTY);
   const [version, setVersion] = useState(0);
   const accountId = account?.id ?? null;
   const provider = account?.provider ?? null;
 
   useEffect(() => {
     if (!accountId) {
-      queueMicrotask(() => setSnapshot(EMPTY));
+      queueMicrotask(() => setState(EMPTY));
       return;
     }
     let live = true;
     queueMicrotask(() =>
-      setSnapshot((current) => ({ ...current, loading: true })),
+      setState((current) => ({
+        ...current,
+        snapshot: { ...current.snapshot, loading: true },
+      })),
     );
-    const onr = provider === "onr";
     void Promise.allSettled([
-      onr ? getOnrEndpoint(accountId) : Promise.resolve(null),
+      getSupplierAccountSummary(accountId),
       listRegistryVisualizationTariffs(accountId),
-      onr ? listRegistryCommercialTerms(accountId) : Promise.resolve(null),
-    ]).then(([endpoint, tariffs, terms]) => {
+      provider === "onr"
+        ? listRegistryCommercialTerms(accountId)
+        : Promise.resolve(null),
+    ]).then(([summary, tariffs, terms]) => {
       if (!live) return;
-      for (const result of [endpoint, tariffs, terms])
+      for (const result of [summary, tariffs, terms])
         if (
           result.status === "rejected" &&
           result.reason instanceof ApiError &&
           result.reason.status === 401
         )
           onUnauthorized();
-      setSnapshot({
-        endpoint: endpoint.status === "fulfilled" ? endpoint.value : null,
+      setState({
+        snapshot: {
+          summary: summary.status === "fulfilled" ? summary.value : null,
+          loading: false,
+        },
         tariff:
           tariffs.status === "fulfilled"
             ? (tariffs.value.items[0] ?? null)
@@ -58,7 +71,6 @@ export function useAccountSnapshot(
           terms.status === "fulfilled"
             ? (terms.value?.effective ?? null)
             : null,
-        loading: false,
       });
     });
     return () => {
@@ -67,5 +79,5 @@ export function useAccountSnapshot(
   }, [accountId, provider, version, onUnauthorized]);
 
   const reload = useCallback(() => setVersion((value) => value + 1), []);
-  return { snapshot, reload };
+  return { ...state, reload };
 }
