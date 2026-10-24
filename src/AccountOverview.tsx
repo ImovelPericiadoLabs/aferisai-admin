@@ -8,7 +8,8 @@ import type {
   RegistrySupplierAccount,
   RegistryVisualizationTariff,
 } from "./api";
-import { Metrics, SettingCard } from "./SupplierUi";
+import { Hint, Metrics, SettingCard } from "./SupplierUi";
+import { explainContext, explainPart } from "./price-explain";
 import { supplierLabel } from "./supplier-model";
 import { supplierTariffValidityLabel } from "./supplier-tariff-validity";
 
@@ -40,28 +41,42 @@ const STATE_BADGE: Record<ReadinessState, string> = {
 export function termsRows(terms: RegistryCommercialTerms) {
   return [
     {
+      part: "analysis" as const,
       label: "Reserva de IA por documento",
       value: money(terms.analysis_reserve_cents),
     },
     {
+      part: "operations" as const,
       label: "Reserva de operações",
       value: money(terms.operations_reserve_cents),
     },
     {
+      part: "exception" as const,
       label: "Reserva para exceções",
       value: money(terms.exception_reserve_cents),
     },
     {
+      part: "payment" as const,
       label: "Tarifa do PIX",
       value: `${money(terms.payment_fee_cents)}${terms.payment_fee_rate_bps ? ` + ${percent(terms.payment_fee_rate_bps)}` : ""}`,
     },
-    { label: "Tributos", value: percent(terms.tax_rate_bps) },
     {
+      part: "tax" as const,
+      label: "Tributos",
+      value: percent(terms.tax_rate_bps),
+    },
+    {
+      part: "markup" as const,
       label: "Margem sobre o custo do ONR",
       value: percent(terms.onr_markup_bps),
     },
-    { label: "Margem geral", value: percent(terms.markup_bps) },
     {
+      part: "markup_general" as const,
+      label: "Margem geral",
+      value: percent(terms.markup_bps),
+    },
+    {
+      part: "minimum_contribution" as const,
       label: "Contribuição mínima",
       value: money(terms.minimum_contribution_cents),
     },
@@ -229,7 +244,13 @@ export function AccountOverview({
             <dl className="sup-kv">
               {termsRows(terms).map((row) => (
                 <div key={row.label}>
-                  <dt>{row.label}</dt>
+                  <dt>
+                    <Hint
+                      {...explainPart(row.part, explainContext(terms, null))}
+                    >
+                      {row.label}
+                    </Hint>
+                  </dt>
                   <dd>{row.value}</dd>
                 </div>
               ))}

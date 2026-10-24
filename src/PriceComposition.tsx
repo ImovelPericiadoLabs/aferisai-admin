@@ -1,7 +1,8 @@
 import { Fragment, useState, type FormEvent } from "react";
 import { breakdownLines } from "./account-model";
 import { termsRows } from "./AccountOverview";
-import { SettingCard } from "./SupplierUi";
+import { Hint, SettingCard } from "./SupplierUi";
+import { explainContext, explainPart } from "./price-explain";
 import {
   ApiError,
   listRegistryHistoricalPrices,
@@ -287,6 +288,7 @@ function Breakdown({
       </p>
     );
   const { lines, warning } = breakdownLines(parts);
+  const ctx = explainContext(terms, parts);
   return (
     <div className="sup-breakdown">
       <div className="sup-breakdown-main">
@@ -319,7 +321,7 @@ function Breakdown({
                     data-tone={LINE_TONE[line.id]}
                     aria-hidden="true"
                   />
-                  {line.label}
+                  <Hint {...explainPart(line.id, ctx)}>{line.label}</Hint>
                 </td>
                 <td className="sup-table-end">{money(line.cents)}</td>
                 <td className="sup-table-end">
@@ -357,7 +359,9 @@ function Breakdown({
           <dl className="sup-kv sup-kv-compact">
             {termsRows(terms).map((row) => (
               <div key={row.label}>
-                <dt>{row.label}</dt>
+                <dt>
+                  <Hint {...explainPart(row.part, ctx)}>{row.label}</Hint>
+                </dt>
                 <dd>{row.value}</dd>
               </div>
             ))}

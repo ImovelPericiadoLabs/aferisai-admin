@@ -1,5 +1,6 @@
 import { changeRatio, type StepState } from "./account-model";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 
 /** A small "?" that opens the explanation, so cards stay short. */
 export function HelpTip({
@@ -295,5 +296,90 @@ export function ComposerSummary({
       </dl>
       <div className="sup-csummary-footer">{footer}</div>
     </div>
+  );
+}
+
+/**
+ * Hover (or focus, or tap) explanation for one item: a title, a plain-language explanation and an
+ * example. It is drawn on the body so a scrolling table never clips it.
+ */
+export function Hint({
+  title,
+  body,
+  example,
+  children,
+}: {
+  title: string;
+  body: string;
+  example: string;
+  children: ReactNode;
+}) {
+  const [box, setBox] = useState<{
+    x: number;
+    y: number;
+    below: boolean;
+  } | null>(null);
+  const anchor = useRef<HTMLSpanElement>(null);
+  const id = useId();
+
+  function show() {
+    const rect = anchor.current?.getBoundingClientRect();
+    if (!rect) return;
+    const below = rect.bottom + 220 < window.innerHeight;
+    setBox({
+      x: Math.min(Math.max(8, rect.left), window.innerWidth - 336),
+      y: below ? rect.bottom + 6 : rect.top - 6,
+      below,
+    });
+  }
+  const hide = () => setBox(null);
+
+  useEffect(() => {
+    if (!box) return;
+    // Capture phase: Escape closes the balloon first and does not reach the drawer behind it.
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.stopPropagation();
+      hide();
+    };
+    window.addEventListener("keydown", onKey, true);
+    window.addEventListener("scroll", hide, true);
+    return () => {
+      window.removeEventListener("keydown", onKey, true);
+      window.removeEventListener("scroll", hide, true);
+    };
+  }, [box]);
+
+  return (
+    <span
+      ref={anchor}
+      className="sup-hint"
+      tabIndex={0}
+      aria-describedby={box ? id : undefined}
+      onMouseEnter={show}
+      onMouseLeave={hide}
+      onFocus={show}
+      onBlur={hide}
+      onClick={() => (box ? hide() : show())}
+    >
+      {children}
+      {box &&
+        createPortal(
+          <span
+            id={id}
+            role="tooltip"
+            className="sup-hint-pop"
+            data-below={box.below ? "true" : "false"}
+            style={{ left: box.x, top: box.y }}
+          >
+            <strong>{title}</strong>
+            <span>{body}</span>
+            <span className="sup-hint-example">
+              <b>Exemplo</b> {example}
+            </span>
+          </span>,
+          document.body,
+        )}
+    </span>
   );
 }
