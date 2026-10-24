@@ -85,6 +85,8 @@ export function RegistryOptionalTariffs({
   );
   const [certOpen, setCertOpen] = useState(false);
   const [arispOpen, setArispOpen] = useState(false);
+  const [certAttempted, setCertAttempted] = useState(false);
+  const [arispAttempted, setArispAttempted] = useState(false);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -170,41 +172,28 @@ export function RegistryOptionalTariffs({
     });
   }, [account.provider, load]);
 
+  function certMissing(): string[] {
+    const cents = parseMoney(cost);
+    const missing: string[] = [];
+    if (kind === "estadual" && !/^[A-Z]{2}$/.test(state.trim().toUpperCase()))
+      missing.push("a UF com duas letras");
+    if (kind !== "estadual" && state.trim())
+      missing.push("a UF (só vale para a certidão estadual)");
+    if (!(Number.isSafeInteger(cents) && cents > 0 && cents <= 100000))
+      missing.push("o custo total por chamada");
+    if (!sha(evidence))
+      missing.push("o SHA-256 da tabela (64 caracteres hexadecimais)");
+    if (certificateReason.trim().length < 10)
+      missing.push("o motivo (mínimo 10 caracteres)");
+    if (!proofOk)
+      missing.push("os comprovantes (dois hashes diferentes e a conferência)");
+    return missing;
+  }
+
   function reviewCertificate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const cents = parseMoney(cost);
-    if (
-      !Number.isSafeInteger(cents) ||
-      cents <= 0 ||
-      cents > 100000 ||
-      !sha(evidence) ||
-      certificateReason.trim().length < 10 ||
-      (kind === "estadual" && !/^[A-Z]{2}$/.test(state.trim().toUpperCase())) ||
-      (kind !== "estadual" && state.trim()) ||
-      ((sampleDocument || sampleCharge || proofConfirmed) &&
-        (!sha(sampleDocument) ||
-          !sha(sampleCharge) ||
-          sampleDocument === sampleCharge ||
-          !proofConfirmed))
-    ) {
-      const missing: string[] = [];
-      if (kind === "estadual" && !/^[A-Z]{2}$/.test(state.trim().toUpperCase()))
-        missing.push("a UF com duas letras");
-      if (kind !== "estadual" && state.trim())
-        missing.push("a UF (só vale para a certidão estadual)");
-      if (!(Number.isSafeInteger(cents) && cents > 0 && cents <= 100000))
-        missing.push("o custo total por chamada");
-      if (!sha(evidence))
-        missing.push("o SHA-256 da tabela (64 caracteres hexadecimais)");
-      if (certificateReason.trim().length < 10)
-        missing.push("o motivo (mínimo 10 caracteres)");
-      if (!proofOk)
-        missing.push(
-          "os comprovantes (dois hashes diferentes e a conferência)",
-        );
-      setError(`Falta ou está inválido: ${missing.join("; ")}.`);
-      return;
-    }
+    setCertAttempted(true);
+    if (certMissing().length > 0) return;
     setError("");
     setReviewing("certificate");
   }
@@ -256,44 +245,28 @@ export function RegistryOptionalTariffs({
     }
   }
 
-  function reviewArisp(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  function arispMissing(): string[] {
     const order = parseMoney(orderFee);
     const download = parseMoney(downloadFee);
-    if (
-      !linkedAccount ||
-      !Number.isSafeInteger(order) ||
-      order <= 0 ||
-      order > 100000 ||
-      !Number.isSafeInteger(download) ||
-      download <= 0 ||
-      download > 100000 ||
-      !sha(arispEvidence) ||
-      arispReason.trim().length < 10 ||
-      ((certificateType || certificateTypeEvidence || typeConfirmed) &&
-        (!certificateType.trim() ||
-          !sha(certificateTypeEvidence) ||
-          !typeConfirmed))
-    ) {
-      const missing: string[] = [];
-      if (!linkedAccount) missing.push("a conta vinculada");
-      if (!(Number.isSafeInteger(order) && order > 0 && order <= 100000))
-        missing.push("o valor do pedido");
-      if (!(
-        Number.isSafeInteger(download) &&
-        download > 0 &&
-        download <= 100000
-      ))
-        missing.push("o valor de cada download");
-      if (!sha(arispEvidence))
-        missing.push("o SHA-256 da tabela (64 caracteres hexadecimais)");
-      if (arispReason.trim().length < 10)
-        missing.push("o motivo (mínimo 10 caracteres)");
-      if (!typeGroupOk)
-        missing.push("o tipo de ônus completo (tipo, SHA-256 e confirmação)");
-      setError(`Falta ou está inválido: ${missing.join("; ")}.`);
-      return;
-    }
+    const missing: string[] = [];
+    if (!linkedAccount) missing.push("a conta vinculada");
+    if (!(Number.isSafeInteger(order) && order > 0 && order <= 100000))
+      missing.push("o valor do pedido");
+    if (!(Number.isSafeInteger(download) && download > 0 && download <= 100000))
+      missing.push("o valor de cada download");
+    if (!sha(arispEvidence))
+      missing.push("o SHA-256 da tabela (64 caracteres hexadecimais)");
+    if (arispReason.trim().length < 10)
+      missing.push("o motivo (mínimo 10 caracteres)");
+    if (!typeGroupOk)
+      missing.push("o tipo de ônus completo (tipo, SHA-256 e confirmação)");
+    return missing;
+  }
+
+  function reviewArisp(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setArispAttempted(true);
+    if (arispMissing().length > 0) return;
     setError("");
     setReviewing("arisp");
   }
@@ -366,7 +339,10 @@ export function RegistryOptionalTariffs({
                 className="btn btn-primary btn-md"
                 aria-haspopup="dialog"
                 disabled={!active}
-                onClick={() => setCertOpen(true)}
+                onClick={() => {
+                  setCertAttempted(false);
+                  setCertOpen(true);
+                }}
               >
                 Nova tarifa
               </button>
@@ -505,6 +481,11 @@ export function RegistryOptionalTariffs({
               {error && (
                 <p className="alert alert-danger" role="alert">
                   {error}
+                </p>
+              )}
+              {certAttempted && certMissing().length > 0 && (
+                <p className="alert alert-danger" role="alert">
+                  Falta ou está inválido: {certMissing().join("; ")}.
                 </p>
               )}
               <form
@@ -650,7 +631,10 @@ export function RegistryOptionalTariffs({
             className="btn btn-primary btn-md"
             aria-haspopup="dialog"
             disabled={!active}
-            onClick={() => setArispOpen(true)}
+            onClick={() => {
+              setArispAttempted(false);
+              setArispOpen(true);
+            }}
           >
             Nova tarifa
           </button>
@@ -776,6 +760,11 @@ export function RegistryOptionalTariffs({
           {error && (
             <p className="alert alert-danger" role="alert">
               {error}
+            </p>
+          )}
+          {arispAttempted && arispMissing().length > 0 && (
+            <p className="alert alert-danger" role="alert">
+              Falta ou está inválido: {arispMissing().join("; ")}.
             </p>
           )}
           <form

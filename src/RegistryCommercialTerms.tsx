@@ -266,12 +266,7 @@ export function RegistryCommercialTerms({
     event.preventDefault();
     if (!draft || !effective || !active) return;
     setAttempted(true);
-    if (Object.keys(errors).length > 0) {
-      setError(
-        "Há campos para corrigir. Eles estão destacados em vermelho, com o que falta.",
-      );
-      return;
-    }
+    if (Object.keys(errors).length > 0) return;
     setError("");
     setReviewing(true);
   }
@@ -347,7 +342,10 @@ export function RegistryCommercialTerms({
               aria-haspopup="dialog"
               disabled={!active || !draft || !effective || !numericInputs}
               title={!active ? "Ative a conta para publicar." : undefined}
-              onClick={() => setFormOpen(true)}
+              onClick={() => {
+                setAttempted(false);
+                setFormOpen(true);
+              }}
             >
               Nova versão
             </button>
@@ -542,6 +540,13 @@ export function RegistryCommercialTerms({
           {error && (
             <p className="alert alert-danger" role="alert">
               {error}
+            </p>
+          )}
+          {attempted && Object.keys(errors).length > 0 && (
+            <p className="alert alert-danger" role="alert">
+              Há {Object.keys(errors).length}{" "}
+              {Object.keys(errors).length === 1 ? "campo" : "campos"} para
+              corrigir, destacados abaixo.
             </p>
           )}
           <form

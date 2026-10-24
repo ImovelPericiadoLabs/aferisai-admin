@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import type { RegistrySupplierAccount } from "./api";
 import {
   activationBlock,
+  credentialProblems,
+  credentialSteps,
   shortDigest,
   supplierBody,
   supplierStatusView,
@@ -175,5 +177,79 @@ describe("activationBlock", () => {
     expect(
       activationBlock(account({ provider: "infosimples" }), [other]),
     ).toBeNull();
+  });
+});
+
+describe("credentialSteps", () => {
+  const form = (o: Partial<SupplierForm> = {}): SupplierForm => ({
+    label: "RI Digital principal",
+    provider: "onr",
+    email: "operacao@empresa.com.br",
+    password: "senha-de-teste",
+    token: "",
+    portalDigest: "",
+    reason: "Troca por rotação de senha do portal.",
+    ...o,
+  });
+  it("is complete block by block", () => {
+    expect(credentialSteps(form())).toEqual([true, true, true]);
+    expect(credentialSteps(form({ email: "" }))).toEqual([false, true, true]);
+    expect(credentialSteps(form({ password: "" }))).toEqual([
+      true,
+      false,
+      true,
+    ]);
+    expect(credentialSteps(form({ reason: "curto" }))).toEqual([
+      true,
+      true,
+      false,
+    ]);
+  });
+  it("needs the token and the portal link for InfoSimples", () => {
+    expect(credentialSteps(form({ provider: "infosimples" }))[1]).toBe(false);
+    expect(
+      credentialSteps(
+        form({
+          provider: "infosimples",
+          token: "t",
+          portalDigest: "a".repeat(64),
+        }),
+      )[1],
+    ).toBe(true);
+  });
+});
+
+describe("credentialProblems", () => {
+  it("lists what is missing in words", () => {
+    const problems = credentialProblems({
+      label: "ab",
+      provider: "infosimples",
+      email: "",
+      password: "",
+      token: "",
+      portalDigest: "",
+      reason: "x",
+    });
+    expect(problems).toEqual([
+      "o nome da nova credencial",
+      "o login do portal",
+      "a senha",
+      "o token da InfoSimples",
+      "a conta RI Digital vinculada",
+      "o motivo (mínimo 10 caracteres)",
+    ]);
+  });
+  it("is empty for a valid form", () => {
+    expect(
+      credentialProblems({
+        label: "RI Digital nova",
+        provider: "onr",
+        email: "operacao@empresa.com.br",
+        password: "x",
+        token: "",
+        portalDigest: "",
+        reason: "Troca por rotação de senha.",
+      }),
+    ).toEqual([]);
   });
 });

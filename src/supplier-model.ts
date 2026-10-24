@@ -97,3 +97,28 @@ export function activationBlock(
     ? `Já existe uma conta ativa de ${supplierLabel(account.provider)}. Suspenda a atual antes de ativar esta.`
     : null;
 }
+
+/** Identification, secrets and reason: which block of the credential form is finished. */
+export function credentialSteps(
+  form: SupplierForm,
+): [boolean, boolean, boolean] {
+  const { errors } = validateSupplierForm(form);
+  return [
+    !errors.label && !errors.email,
+    !errors.password && !errors.token && !errors.portalDigest,
+    !errors.reason,
+  ];
+}
+
+/** What still blocks saving, in words the person can act on. */
+export function credentialProblems(form: SupplierForm): string[] {
+  const { errors } = validateSupplierForm(form);
+  const problems: string[] = [];
+  if (errors.label) problems.push("o nome da nova credencial");
+  if (errors.email) problems.push("o login do portal");
+  if (errors.password) problems.push("a senha");
+  if (errors.token) problems.push("o token da InfoSimples");
+  if (errors.portalDigest) problems.push("a conta RI Digital vinculada");
+  if (errors.reason) problems.push("o motivo (mínimo 10 caracteres)");
+  return problems;
+}

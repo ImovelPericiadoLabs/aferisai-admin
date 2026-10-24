@@ -89,6 +89,7 @@ export function RegistryVisualizationTariffs({
   const [reviewing, setReviewing] = useState(false);
   const now = useNow();
   const [formOpen, setFormOpen] = useState(false);
+  const [attempted, setAttempted] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const confirmRef = useRef<HTMLButtonElement>(null);
   const activeOnr = accounts.filter(
@@ -144,7 +145,7 @@ export function RegistryVisualizationTariffs({
   function review(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!body) {
-      setError(`Falta ou está inválido: ${tariffProblems(draft).join("; ")}.`);
+      setAttempted(true);
       return;
     }
     setError("");
@@ -237,7 +238,10 @@ export function RegistryVisualizationTariffs({
                   ? "Ative a conta para publicar uma tarifa."
                   : undefined
               }
-              onClick={() => setFormOpen(true)}
+              onClick={() => {
+                setAttempted(false);
+                setFormOpen(true);
+              }}
             >
               Nova tarifa
             </button>
@@ -433,6 +437,11 @@ export function RegistryVisualizationTariffs({
           {error && (
             <div className="alert alert-danger" role="alert">
               {error}
+            </div>
+          )}
+          {attempted && tariffProblems(draft).length > 0 && (
+            <div className="alert alert-danger" role="alert">
+              Falta ou está inválido: {tariffProblems(draft).join("; ")}.
             </div>
           )}
           <form
