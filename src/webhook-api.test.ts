@@ -222,7 +222,7 @@ describe("registry supplier accounts API", () => {
 describe("registry visualization tariff API", () => {
   it("lists without CSRF and publishes with the same-origin session and CSRF", async () => {
     const last = stub();
-    await listRegistryVisualizationTariffs();
+    await listRegistryVisualizationTariffs("info-account");
     expect(last()).toMatchObject({
       path: "/v1/team/registry-visualization-tariffs",
       method: "GET",

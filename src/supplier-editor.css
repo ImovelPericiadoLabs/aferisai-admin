@@ -71,6 +71,282 @@
   margin: var(--space-4) 0 0;
 }
 
+.sup-ed-tabs {
+  display: flex;
+  gap: var(--space-1);
+  overflow-x: auto;
+  padding: var(--space-2) var(--space-5) 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.sup-ed-tab {
+  min-height: 36px;
+  padding: 0 var(--space-3);
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font: inherit;
+}
+
+.sup-ed-tab[aria-current="page"] {
+  border-bottom-color: var(--primary);
+  color: var(--text);
+  font-weight: var(--weight-semibold);
+}
+
+.sup-ed-tab:focus-visible {
+  outline: 2px solid var(--primary-ring);
+  outline-offset: -2px;
+}
+
+.sup-renew-form,
+.sup-renew-form label {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.sup-renew-form {
+  max-width: 580px;
+  margin-top: var(--space-4);
+  gap: var(--space-4);
+}
+
+.sup-renew-form textarea.input {
+  height: auto;
+  min-height: 84px;
+}
+
+.sup-historical h3 {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-lg);
+}
+
+.sup-historical-filters {
+  display: grid;
+  grid-template-columns: 72px minmax(170px, 1fr) minmax(170px, 1fr);
+  gap: var(--space-3);
+  margin: var(--space-4) 0;
+}
+
+.sup-historical-filters label {
+  display: grid;
+  gap: var(--space-1);
+  font-weight: var(--weight-medium);
+}
+
+.sup-historical-filters .btn {
+  grid-column: 1 / -1;
+  justify-self: start;
+}
+
+.sup-historical-scroll {
+  overflow-x: auto;
+  margin: var(--space-3) 0;
+}
+
+.sup-historical-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.sup-historical-table th,
+.sup-historical-table td {
+  padding: var(--space-3) var(--space-2);
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+.sup-historical-table th {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.sup-historical-table td small {
+  display: block;
+  margin-top: var(--space-1);
+  color: var(--text-muted);
+}
+
+.sup-commercial-heading {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.sup-commercial-heading h3,
+.sup-commercial-form h4 {
+  margin: 0;
+  font-size: var(--text-lg);
+}
+
+.sup-commercial-current {
+  display: grid;
+  gap: var(--space-1);
+  margin: var(--space-4) 0;
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.sup-commercial-current span,
+.sup-commercial-current small,
+.sup-commercial-fields small {
+  color: var(--text-muted);
+}
+
+.sup-commercial-form,
+.sup-commercial-form label {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.sup-commercial-form {
+  gap: var(--space-4);
+  max-width: 820px;
+}
+
+.sup-commercial-form > .btn {
+  justify-self: start;
+}
+
+.sup-commercial-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.sup-commercial-fields label {
+  grid-template-rows: 36px 36px auto;
+}
+
+.sup-commercial-form textarea.input {
+  height: auto;
+  min-height: 84px;
+}
+
+.sup-commercial-review {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--primary-ring);
+  border-radius: var(--radius-sm);
+  background: var(--primary-faint);
+}
+
+.sup-commercial-history {
+  margin: var(--space-5) 0;
+}
+
+.sup-commercial-history summary {
+  cursor: pointer;
+}
+
+.sup-optional-tariffs {
+  margin-top: var(--space-5);
+  border-top: 1px solid var(--border);
+}
+
+.sup-optional-tariffs .detail-panel-section-title {
+  font-size: var(--text-lg);
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--text);
+}
+
+.sup-tariff-list {
+  display: grid;
+  gap: var(--space-2);
+  padding: 0;
+  list-style: none;
+}
+
+.sup-tariff-list li {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.sup-tariff-list span,
+.sup-tariff-list small {
+  color: var(--text-muted);
+}
+
+.sup-tariff-form,
+.sup-tariff-form label {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.sup-tariff-form {
+  max-width: 640px;
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+}
+
+.sup-tariff-form h4 {
+  margin: 0;
+  font-size: var(--text-base);
+}
+
+.sup-tariff-form > .btn {
+  justify-self: start;
+}
+
+.sup-tariff-form textarea.input {
+  height: auto;
+  min-height: 84px;
+}
+
+.sup-tariff-form details {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.sup-tariff-form details > label {
+  margin-top: var(--space-3);
+}
+
+.sup-tariff-form summary {
+  cursor: pointer;
+}
+
+.sup-tariff-form .sup-tariff-check {
+  display: flex;
+  align-items: center;
+}
+
+.sup-tariff-review {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--primary-ring);
+  border-radius: var(--radius-sm);
+  background: var(--primary-faint);
+}
+
+@media (max-width: 700px) {
+  .sup-historical-filters {
+    grid-template-columns: 1fr;
+  }
+
+  .sup-commercial-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .sup-commercial-fields label {
+    grid-template-rows: auto 36px auto;
+  }
+}
+
 @media (max-width: 520px) {
   .sup-ed-facts {
     grid-template-columns: 1fr;
