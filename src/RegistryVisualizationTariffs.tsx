@@ -36,22 +36,33 @@ function tariffStatus(item: RegistryVisualizationTariff) {
     : `Vencida em ${dateTime.format(new Date(item.valid_until))}`;
 }
 
+function draftFor(account: RegistrySupplierAccount): TariffDraft {
+  return {
+    ...emptyTariffDraft,
+    onrAccountId: account.provider === "onr" ? account.id : "",
+    infosimplesAccountId: account.provider === "infosimples" ? account.id : "",
+  };
+}
+
 export function RegistryVisualizationTariffs({
+  account,
   accounts,
   csrf,
   onUnauthorized,
   onToast,
 }: {
+  account: RegistrySupplierAccount;
   accounts: RegistrySupplierAccount[];
   csrf: string;
   onUnauthorized: () => void;
   onToast: (message: string, kind: ToastKind) => void;
 }) {
   const [tariffs, setTariffs] = useState<RegistryVisualizationTariff[]>([]);
+  const [cursor, setCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [draft, setDraft] = useState<TariffDraft>(emptyTariffDraft);
+  const [draft, setDraft] = useState<TariffDraft>(() => draftFor(account));
   const [reviewing, setReviewing] = useState(false);
   const confirmRef = useRef<HTMLButtonElement>(null);
   const activeOnr = accounts.filter(
@@ -62,24 +73,30 @@ export function RegistryVisualizationTariffs({
   );
   const body = tariffDraftBody(draft);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const page = await listRegistryVisualizationTariffs();
-      setTariffs(page.items);
-      setError("");
-    } catch (cause) {
-      if (cause instanceof ApiError && cause.status === 401) onUnauthorized();
-      else
-        setError(
-          cause instanceof ApiError
-            ? cause.detail
-            : "Não foi possível consultar as tarifas. Tente novamente.",
+  const load = useCallback(
+    async (next?: string | null) => {
+      setLoading(true);
+      try {
+        const page = await listRegistryVisualizationTariffs(account.id, next);
+        setTariffs((current) =>
+          next ? [...current, ...page.items] : page.items,
         );
-    } finally {
-      setLoading(false);
-    }
-  }, [onUnauthorized]);
+        setCursor(page.next_cursor);
+        setError("");
+      } catch (cause) {
+        if (cause instanceof ApiError && cause.status === 401) onUnauthorized();
+        else
+          setError(
+            cause instanceof ApiError
+              ? cause.detail
+              : "Não foi possível consultar as tarifas. Tente novamente.",
+          );
+      } finally {
+        setLoading(false);
+      }
+    },
+    [account.id, onUnauthorized],
+  );
 
   useEffect(() => {
     queueMicrotask(() => void load());
@@ -112,7 +129,7 @@ export function RegistryVisualizationTariffs({
     try {
       const item = await publishRegistryVisualizationTariff(body, csrf);
       setReviewing(false);
-      setDraft(emptyTariffDraft);
+      setDraft(draftFor(account));
       setTariffs((current) => [item, ...current].slice(0, 20));
       setError("");
       onToast("Tarifa de visualização publicada por 72 horas.", "success");
@@ -139,11 +156,11 @@ export function RegistryVisualizationTariffs({
     <section className="vm-tariff" aria-labelledby="vm-tariff-title">
       <div className="vm-tariff-heading">
         <div>
-          <h2 id="vm-tariff-title">Tarifa da visualização</h2>
+          <h3 id="vm-tariff-title">Tarifa da visualização</h3>
           <p>
-            Registre o custo da API InfoSimples para um pedido e até três
-            downloads. O preço do RI Digital é verificado separadamente em cada
-            prévia.
+            Histórico vinculado a {account.label}. A API InfoSimples cobra o
+            pedido e até três downloads; o preço do RI Digital é verificado
+            separadamente em cada prévia.
           </p>
         </div>
         <button
@@ -159,20 +176,49 @@ export function RegistryVisualizationTariffs({
       {loading ? (
         <p role="status">Carregando tarifas…</p>
       ) : tariffs.length ? (
-        <div className="vm-tariff-current" aria-label="Última tarifa publicada">
-          <strong>Última versão · {tariffStatus(tariffs[0])}</strong>
-          <span>
-            {accountLabel(tariffs[0].onr_account_id)} +{" "}
-            {accountLabel(tariffs[0].infosimples_account_id)}
-          </span>
-          <span>
-            Pedido {money(tariffs[0].order_fee_cents)} · download{" "}
-            {money(tariffs[0].download_fee_cents)} ×{" "}
-            {tariffs[0].download_budget_count} · mínimo mensal{" "}
-            {money(tariffs[0].monthly_minimum_reserve_cents)}
-          </span>
-          <strong>Reserva da API {money(tariffs[0].budget_cents)}</strong>
-        </div>
+        <>
+          <div
+            className="vm-tariff-current"
+            aria-label="Última tarifa publicada"
+          >
+            <strong>Última versão · {tariffStatus(tariffs[0])}</strong>
+            <span>
+              {accountLabel(tariffs[0].onr_account_id)} +{" "}
+              {accountLabel(tariffs[0].infosimples_account_id)}
+            </span>
+            <span>
+              Pedido {money(tariffs[0].order_fee_cents)} · download{" "}
+              {money(tariffs[0].download_fee_cents)} ×{" "}
+              {tariffs[0].download_budget_count} · mínimo mensal{" "}
+              {money(tariffs[0].monthly_minimum_reserve_cents)}
+            </span>
+            <strong>Reserva da API {money(tariffs[0].budget_cents)}</strong>
+          </div>
+          <details className="vm-tariff-history">
+            <summary>
+              Histórico de tarifas ({tariffs.length} carregadas)
+            </summary>
+            <ol>
+              {tariffs.map((item) => (
+                <li key={item.id}>
+                  <strong>{money(item.budget_cents)}</strong> ·{" "}
+                  {tariffStatus(item)} · {accountLabel(item.onr_account_id)} +{" "}
+                  {accountLabel(item.infosimples_account_id)}
+                </li>
+              ))}
+            </ol>
+            {cursor && (
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                disabled={loading}
+                onClick={() => void load(cursor)}
+              >
+                Carregar versões anteriores
+              </button>
+            )}
+          </details>
+        </>
       ) : (
         <p role="status">
           Nenhuma tarifa publicada. A visualização permanece sem custo API
@@ -185,190 +231,204 @@ export function RegistryVisualizationTariffs({
           {error}
         </div>
       )}
-      <form className="vm-tariff-form" onSubmit={review} noValidate>
-        <div className="vm-tariff-fields">
+      {account.status === "active" ? (
+        <form className="vm-tariff-form" onSubmit={review} noValidate>
+          <div className="vm-tariff-fields">
+            {account.provider !== "onr" && (
+              <label>
+                Conta RI Digital ativa
+                <select
+                  className="input"
+                  value={draft.onrAccountId}
+                  onChange={(event) => set("onrAccountId", event.target.value)}
+                  disabled={busy}
+                  required
+                >
+                  <option value="">Selecione a conta</option>
+                  {activeOnr.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            {account.provider !== "infosimples" && (
+              <label>
+                Conta InfoSimples ativa
+                <select
+                  className="input"
+                  value={draft.infosimplesAccountId}
+                  onChange={(event) =>
+                    set("infosimplesAccountId", event.target.value)
+                  }
+                  disabled={busy}
+                  required
+                >
+                  <option value="">Selecione a conta</option>
+                  {activeInfo.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            <label>
+              Pedido de visualização (R$)
+              <input
+                className="input"
+                inputMode="decimal"
+                value={draft.orderFee}
+                placeholder="0,28"
+                onChange={(event) => set("orderFee", event.target.value)}
+                disabled={busy}
+                required
+              />
+            </label>
+            <label>
+              Cada download (R$)
+              <input
+                className="input"
+                inputMode="decimal"
+                value={draft.downloadFee}
+                placeholder="0,20"
+                onChange={(event) => set("downloadFee", event.target.value)}
+                disabled={busy}
+                required
+              />
+            </label>
+            <label>
+              Parcela do mínimo mensal por venda (R$)
+              <input
+                className="input"
+                inputMode="decimal"
+                value={draft.monthlyReserve}
+                onChange={(event) => set("monthlyReserve", event.target.value)}
+                disabled={busy}
+                required
+              />
+              <small>Lucas aprovou R$ 0,00 como custo fixo da operação.</small>
+            </label>
+            <label>
+              SHA-256 da evidência privada
+              <input
+                className="input"
+                value={draft.evidenceSha256}
+                maxLength={64}
+                autoCapitalize="none"
+                autoComplete="off"
+                spellCheck={false}
+                onChange={(event) => set("evidenceSha256", event.target.value)}
+                disabled={busy}
+                required
+              />
+              <small>
+                Guarde a evidência fora do repositório, sem credenciais ou
+                matrículas.
+              </small>
+            </label>
+          </div>
           <label>
-            Conta RI Digital ativa
-            <select
+            Motivo da conferência
+            <textarea
               className="input"
-              value={draft.onrAccountId}
-              onChange={(event) => set("onrAccountId", event.target.value)}
-              disabled={busy}
-              required
-            >
-              <option value="">Selecione a conta</option>
-              {activeOnr.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Conta InfoSimples ativa
-            <select
-              className="input"
-              value={draft.infosimplesAccountId}
-              onChange={(event) =>
-                set("infosimplesAccountId", event.target.value)
-              }
-              disabled={busy}
-              required
-            >
-              <option value="">Selecione a conta</option>
-              {activeInfo.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Pedido de visualização (R$)
-            <input
-              className="input"
-              inputMode="decimal"
-              value={draft.orderFee}
-              placeholder="0,28"
-              onChange={(event) => set("orderFee", event.target.value)}
-              disabled={busy}
-              required
-            />
-          </label>
-          <label>
-            Cada download (R$)
-            <input
-              className="input"
-              inputMode="decimal"
-              value={draft.downloadFee}
-              placeholder="0,20"
-              onChange={(event) => set("downloadFee", event.target.value)}
-              disabled={busy}
-              required
-            />
-          </label>
-          <label>
-            Parcela do mínimo mensal por venda (R$)
-            <input
-              className="input"
-              inputMode="decimal"
-              value={draft.monthlyReserve}
-              onChange={(event) => set("monthlyReserve", event.target.value)}
-              disabled={busy}
-              required
-            />
-            <small>Lucas aprovou R$ 0,00 como custo fixo da operação.</small>
-          </label>
-          <label>
-            SHA-256 da evidência privada
-            <input
-              className="input"
-              value={draft.evidenceSha256}
-              maxLength={64}
-              autoCapitalize="none"
-              autoComplete="off"
-              spellCheck={false}
-              onChange={(event) => set("evidenceSha256", event.target.value)}
+              rows={3}
+              minLength={10}
+              maxLength={500}
+              value={draft.reason}
+              onChange={(event) => set("reason", event.target.value)}
               disabled={busy}
               required
             />
             <small>
-              Guarde a evidência fora do repositório, sem credenciais ou
-              matrículas.
+              Fica na auditoria. Não inclua senhas, tokens ou dados de
+              matrícula.
             </small>
           </label>
-        </div>
-        <label>
-          Motivo da conferência
-          <textarea
-            className="input"
-            rows={3}
-            minLength={10}
-            maxLength={500}
-            value={draft.reason}
-            onChange={(event) => set("reason", event.target.value)}
-            disabled={busy}
-            required
-          />
-          <small>
-            Fica na auditoria. Não inclua senhas, tokens ou dados de matrícula.
-          </small>
-        </label>
-        <label className="vm-tariff-check">
-          <input
-            type="checkbox"
-            checked={draft.contractVerified}
-            onChange={(event) => set("contractVerified", event.target.checked)}
-            disabled={busy}
-          />
-          Conferi o uso das APIs de pedido e download nesta conta.
-        </label>
-        <label className="vm-tariff-check">
-          <input
-            type="checkbox"
-            checked={draft.supplierFeeCovered}
-            onChange={(event) =>
-              set("supplierFeeCovered", event.target.checked)
-            }
-            disabled={busy}
-          />
-          Os valores informados cobrem o pedido, três downloads e a parcela
-          mensal declarada.
-        </label>
-        {body && (
-          <p className="vm-tariff-total" aria-live="polite">
-            Reserva da API:{" "}
-            <strong>
-              {money(
-                body.order_fee_cents +
-                  3 * body.download_fee_cents +
-                  body.monthly_minimum_reserve_cents,
-              )}
-            </strong>
-          </p>
-        )}
-        {!reviewing ? (
-          <button
-            type="submit"
-            className="btn btn-primary btn-md"
-            disabled={busy || !activeOnr.length || !activeInfo.length}
-          >
-            Revisar publicação
-          </button>
-        ) : body ? (
-          <div
-            className="vm-tariff-review"
-            role="group"
-            aria-label="Confirmar tarifa"
-          >
-            <p>
-              Confirme {accountLabel(body.onr_account_id)} e{" "}
-              {accountLabel(body.infosimples_account_id)}: pedido{" "}
-              {money(body.order_fee_cents)}, três downloads de{" "}
-              {money(body.download_fee_cents)} e mínimo mensal{" "}
-              {money(body.monthly_minimum_reserve_cents)}. A versão valerá por
-              72 horas e ficará na auditoria.
+          <label className="vm-tariff-check">
+            <input
+              type="checkbox"
+              checked={draft.contractVerified}
+              onChange={(event) =>
+                set("contractVerified", event.target.checked)
+              }
+              disabled={busy}
+            />
+            Conferi o uso das APIs de pedido e download nesta conta.
+          </label>
+          <label className="vm-tariff-check">
+            <input
+              type="checkbox"
+              checked={draft.supplierFeeCovered}
+              onChange={(event) =>
+                set("supplierFeeCovered", event.target.checked)
+              }
+              disabled={busy}
+            />
+            Os valores informados cobrem o pedido, três downloads e a parcela
+            mensal declarada.
+          </label>
+          {body && (
+            <p className="vm-tariff-total" aria-live="polite">
+              Reserva da API:{" "}
+              <strong>
+                {money(
+                  body.order_fee_cents +
+                    3 * body.download_fee_cents +
+                    body.monthly_minimum_reserve_cents,
+                )}
+              </strong>
             </p>
+          )}
+          {!reviewing ? (
             <button
-              ref={confirmRef}
-              type="button"
+              type="submit"
               className="btn btn-primary btn-md"
-              disabled={busy}
-              onClick={() => void publish()}
+              disabled={busy || !activeOnr.length || !activeInfo.length}
             >
-              {busy ? "Publicando…" : "Confirmar e publicar"}
+              Revisar publicação
             </button>
-            <button
-              type="button"
-              className="btn btn-secondary btn-md"
-              disabled={busy}
-              onClick={() => setReviewing(false)}
+          ) : body ? (
+            <div
+              className="vm-tariff-review"
+              role="group"
+              aria-label="Confirmar tarifa"
             >
-              Voltar
-            </button>
-          </div>
-        ) : null}
-      </form>
+              <p>
+                Confirme {accountLabel(body.onr_account_id)} e{" "}
+                {accountLabel(body.infosimples_account_id)}: pedido{" "}
+                {money(body.order_fee_cents)}, três downloads de{" "}
+                {money(body.download_fee_cents)} e mínimo mensal{" "}
+                {money(body.monthly_minimum_reserve_cents)}. A versão valerá por
+                72 horas e ficará na auditoria.
+              </p>
+              <button
+                ref={confirmRef}
+                type="button"
+                className="btn btn-primary btn-md"
+                disabled={busy}
+                onClick={() => void publish()}
+              >
+                {busy ? "Publicando…" : "Confirmar e publicar"}
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary btn-md"
+                disabled={busy}
+                onClick={() => setReviewing(false)}
+              >
+                Voltar
+              </button>
+            </div>
+          ) : null}
+        </form>
+      ) : (
+        <p className="form-hint">
+          Ative esta conta para publicar uma nova tarifa. O histórico permanece
+          disponível.
+        </p>
+      )}
     </section>
   );
 }

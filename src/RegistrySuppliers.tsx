@@ -18,7 +18,6 @@ import {
 } from "./api";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { SupplierAccountEditor } from "./SupplierAccountEditor";
-import { RegistryVisualizationTariffs } from "./RegistryVisualizationTariffs";
 import {
   activationBlock,
   shortDigest,
@@ -374,7 +373,7 @@ export function RegistrySuppliers({
                       </td>
                       <td data-label="Ações">
                         <div className="sup-actions">
-                          {item.provider === "onr" && (
+                          {
                             <button
                               type="button"
                               className="btn btn-secondary btn-sm"
@@ -386,7 +385,7 @@ export function RegistrySuppliers({
                             >
                               Editar
                             </button>
-                          )}
+                          }
                           {item.status !== "active" && (
                             <button
                               type="button"
@@ -444,20 +443,15 @@ export function RegistrySuppliers({
         </footer>
       )}
 
-      <RegistryVisualizationTariffs
-        accounts={items}
-        csrf={csrf}
-        onUnauthorized={onUnauthorized}
-        onToast={onToast}
-      />
-
       <SupplierAccountEditor
         account={editing}
+        accounts={items}
         csrf={csrf}
         returnFocus={() => editTrigger.current}
         onClose={() => setEditing(null)}
         onUnauthorized={onUnauthorized}
         onToast={onToast}
+        onAccountsChanged={() => void load()}
       />
 
       <ConfirmDialog

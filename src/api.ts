@@ -2329,9 +2329,12 @@ export type RegistryVisualizationTariffCreate = {
   supplier_fee_covered: true;
 };
 
-export const listRegistryVisualizationTariffs = () =>
+export const listRegistryVisualizationTariffs = (
+  accountId: string,
+  cursor?: string | null,
+) =>
   request<RegistryVisualizationTariffPage>(
-    "/v1/team/registry-visualization-tariffs?limit=20",
+    `/v1/team/registry-visualization-tariffs?limit=20&account_id=${encodeURIComponent(accountId)}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`,
     { method: "GET" },
   );
 
@@ -2341,6 +2344,225 @@ export const publishRegistryVisualizationTariff = (
 ) =>
   request<RegistryVisualizationTariff>(
     "/v1/team/registry-visualization-tariffs",
+    {
+      method: "POST",
+      headers: { "X-CSRF-Token": csrfToken },
+      body: JSON.stringify(body),
+    },
+  );
+
+export type RegistryHistoricalProduct =
+  "visualizacao" | "inteiro_teor_simples" | "inteiro_teor";
+export type RegistryHistoricalPrice = {
+  office_id: string;
+  office_name: string;
+  city: string;
+  state: string;
+  cns: string;
+  product: RegistryHistoricalProduct;
+  observed_cost_cents: number | null;
+  observed_at: string | null;
+  cost_source: string | null;
+  indicative_price_cents: number | null;
+  indicative_payment_fee_cents: number | null;
+  indicative_tax_cents: number | null;
+  indicative_contribution_cents: number | null;
+  indicative_api_fee_cents: number | null;
+};
+export type RegistryHistoricalPricePage = {
+  items: RegistryHistoricalPrice[];
+  next_cursor: string | null;
+  offer_version: string | null;
+  indicative_only: true;
+  quoteable: false;
+};
+
+export const listRegistryHistoricalPrices = (
+  accountId: string,
+  filters: {
+    state: string;
+    product: RegistryHistoricalProduct;
+    search?: string;
+    cursor?: string | null;
+  },
+) => {
+  const query = new URLSearchParams({
+    state: filters.state,
+    product: filters.product,
+    limit: "20",
+  });
+  if (filters.search) query.set("search", filters.search);
+  if (filters.cursor) query.set("cursor", filters.cursor);
+  return request<RegistryHistoricalPricePage>(
+    `/v1/team/registry-supplier-accounts/${encodeURIComponent(accountId)}/historical-price-previews?${query.toString()}`,
+    { method: "GET" },
+  );
+};
+
+export type RegistryCommercialTerms = {
+  id: string;
+  onr_account_id: string | null;
+  version: string;
+  approved_at: string | null;
+  valid_until: string;
+  analysis_reserve_cents: number;
+  operations_reserve_cents: number;
+  exception_reserve_cents: number;
+  payment_fee_cents: number;
+  payment_fee_rate_bps: number;
+  tax_rate_bps: number;
+  minimum_contribution_cents: number;
+  markup_bps: number;
+  onr_markup_bps: number;
+  commercial_evidence_sha256: string | null;
+};
+export type RegistryCommercialTermsPage = {
+  effective: RegistryCommercialTerms | null;
+  items: RegistryCommercialTerms[];
+  next_cursor: string | null;
+};
+export type RegistryCommercialTermsCreate = {
+  base_offer_id: string;
+  version: string;
+  operations_reserve_cents: number;
+  exception_reserve_cents: number;
+  payment_fee_cents: number;
+  payment_fee_rate_bps: number;
+  tax_rate_bps: number;
+  minimum_contribution_cents: number;
+  markup_bps: number;
+  onr_markup_bps: number;
+  payment_fee_evidence_sha256: string | null;
+  reason: string;
+};
+export const listRegistryCommercialTerms = (
+  accountId: string,
+  cursor?: string,
+) =>
+  request<RegistryCommercialTermsPage>(
+    `/v1/team/registry-supplier-accounts/${encodeURIComponent(accountId)}/commercial-terms?limit=20${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`,
+    { method: "GET" },
+  );
+export const publishRegistryCommercialTerms = (
+  accountId: string,
+  body: RegistryCommercialTermsCreate,
+  csrfToken: string,
+) =>
+  request<RegistryCommercialTerms>(
+    `/v1/team/registry-supplier-accounts/${encodeURIComponent(accountId)}/commercial-terms`,
+    {
+      method: "POST",
+      headers: { "X-CSRF-Token": csrfToken },
+      body: JSON.stringify(body),
+    },
+  );
+
+export type RegistryCertificateKind =
+  | "federal"
+  | "trabalhista"
+  | "estadual"
+  | "fgts"
+  | "iptu_sp"
+  | "iptu_rj"
+  | "cnj"
+  | "cgu";
+export type RegistryCertificateTariff = {
+  id: string;
+  account_id: string;
+  code: RegistryCertificateKind;
+  state: string | null;
+  provider: "infosimples";
+  unit_cost_cents: number;
+  source_url: string;
+  evidence_sha256: string;
+  sample_document_sha256: string | null;
+  sample_charge_sha256: string | null;
+  actor_team_member_id: string;
+  reason: string;
+  verified_at: string;
+  valid_until: string;
+};
+export type RegistryCertificateTariffPage = {
+  items: RegistryCertificateTariff[];
+  next_cursor: string | null;
+};
+export type RegistryCertificateTariffCreate = {
+  account_id: string;
+  code: RegistryCertificateKind;
+  state: string | null;
+  unit_cost_cents: number;
+  evidence_sha256: string;
+  sample_document_sha256: string | null;
+  sample_charge_sha256: string | null;
+  delivery_proof_confirmed: true | null;
+  reason: string;
+  contract_verified: true;
+  supplier_fee_covered: true;
+};
+export const listRegistryCertificateTariffs = (
+  accountId: string,
+  cursor?: string,
+) =>
+  request<RegistryCertificateTariffPage>(
+    `/v1/team/registry-certificate-tariffs?account_id=${encodeURIComponent(accountId)}&limit=20${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`,
+    { method: "GET" },
+  );
+export const publishRegistryCertificateTariff = (
+  body: RegistryCertificateTariffCreate,
+  csrfToken: string,
+) =>
+  request<RegistryCertificateTariff>("/v1/team/registry-certificate-tariffs", {
+    method: "POST",
+    headers: { "X-CSRF-Token": csrfToken },
+    body: JSON.stringify(body),
+  });
+
+export type RegistryArispTariff = {
+  id: string;
+  infosimples_account_id: string;
+  onr_account_id: string;
+  onr_binding_sha256: string;
+  order_fee_cents: number;
+  download_fee_cents: number;
+  download_budget_count: number;
+  budget_cents: number;
+  source_url: string;
+  evidence_sha256: string;
+  certificate_type: string | null;
+  certificate_type_evidence_sha256: string | null;
+  actor_team_member_id: string;
+  reason: string;
+  verified_at: string;
+  valid_until: string;
+};
+export type RegistryArispTariffPage = {
+  items: RegistryArispTariff[];
+  next_cursor: string | null;
+};
+export type RegistryArispTariffCreate = {
+  infosimples_account_id: string;
+  onr_account_id: string;
+  order_fee_cents: number;
+  download_fee_cents: number;
+  evidence_sha256: string;
+  reason: string;
+  contract_verified: true;
+  supplier_fee_covered: true;
+  certificate_type: string | null;
+  certificate_type_evidence_sha256: string | null;
+  certificate_type_verified: true | null;
+};
+export const listRegistryArispTariffs = (accountId: string, cursor?: string) =>
+  request<RegistryArispTariffPage>(
+    `/v1/team/registry-certificate-tariffs/arisp-api?account_id=${encodeURIComponent(accountId)}&limit=20${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`,
+    { method: "GET" },
+  );
+export const publishRegistryArispTariff = (
+  body: RegistryArispTariffCreate,
+  csrfToken: string,
+) =>
+  request<RegistryArispTariff>(
+    "/v1/team/registry-certificate-tariffs/arisp-api",
     {
       method: "POST",
       headers: { "X-CSRF-Token": csrfToken },
