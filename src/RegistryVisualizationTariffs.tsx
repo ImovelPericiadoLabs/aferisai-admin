@@ -17,6 +17,8 @@ import {
   tariffDraftBody,
   type TariffDraft,
 } from "./registry-tariff-model";
+import { FormModal, Metrics, SettingCard } from "./SupplierUi";
+import { useNow } from "./useNow";
 import type { ToastKind } from "./useToast";
 
 const money = (cents: number) =>
@@ -64,6 +66,9 @@ export function RegistryVisualizationTariffs({
   const [error, setError] = useState("");
   const [draft, setDraft] = useState<TariffDraft>(() => draftFor(account));
   const [reviewing, setReviewing] = useState(false);
+  const now = useNow();
+  const [formOpen, setFormOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const confirmRef = useRef<HTMLButtonElement>(null);
   const activeOnr = accounts.filter(
     (item) => item.provider === "onr" && item.status === "active",
@@ -129,6 +134,7 @@ export function RegistryVisualizationTariffs({
     try {
       const item = await publishRegistryVisualizationTariff(body, csrf);
       setReviewing(false);
+      setFormOpen(false);
       setDraft(draftFor(account));
       setTariffs((current) => [item, ...current].slice(0, 20));
       setError("");
@@ -152,87 +158,147 @@ export function RegistryVisualizationTariffs({
   const accountLabel = (id: string) =>
     accounts.find((item) => item.id === id)?.label ?? id.slice(0, 8);
 
-  return (
-    <section className="vm-tariff" aria-labelledby="vm-tariff-title">
-      <div className="vm-tariff-heading">
-        <div>
-          <h3 id="vm-tariff-title">Tarifa da visualização</h3>
-          <p>
-            Histórico vinculado a {account.label}. A API InfoSimples cobra o
-            pedido e até três downloads; o preço do RI Digital é verificado
-            separadamente em cada prévia.
-          </p>
-        </div>
-        <button
-          type="button"
-          className="btn btn-secondary btn-sm"
-          disabled={loading || busy}
-          onClick={() => void load()}
-        >
-          Atualizar tarifas
-        </button>
-      </div>
+  const current = tariffs[0];
 
-      {loading ? (
-        <p role="status">Carregando tarifas…</p>
-      ) : tariffs.length ? (
-        <>
-          <div
-            className="vm-tariff-current"
-            aria-label="Última tarifa publicada"
-          >
-            <strong>Última versão · {tariffStatus(tariffs[0])}</strong>
-            <span>
-              {accountLabel(tariffs[0].onr_account_id)} +{" "}
-              {accountLabel(tariffs[0].infosimples_account_id)}
+  return (
+    <>
+      <SettingCard
+        title="Tarifa da visualização"
+        help={
+          <>
+            A InfoSimples cobra o pedido e até três downloads; o preço do RI
+            Digital é verificado em cada prévia. Cada versão vale 72 horas e
+            fica na auditoria.
+          </>
+        }
+        badge={
+          current && (
+            <span
+              className={`badge badge-${new Date(current.valid_until).getTime() > now ? "success" : "warning"}`}
+            >
+              {tariffStatus(current)}
             </span>
-            <span>
-              Pedido {money(tariffs[0].order_fee_cents)} · download{" "}
-              {money(tariffs[0].download_fee_cents)} ×{" "}
-              {tariffs[0].download_budget_count} · mínimo mensal{" "}
-              {money(tariffs[0].monthly_minimum_reserve_cents)}
-            </span>
-            <strong>Reserva da API {money(tariffs[0].budget_cents)}</strong>
-          </div>
-          <details className="vm-tariff-history">
-            <summary>
-              Histórico de tarifas ({tariffs.length} carregadas)
-            </summary>
-            <ol>
-              {tariffs.map((item) => (
-                <li key={item.id}>
-                  <strong>{money(item.budget_cents)}</strong> ·{" "}
-                  {tariffStatus(item)} · {accountLabel(item.onr_account_id)} +{" "}
-                  {accountLabel(item.infosimples_account_id)}
-                </li>
-              ))}
-            </ol>
-            {cursor && (
+          )
+        }
+        actions={
+          <>
+            <button
+              type="button"
+              className="btn btn-ghost btn-md"
+              disabled={loading || busy}
+              onClick={() => void load()}
+            >
+              Atualizar
+            </button>
+            {tariffs.length > 0 && (
               <button
                 type="button"
-                className="btn btn-secondary btn-sm"
-                disabled={loading}
-                onClick={() => void load(cursor)}
+                className="btn btn-secondary btn-md"
+                onClick={() => setHistoryOpen(true)}
               >
-                Carregar versões anteriores
+                Histórico ({tariffs.length})
               </button>
             )}
-          </details>
-        </>
-      ) : (
-        <p role="status">
-          Nenhuma tarifa publicada. A visualização permanece sem custo API
-          vigente.
-        </p>
-      )}
+            <button
+              type="button"
+              className="btn btn-primary btn-md"
+              aria-haspopup="dialog"
+              disabled={account.status !== "active"}
+              title={
+                account.status !== "active"
+                  ? "Ative a conta para publicar uma tarifa."
+                  : undefined
+              }
+              onClick={() => setFormOpen(true)}
+            >
+              Nova tarifa
+            </button>
+          </>
+        }
+      >
+        {error && !formOpen && (
+          <div className="alert alert-danger" role="alert">
+            {error}
+          </div>
+        )}
+        {loading && !current ? (
+          <p role="status" className="sup-muted">
+            Carregando tarifas…
+          </p>
+        ) : current ? (
+          <>
+            <Metrics
+              items={[
+                { label: "Pedido", value: money(current.order_fee_cents) },
+                {
+                  label: `Download × ${current.download_budget_count}`,
+                  value: money(current.download_fee_cents),
+                },
+                {
+                  label: "Mínimo mensal",
+                  value: money(current.monthly_minimum_reserve_cents),
+                },
+                {
+                  label: "Reserva da API",
+                  value: <strong>{money(current.budget_cents)}</strong>,
+                },
+              ]}
+            />
+            <p className="sup-muted sup-clip">
+              {accountLabel(current.onr_account_id)} +{" "}
+              {accountLabel(current.infosimples_account_id)}
+            </p>
+          </>
+        ) : (
+          <p role="status" className="sup-muted">
+            Nenhuma tarifa publicada. A visualização segue sem custo de API
+            vigente.
+          </p>
+        )}
+      </SettingCard>
 
-      {error && (
-        <div className="alert alert-danger" role="alert">
-          {error}
-        </div>
-      )}
-      {account.status === "active" ? (
-        <form className="vm-tariff-form" onSubmit={review} noValidate>
+      <FormModal
+        open={historyOpen}
+        title="Histórico de tarifas"
+        onClose={() => setHistoryOpen(false)}
+        footer={
+          cursor ? (
+            <button
+              type="button"
+              className="btn btn-secondary btn-md"
+              disabled={loading}
+              onClick={() => void load(cursor)}
+            >
+              Carregar versões anteriores
+            </button>
+          ) : undefined
+        }
+      >
+        <ol className="sup-history">
+          {tariffs.map((item) => (
+            <li key={item.id}>
+              <strong>{money(item.budget_cents)}</strong>
+              <span>{tariffStatus(item)}</span>
+              <small className="sup-clip">
+                {accountLabel(item.onr_account_id)} +{" "}
+                {accountLabel(item.infosimples_account_id)}
+              </small>
+            </li>
+          ))}
+        </ol>
+      </FormModal>
+
+      <FormModal
+        open={formOpen}
+        title="Nova tarifa de visualização"
+        onClose={() => !busy && setFormOpen(false)}
+      >
+        {error && (
+          <div className="alert alert-danger" role="alert">
+            {error}
+          </div>
+        )}
+        <form className="sup-form-grid" onSubmit={review} noValidate>
           <div className="vm-tariff-fields">
             {account.provider !== "onr" && (
               <label>
@@ -299,7 +365,7 @@ export function RegistryVisualizationTariffs({
               />
             </label>
             <label>
-              Parcela do mínimo mensal por venda (R$)
+              Mínimo mensal por venda (R$)
               <input
                 className="input"
                 inputMode="decimal"
@@ -308,7 +374,7 @@ export function RegistryVisualizationTariffs({
                 disabled={busy}
                 required
               />
-              <small>Lucas aprovou R$ 0,00 como custo fixo da operação.</small>
+              <small>Custo fixo da operação aprovado pelo responsável.</small>
             </label>
             <label>
               SHA-256 da evidência privada
@@ -323,10 +389,7 @@ export function RegistryVisualizationTariffs({
                 disabled={busy}
                 required
               />
-              <small>
-                Guarde a evidência fora do repositório, sem credenciais ou
-                matrículas.
-              </small>
+              <small>Evidência guardada fora do repositório.</small>
             </label>
           </div>
           <label>
@@ -341,10 +404,7 @@ export function RegistryVisualizationTariffs({
               disabled={busy}
               required
             />
-            <small>
-              Fica na auditoria. Não inclua senhas, tokens ou dados de
-              matrícula.
-            </small>
+            <small>Fica na auditoria. Sem senhas, tokens ou matrículas.</small>
           </label>
           <label className="vm-tariff-check">
             <input
@@ -366,8 +426,7 @@ export function RegistryVisualizationTariffs({
               }
               disabled={busy}
             />
-            Os valores informados cobrem o pedido, três downloads e a parcela
-            mensal declarada.
+            Os valores cobrem o pedido, três downloads e o mínimo mensal.
           </label>
           {body && (
             <p className="vm-tariff-total" aria-live="polite">
@@ -423,12 +482,7 @@ export function RegistryVisualizationTariffs({
             </div>
           ) : null}
         </form>
-      ) : (
-        <p className="form-hint">
-          Ative esta conta para publicar uma nova tarifa. O histórico permanece
-          disponível.
-        </p>
-      )}
-    </section>
+      </FormModal>
+    </>
   );
 }

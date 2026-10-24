@@ -10,6 +10,7 @@ import {
   type RegistryCertificateTariff,
   type RegistrySupplierAccount,
 } from "./api";
+import { FormModal, SettingCard } from "./SupplierUi";
 import type { ToastKind } from "./useToast";
 
 const kinds: { value: RegistryCertificateKind; label: string }[] = [
@@ -79,6 +80,8 @@ export function RegistryOptionalTariffs({
   const [reviewing, setReviewing] = useState<"certificate" | "arisp" | null>(
     null,
   );
+  const [certOpen, setCertOpen] = useState(false);
+  const [arispOpen, setArispOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -180,6 +183,7 @@ export function RegistryOptionalTariffs({
       setSampleCharge("");
       setProofConfirmed(false);
       setCertificateReason("");
+      setCertOpen(false);
       onToast(
         "Tarifa opcional publicada por 72 horas para esta conta.",
         "success",
@@ -257,6 +261,7 @@ export function RegistryOptionalTariffs({
       setCertificateTypeEvidence("");
       setTypeConfirmed(false);
       setArispReason("");
+      setArispOpen(false);
       onToast("Tarifa da API de certidão registrada por 72 horas.", "success");
       await load();
     } catch (cause) {
@@ -281,199 +286,222 @@ export function RegistryOptionalTariffs({
         </p>
       )}
       {account.provider === "infosimples" && (
-        <section
-          className="detail-panel-section"
-          aria-labelledby="sup-certificate-title"
-        >
-          <h3 id="sup-certificate-title" className="detail-panel-section-title">
-            Certidões InfoSimples
-          </h3>
-          <p className="form-hint">
-            A tarifa total é própria desta conta e vale 72 horas. Sem PDF real e
-            débito comprovados, a oferta continua indisponível.
-          </p>
-          {loading && !certificates.length && (
-            <p role="status">Carregando tarifas…</p>
-          )}
-          <ul className="sup-tariff-list">
-            {certificates.map((item) => (
-              <li key={item.id}>
-                <strong>
-                  {kinds.find((kind) => kind.value === item.code)?.label ??
-                    item.code}
-                  {item.state ? ` · ${item.state}` : ""}
-                </strong>
-                <span>
-                  {money(item.unit_cost_cents)} · até{" "}
-                  {dateTime.format(new Date(item.valid_until))}
-                </span>
-                <small>
-                  {item.sample_document_sha256 && item.sample_charge_sha256
-                    ? "Comprovantes registrados"
-                    : "Sem comprovantes de entrega"}
-                </small>
-              </li>
-            ))}
-          </ul>
-          {certificateCursor && (
-            <button
-              type="button"
-              className="btn btn-secondary btn-sm"
-              disabled={loading}
-              onClick={() => void load(certificateCursor, "certificate")}
-            >
-              Mais versões
-            </button>
-          )}
-          <form
-            className="sup-tariff-form"
-            onSubmit={reviewCertificate}
-            noValidate
-          >
-            <h4>Registrar nova tarifa</h4>
-            <label>
-              Tipo
-              <select
-                className="input"
-                value={kind}
-                disabled={!active || busy}
-                onChange={(event) => {
-                  setKind(event.target.value as RegistryCertificateKind);
-                  setState("");
-                  setReviewing(null);
-                }}
-              >
-                {kinds.map((item) => (
-                  <option key={item.value} value={item.value}>
-                    {item.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            {kind === "estadual" && (
-              <label>
-                UF
-                <input
-                  className="input"
-                  value={state}
-                  maxLength={2}
-                  disabled={!active || busy}
-                  onChange={(event) => setState(event.target.value)}
-                />
-              </label>
-            )}
-            <label>
-              Custo total por chamada (R$)
-              <input
-                className="input"
-                inputMode="decimal"
-                value={cost}
-                disabled={!active || busy}
-                onChange={(event) => setCost(event.target.value)}
-              />
-            </label>
-            <label>
-              SHA-256 da tabela de preços
-              <input
-                className="input"
-                value={evidence}
-                maxLength={64}
-                disabled={!active || busy}
-                onChange={(event) => setEvidence(event.target.value)}
-              />
-            </label>
-            <details>
-              <summary>Comprovantes de entrega (opcional)</summary>
-              <p className="form-hint">
-                Informe os hashes distintos do PDF e do débito real após
-                conferir ambos.
-              </p>
-              <label>
-                SHA-256 do PDF
-                <input
-                  className="input"
-                  value={sampleDocument}
-                  maxLength={64}
-                  disabled={!active || busy}
-                  onChange={(event) => setSampleDocument(event.target.value)}
-                />
-              </label>
-              <label>
-                SHA-256 do débito
-                <input
-                  className="input"
-                  value={sampleCharge}
-                  maxLength={64}
-                  disabled={!active || busy}
-                  onChange={(event) => setSampleCharge(event.target.value)}
-                />
-              </label>
-              <label className="sup-tariff-check">
-                <input
-                  type="checkbox"
-                  checked={proofConfirmed}
-                  disabled={!active || busy}
-                  onChange={(event) => setProofConfirmed(event.target.checked)}
-                />{" "}
-                Conferi visualmente o PDF e o débito
-              </label>
-            </details>
-            <label>
-              Motivo
-              <textarea
-                className="input"
-                rows={3}
-                maxLength={500}
-                value={certificateReason}
-                disabled={!active || busy}
-                onChange={(event) => setCertificateReason(event.target.value)}
-              />
-            </label>
-            {reviewing === "certificate" ? (
-              <div className="sup-tariff-review">
-                <strong>
-                  Publicar {money(parseMoney(cost))} para {kind}?
-                </strong>
-                <button
-                  type="button"
-                  className="btn btn-primary btn-md"
-                  disabled={busy}
-                  onClick={() => void publishCertificate()}
-                >
-                  Confirmar
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-ghost btn-sm"
-                  disabled={busy}
-                  onClick={() => setReviewing(null)}
-                >
-                  Voltar
-                </button>
-              </div>
-            ) : (
+        <>
+          <SettingCard
+            title="Certidões InfoSimples"
+            help="A tarifa total é própria desta conta e vale 72 horas. Sem PDF real e débito comprovados, a oferta continua indisponível."
+            actions={
               <button
-                type="submit"
-                className="btn btn-secondary btn-md"
-                disabled={!active || busy}
+                type="button"
+                className="btn btn-primary btn-md"
+                aria-haspopup="dialog"
+                disabled={!active}
+                onClick={() => setCertOpen(true)}
               >
-                Revisar tarifa
+                Nova tarifa
+              </button>
+            }
+          >
+            {loading && !certificates.length && (
+              <p role="status">Carregando tarifas…</p>
+            )}
+            <ul className="sup-tariff-list">
+              {certificates.map((item) => (
+                <li key={item.id}>
+                  <strong>
+                    {kinds.find((kind) => kind.value === item.code)?.label ??
+                      item.code}
+                    {item.state ? ` · ${item.state}` : ""}
+                  </strong>
+                  <span>
+                    {money(item.unit_cost_cents)} · até{" "}
+                    {dateTime.format(new Date(item.valid_until))}
+                  </span>
+                  <small>
+                    {item.sample_document_sha256 && item.sample_charge_sha256
+                      ? "Comprovantes registrados"
+                      : "Sem comprovantes de entrega"}
+                  </small>
+                </li>
+              ))}
+            </ul>
+            {certificateCursor && (
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                disabled={loading}
+                onClick={() => void load(certificateCursor, "certificate")}
+              >
+                Mais versões
               </button>
             )}
-          </form>
-        </section>
+          </SettingCard>
+          <FormModal
+            open={certOpen}
+            title="Nova tarifa de certidão"
+            onClose={() => !busy && setCertOpen(false)}
+          >
+            {error && (
+              <p className="alert alert-danger" role="alert">
+                {error}
+              </p>
+            )}
+
+            <form
+              className="sup-form-grid"
+              onSubmit={reviewCertificate}
+              noValidate
+            >
+              <label>
+                Tipo
+                <select
+                  className="input"
+                  value={kind}
+                  disabled={!active || busy}
+                  onChange={(event) => {
+                    setKind(event.target.value as RegistryCertificateKind);
+                    setState("");
+                    setReviewing(null);
+                  }}
+                >
+                  {kinds.map((item) => (
+                    <option key={item.value} value={item.value}>
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {kind === "estadual" && (
+                <label>
+                  UF
+                  <input
+                    className="input"
+                    value={state}
+                    maxLength={2}
+                    disabled={!active || busy}
+                    onChange={(event) => setState(event.target.value)}
+                  />
+                </label>
+              )}
+              <label>
+                Custo total por chamada (R$)
+                <input
+                  className="input"
+                  inputMode="decimal"
+                  value={cost}
+                  disabled={!active || busy}
+                  onChange={(event) => setCost(event.target.value)}
+                />
+              </label>
+              <label>
+                SHA-256 da tabela de preços
+                <input
+                  className="input"
+                  value={evidence}
+                  maxLength={64}
+                  disabled={!active || busy}
+                  onChange={(event) => setEvidence(event.target.value)}
+                />
+              </label>
+              <details>
+                <summary>Comprovantes de entrega (opcional)</summary>
+                <p className="form-hint">
+                  Informe os hashes distintos do PDF e do débito real após
+                  conferir ambos.
+                </p>
+                <label>
+                  SHA-256 do PDF
+                  <input
+                    className="input"
+                    value={sampleDocument}
+                    maxLength={64}
+                    disabled={!active || busy}
+                    onChange={(event) => setSampleDocument(event.target.value)}
+                  />
+                </label>
+                <label>
+                  SHA-256 do débito
+                  <input
+                    className="input"
+                    value={sampleCharge}
+                    maxLength={64}
+                    disabled={!active || busy}
+                    onChange={(event) => setSampleCharge(event.target.value)}
+                  />
+                </label>
+                <label className="sup-tariff-check">
+                  <input
+                    type="checkbox"
+                    checked={proofConfirmed}
+                    disabled={!active || busy}
+                    onChange={(event) =>
+                      setProofConfirmed(event.target.checked)
+                    }
+                  />{" "}
+                  Conferi visualmente o PDF e o débito
+                </label>
+              </details>
+              <label>
+                Motivo
+                <textarea
+                  className="input"
+                  rows={3}
+                  maxLength={500}
+                  value={certificateReason}
+                  disabled={!active || busy}
+                  onChange={(event) => setCertificateReason(event.target.value)}
+                />
+              </label>
+              {reviewing === "certificate" ? (
+                <div className="sup-tariff-review">
+                  <strong>
+                    Publicar {money(parseMoney(cost))} para {kind}?
+                  </strong>
+                  <button
+                    type="button"
+                    className="btn btn-primary btn-md"
+                    disabled={busy}
+                    onClick={() => void publishCertificate()}
+                  >
+                    Confirmar
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-sm"
+                    disabled={busy}
+                    onClick={() => setReviewing(null)}
+                  >
+                    Voltar
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="submit"
+                  className="btn btn-secondary btn-md"
+                  disabled={!active || busy}
+                >
+                  Revisar tarifa
+                </button>
+              )}
+            </form>
+          </FormModal>
+        </>
       )}
-      <section
-        className="detail-panel-section"
-        aria-labelledby="sup-arisp-title"
+      <SettingCard
+        title="API de certidão RI Digital"
+        help="Pedido e até três downloads pela InfoSimples, ligados à conta RI Digital. O custo da compra no portal é cotado à parte."
+        actions={
+          <button
+            type="button"
+            className="btn btn-primary btn-md"
+            aria-haspopup="dialog"
+            disabled={!active}
+            onClick={() => setArispOpen(true)}
+          >
+            Nova tarifa
+          </button>
+        }
       >
-        <h3 id="sup-arisp-title" className="detail-panel-section-title">
-          API de certidão RI Digital
-        </h3>
-        <p className="form-hint">
-          Pedido e até três downloads pela InfoSimples, vinculados à conta RI
-          Digital. O custo da compra no portal é cotado separadamente.
-        </p>
         {loading && !arisp.length && <p role="status">Carregando tarifas…</p>}
         <ul className="sup-tariff-list">
           {arisp.map((item) => (
@@ -502,8 +530,19 @@ export function RegistryOptionalTariffs({
             Mais versões
           </button>
         )}
-        <form className="sup-tariff-form" onSubmit={reviewArisp} noValidate>
-          <h4>Registrar nova tarifa</h4>
+      </SettingCard>
+      <FormModal
+        open={arispOpen}
+        title="Nova tarifa da API de certidão"
+        onClose={() => !busy && setArispOpen(false)}
+      >
+        {error && (
+          <p className="alert alert-danger" role="alert">
+            {error}
+          </p>
+        )}
+
+        <form className="sup-form-grid" onSubmit={reviewArisp} noValidate>
           <label>
             Conta {otherProvider === "onr" ? "RI Digital" : "InfoSimples"}{" "}
             vinculada
@@ -633,7 +672,7 @@ export function RegistryOptionalTariffs({
             </button>
           )}
         </form>
-      </section>
+      </FormModal>
     </div>
   );
 }

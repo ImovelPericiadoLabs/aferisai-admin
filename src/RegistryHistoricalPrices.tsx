@@ -1,3 +1,4 @@
+import { SettingCard } from "./SupplierUi";
 import { useState, type FormEvent } from "react";
 import {
   ApiError,
@@ -97,14 +98,10 @@ export function RegistryHistoricalPrices({
   }
 
   return (
-    <section className="sup-historical" aria-labelledby="sup-historical-title">
-      <h3 id="sup-historical-title">Prévia por cartório</h3>
-      <p className="form-hint">
-        Simulação para planejamento com custos importados do histórico. Não é
-        cotação, não confirma tarifa atual e não gera PIX. A venda consulta a
-        tarifa real do fornecedor. A visualização só calcula preço com tarifa
-        vigente da API InfoSimples vinculada.
-      </p>
+    <SettingCard
+      title="Prévia por cartório"
+      help="Simulação de planejamento com custos importados do histórico. Não é cotação, não confirma tarifa atual e não gera PIX: a venda consulta a tarifa real do fornecedor. A visualização só calcula preço com tarifa vigente da API InfoSimples vinculada."
+    >
       <form className="sup-historical-filters" onSubmit={submit}>
         <label>
           UF
@@ -168,7 +165,7 @@ export function RegistryHistoricalPrices({
               <thead>
                 <tr>
                   <th>Cartório</th>
-                  <th>Último custo observado</th>
+                  <th>Último custo</th>
                   <th>Preço indicativo</th>
                 </tr>
               </thead>
@@ -217,6 +214,6 @@ export function RegistryHistoricalPrices({
           )}
         </>
       )}
-    </section>
+    </SettingCard>
   );
 }

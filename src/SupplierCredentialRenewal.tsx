@@ -1,10 +1,12 @@
 import { useState, type FormEvent } from "react";
+import { FormModal, Metrics, SettingCard } from "./SupplierUi";
 import {
   ApiError,
   createRegistrySupplierAccount,
   type RegistrySupplierAccount,
 } from "./api";
 import {
+  shortDigest,
   supplierBody,
   validateSupplierForm,
   type SupplierForm,
@@ -35,6 +37,7 @@ export function SupplierCredentialRenewal({
     portalDigest: "",
     reason: "",
   });
+  const [open, setOpen] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -56,6 +59,7 @@ export function SupplierCredentialRenewal({
         "Nova credencial criada em rascunho. Confira antes de trocar a conta ativa.",
         "success",
       );
+      setOpen(false);
       onCreated();
     } catch (cause) {
       setForm((current) => ({ ...current, password: "", token: "" }));
@@ -71,156 +75,207 @@ export function SupplierCredentialRenewal({
     }
   }
 
+  const dateTime = new Intl.DateTimeFormat("pt-BR", {
+    dateStyle: "short",
+    timeStyle: "short",
+  });
+
   return (
-    <section
-      className="detail-panel-section"
-      aria-labelledby="supplier-credentials-title"
-    >
-      <h3
-        className="detail-panel-section-title"
-        id="supplier-credentials-title"
-      >
-        Atualizar credenciais
-      </h3>
-      <p className="form-hint">
-        A credencial antiga permanece vinculada aos pedidos e custos anteriores.
-        A nova nasce em rascunho; após conferir, suspenda a conta ativa e ative
-        a nova na lista. Confira e publique as tarifas para a nova conta antes
-        de oferecer cotações.{" "}
-        {account.provider === "onr" &&
-          "Configure novamente o proxy RI Digital na nova conta, se necessário. "}
-        Senha e token nunca aparecem de novo.
-      </p>
-      {error && (
-        <div className="alert alert-danger" role="alert">
-          {error}
-        </div>
-      )}
-      <form
-        className="sup-renew-form"
-        onSubmit={(event) => void submit(event)}
-        autoComplete="off"
-        noValidate
-      >
-        <label>
-          Nome da nova credencial
-          <input
-            className="input"
-            value={form.label}
-            maxLength={120}
-            disabled={busy}
-            onChange={(event) => set("label", event.target.value)}
-          />
-          {submitted && check.errors.label && (
-            <small role="alert" className="sup-error">
-              {check.errors.label}
-            </small>
-          )}
-        </label>
-        <label>
-          Login do portal
-          <input
-            className="input"
-            type="email"
-            value={form.email}
-            maxLength={254}
-            autoComplete="off"
-            disabled={busy}
-            onChange={(event) => set("email", event.target.value)}
-          />
-          {submitted && check.errors.email && (
-            <small role="alert" className="sup-error">
-              {check.errors.email}
-            </small>
-          )}
-        </label>
-        <label>
-          Nova senha
-          <input
-            className="input"
-            type="password"
-            value={form.password}
-            autoComplete="new-password"
-            disabled={busy}
-            onChange={(event) => set("password", event.target.value)}
-          />
-          {submitted && check.errors.password && (
-            <small role="alert" className="sup-error">
-              {check.errors.password}
-            </small>
-          )}
-        </label>
-        {account.provider === "infosimples" && (
+    <>
+      <SettingCard
+        title="Credencial em uso"
+        help={
           <>
-            <label>
-              Novo token da InfoSimples
-              <input
-                className="input"
-                type="password"
-                value={form.token}
-                autoComplete="off"
-                disabled={busy}
-                onChange={(event) => set("token", event.target.value)}
-              />
-              {submitted && check.errors.token && (
-                <small role="alert" className="sup-error">
-                  {check.errors.token}
-                </small>
-              )}
-            </label>
-            <label>
-              Conta RI Digital vinculada
-              <select
-                className="input"
-                value={form.portalDigest}
-                disabled={busy}
-                onChange={(event) => set("portalDigest", event.target.value)}
-              >
-                <option value="">Selecione a conta</option>
-                {accounts
-                  .filter(
-                    (item) =>
-                      item.provider === "onr" && item.status === "active",
-                  )
-                  .map((item) => (
-                    <option key={item.id} value={item.account_binding_sha256}>
-                      {item.label}
-                    </option>
-                  ))}
-              </select>
-              {submitted && check.errors.portalDigest && (
-                <small role="alert" className="sup-error">
-                  {check.errors.portalDigest}
-                </small>
-              )}
-            </label>
+            A credencial antiga continua ligada aos pedidos e custos já feitos.
+            A nova nasce em rascunho: depois de conferir, suspenda a conta ativa
+            e ative a nova na lista. Publique as tarifas da nova conta antes de
+            oferecer cotações.
+            {account.provider === "onr" &&
+              " Configure de novo o proxy RI Digital na nova conta, se precisar."}{" "}
+            Senha e token nunca aparecem de novo.
           </>
+        }
+        actions={
+          <button
+            type="button"
+            className="btn btn-secondary btn-md"
+            aria-haspopup="dialog"
+            onClick={() => setOpen(true)}
+          >
+            Trocar credencial
+          </button>
+        }
+      >
+        <Metrics
+          items={[
+            { label: "Identificação", value: account.credential_hint },
+            {
+              label: "Vínculo",
+              value: (
+                <code title={account.account_binding_sha256}>
+                  {shortDigest(account.account_binding_sha256)}
+                </code>
+              ),
+            },
+            { label: "Versão", value: account.version },
+            {
+              label: "Atualizada",
+              value: dateTime.format(new Date(account.updated_at)),
+            },
+          ]}
+        />
+      </SettingCard>
+
+      <FormModal
+        open={open}
+        title="Trocar credencial"
+        onClose={() => !busy && setOpen(false)}
+        footer={
+          <>
+            <button
+              type="button"
+              className="btn btn-ghost btn-md"
+              disabled={busy}
+              onClick={() => setOpen(false)}
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              form="sup-renew-form"
+              className="btn btn-primary btn-md"
+              disabled={busy}
+            >
+              {busy ? "Salvando…" : "Cadastrar em rascunho"}
+            </button>
+          </>
+        }
+      >
+        {error && (
+          <div className="alert alert-danger" role="alert">
+            {error}
+          </div>
         )}
-        <label>
-          Motivo da troca
-          <textarea
-            className="input"
-            rows={3}
-            minLength={10}
-            maxLength={500}
-            value={form.reason}
-            disabled={busy}
-            onChange={(event) => set("reason", event.target.value)}
-          />
-          {submitted && check.errors.reason && (
-            <small role="alert" className="sup-error">
-              {check.errors.reason}
-            </small>
-          )}
-        </label>
-        <button
-          type="submit"
-          className="btn btn-primary btn-md"
-          disabled={busy}
+        <form
+          id="sup-renew-form"
+          className="sup-form-grid"
+          onSubmit={(event) => void submit(event)}
+          autoComplete="off"
+          noValidate
         >
-          {busy ? "Salvando…" : "Cadastrar nova credencial"}
-        </button>
-      </form>
-    </section>
+          <label>
+            Nome da nova credencial
+            <input
+              className="input"
+              value={form.label}
+              maxLength={120}
+              disabled={busy}
+              onChange={(event) => set("label", event.target.value)}
+            />
+            {submitted && check.errors.label && (
+              <small role="alert" className="sup-error">
+                {check.errors.label}
+              </small>
+            )}
+          </label>
+          <label>
+            Login do portal
+            <input
+              className="input"
+              type="email"
+              value={form.email}
+              maxLength={254}
+              autoComplete="off"
+              disabled={busy}
+              onChange={(event) => set("email", event.target.value)}
+            />
+            {submitted && check.errors.email && (
+              <small role="alert" className="sup-error">
+                {check.errors.email}
+              </small>
+            )}
+          </label>
+          <label>
+            Nova senha
+            <input
+              className="input"
+              type="password"
+              value={form.password}
+              autoComplete="new-password"
+              disabled={busy}
+              onChange={(event) => set("password", event.target.value)}
+            />
+            {submitted && check.errors.password && (
+              <small role="alert" className="sup-error">
+                {check.errors.password}
+              </small>
+            )}
+          </label>
+          {account.provider === "infosimples" && (
+            <>
+              <label>
+                Novo token da InfoSimples
+                <input
+                  className="input"
+                  type="password"
+                  value={form.token}
+                  autoComplete="off"
+                  disabled={busy}
+                  onChange={(event) => set("token", event.target.value)}
+                />
+                {submitted && check.errors.token && (
+                  <small role="alert" className="sup-error">
+                    {check.errors.token}
+                  </small>
+                )}
+              </label>
+              <label>
+                Conta RI Digital vinculada
+                <select
+                  className="input"
+                  value={form.portalDigest}
+                  disabled={busy}
+                  onChange={(event) => set("portalDigest", event.target.value)}
+                >
+                  <option value="">Selecione a conta</option>
+                  {accounts
+                    .filter(
+                      (item) =>
+                        item.provider === "onr" && item.status === "active",
+                    )
+                    .map((item) => (
+                      <option key={item.id} value={item.account_binding_sha256}>
+                        {item.label}
+                      </option>
+                    ))}
+                </select>
+                {submitted && check.errors.portalDigest && (
+                  <small role="alert" className="sup-error">
+                    {check.errors.portalDigest}
+                  </small>
+                )}
+              </label>
+            </>
+          )}
+          <label>
+            Motivo da troca
+            <textarea
+              className="input"
+              rows={3}
+              minLength={10}
+              maxLength={500}
+              value={form.reason}
+              disabled={busy}
+              onChange={(event) => set("reason", event.target.value)}
+            />
+            {submitted && check.errors.reason && (
+              <small role="alert" className="sup-error">
+                {check.errors.reason}
+              </small>
+            )}
+          </label>
+        </form>
+      </FormModal>
+    </>
   );
 }

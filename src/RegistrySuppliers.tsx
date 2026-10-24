@@ -17,7 +17,9 @@ import {
   type RegistrySupplierKind,
 } from "./api";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { OpsTable, type OpsColumn } from "./OpsTable";
 import { SupplierAccountEditor } from "./SupplierAccountEditor";
+import "./ops.css";
 import {
   activationBlock,
   shortDigest,
@@ -220,6 +222,50 @@ export function RegistrySuppliers({
     }
   }
 
+  const columns: OpsColumn<RegistrySupplierAccount>[] = [
+    {
+      id: "account",
+      label: "Conta",
+      locked: true,
+      render: (item) => (
+        <span className="ops-id">
+          <strong className="sup-clip ops-name">{item.label}</strong>
+          <small>
+            {supplierLabel(item.provider)} · versão {item.version}
+          </small>
+        </span>
+      ),
+      text: (item) => item.label,
+    },
+    {
+      id: "credential",
+      label: "Credencial",
+      hideBelow: "tablet",
+      render: (item) => (
+        <span className="sup-clip">{item.credential_hint}</span>
+      ),
+      text: (item) => item.credential_hint,
+    },
+    {
+      id: "status",
+      label: "Estado",
+      render: (item) => {
+        const status = supplierStatusView(item.status);
+        return (
+          <span className={`badge badge-${status.tone}`}>{status.label}</span>
+        );
+      },
+      text: (item) => supplierStatusView(item.status).label,
+    },
+    {
+      id: "updated",
+      label: "Atualizada",
+      align: "end",
+      render: (item) => dateTime.format(new Date(item.updated_at)),
+      text: (item) => item.updated_at,
+    },
+  ];
+
   const block =
     pending?.action === "activate"
       ? activationBlock(pending.account, items)
@@ -233,8 +279,8 @@ export function RegistrySuppliers({
             Fornecedores registrais
           </h1>
           <p className="page-subtitle">
-            Contas RI Digital e InfoSimples usadas nos pedidos registrais. Cada
-            conta nasce em rascunho e só uma por fornecedor fica ativa.
+            Contas RI Digital e InfoSimples dos pedidos registrais. Clique numa
+            conta para configurar.
           </p>
         </div>
         <button
@@ -249,11 +295,9 @@ export function RegistrySuppliers({
       </header>
 
       <div className="alert" role="note">
-        O login, a senha e o token são cifrados ao salvar e nunca aparecem de
-        novo. Cadastrar ou ativar uma conta{" "}
-        <strong>não valida o login no fornecedor</strong>, não comprova tarifa
-        ou saldo e não autoriza compra: a cobrança registral continua dependendo
-        dos demais controles.
+        Segredos são cifrados e não voltam a aparecer. Cadastrar ou ativar uma
+        conta <strong>não valida o login no fornecedor</strong> nem autoriza
+        compra.
       </div>
 
       <div
@@ -329,103 +373,35 @@ export function RegistrySuppliers({
               {error}
             </div>
           )}
-          <div className="data-table-wrap">
-            <table
-              className="data-table prov-table"
-              aria-label="Contas de fornecedores registrais"
-            >
-              <thead>
-                <tr>
-                  <th scope="col">Conta</th>
-                  <th scope="col">Credencial</th>
-                  <th scope="col">Vínculo</th>
-                  <th scope="col">Estado</th>
-                  <th scope="col">Atualizada</th>
-                  <th scope="col">
-                    <span className="sr-only">Ações</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {visible.map((item) => {
-                  const status = supplierStatusView(item.status);
-                  return (
-                    <tr key={item.id}>
-                      <td data-label="Conta">
-                        <strong>{item.label}</strong>
-                        <small className="sup-sub">
-                          {supplierLabel(item.provider)} · versão {item.version}
-                        </small>
-                      </td>
-                      <td data-label="Credencial">{item.credential_hint}</td>
-                      <td data-label="Vínculo">
-                        <code title={item.account_binding_sha256}>
-                          {shortDigest(item.account_binding_sha256)}
-                        </code>
-                      </td>
-                      <td data-label="Estado">
-                        <span className={`badge badge-${status.tone}`}>
-                          {status.label}
-                        </span>
-                      </td>
-                      <td data-label="Atualizada">
-                        {dateTime.format(new Date(item.updated_at))}
-                      </td>
-                      <td data-label="Ações">
-                        <div className="sup-actions">
-                          {
-                            <button
-                              type="button"
-                              className="btn btn-secondary btn-sm"
-                              aria-haspopup="dialog"
-                              onClick={(event) => {
-                                editTrigger.current = event.currentTarget;
-                                setEditing(item);
-                              }}
-                            >
-                              Editar
-                            </button>
-                          }
-                          {item.status !== "active" && (
-                            <button
-                              type="button"
-                              className="btn btn-secondary btn-sm"
-                              aria-haspopup="dialog"
-                              data-supplier-id={item.id}
-                              onClick={() =>
-                                setPending({
-                                  action: "activate",
-                                  account: item,
-                                })
-                              }
-                            >
-                              Ativar
-                            </button>
-                          )}
-                          {item.status === "active" && (
-                            <button
-                              type="button"
-                              className="btn btn-ghost-danger btn-sm"
-                              aria-haspopup="dialog"
-                              data-supplier-id={item.id}
-                              onClick={() =>
-                                setPending({
-                                  action: "suspend",
-                                  account: item,
-                                })
-                              }
-                            >
-                              Suspender
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          <OpsTable
+            label="Contas de fornecedores registrais"
+            columns={columns}
+            rows={visible}
+            rowKey={(item) => item.id}
+            hidden={[]}
+            density="comfortable"
+            selectedKey={editing?.id ?? null}
+            onOpen={(item, element) => {
+              editTrigger.current = element;
+              setEditing(item);
+            }}
+            card={(item) => {
+              const status = supplierStatusView(item.status);
+              return (
+                <>
+                  <span className="ops-card-top">
+                    <strong className="sup-clip ops-name">{item.label}</strong>
+                    <span className={`badge badge-${status.tone}`}>
+                      {status.label}
+                    </span>
+                  </span>
+                  <span className="ops-card-meta sup-clip">
+                    {supplierLabel(item.provider)} · {item.credential_hint}
+                  </span>
+                </>
+              );
+            }}
+          />
         </>
       )}
 
@@ -444,7 +420,12 @@ export function RegistrySuppliers({
       )}
 
       <SupplierAccountEditor
-        account={editing}
+        account={
+          editing
+            ? (items.find((item) => item.id === editing.id) ?? editing)
+            : null
+        }
+        onStatusAction={(action, account) => setPending({ action, account })}
         accounts={items}
         csrf={csrf}
         returnFocus={() => editTrigger.current}

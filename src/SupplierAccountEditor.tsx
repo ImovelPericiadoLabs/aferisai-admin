@@ -23,6 +23,7 @@ import { RegistryHistoricalPrices } from "./RegistryHistoricalPrices";
 import { RegistryCommercialTerms } from "./RegistryCommercialTerms";
 import { RegistryOptionalTariffs } from "./RegistryOptionalTariffs";
 import { SupplierCredentialRenewal } from "./SupplierCredentialRenewal";
+import { FormModal, Metrics, SettingCard } from "./SupplierUi";
 import { supplierLabel, supplierStatusView } from "./supplier-model";
 import type { ToastKind } from "./useToast";
 import { useDialogFocus } from "./useDialogFocus";
@@ -68,6 +69,7 @@ export function SupplierAccountEditor({
   onUnauthorized,
   onToast,
   onAccountsChanged,
+  onStatusAction,
 }: {
   account: RegistrySupplierAccount | null;
   accounts: RegistrySupplierAccount[];
@@ -77,6 +79,10 @@ export function SupplierAccountEditor({
   onUnauthorized: () => void;
   onToast: (message: string, kind: ToastKind) => void;
   onAccountsChanged: () => void;
+  onStatusAction: (
+    action: "activate" | "suspend",
+    account: RegistrySupplierAccount,
+  ) => void;
 }) {
   const open = account !== null;
   const panelRef = useRef<HTMLElement>(null);
@@ -90,6 +96,7 @@ export function SupplierAccountEditor({
   const [error, setError] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const [connectionOpen, setConnectionOpen] = useState(false);
   const [tab, setTab] = useState<
     "credentials" | "connection" | "tariffs" | "preview" | "commercial"
   >("credentials");
@@ -141,6 +148,36 @@ export function SupplierAccountEditor({
 
   useDialogFocus(open, panelRef, () => !confirming && close(), { returnFocus });
 
+  const sections = account
+    ? ([
+        { id: "credentials", label: "Credenciais", hint: "Login e vínculo" },
+        ...(account.provider === "onr"
+          ? [
+              {
+                id: "connection",
+                label: "Conexão",
+                hint: "Origem das consultas",
+              },
+            ]
+          : []),
+        { id: "tariffs", label: "Tarifas", hint: "Custo da API" },
+        ...(account.provider === "onr"
+          ? [
+              {
+                id: "commercial",
+                label: "Preço e PIX",
+                hint: "Margens e impostos",
+              },
+              {
+                id: "preview",
+                label: "Prévia de preços",
+                hint: "Por cartório",
+              },
+            ]
+          : []),
+      ] as { id: typeof tab; label: string; hint: string }[])
+    : [];
+
   const keyConfigured = endpoint?.proxy_key_configured ?? false;
   const view = endpoint ? endpointView(endpoint) : null;
   const check = validateEndpointForm({
@@ -182,6 +219,7 @@ export function SupplierAccountEditor({
           );
       apply(updated);
       setConfirming(false);
+      setConnectionOpen(false);
       setError("");
       onToast(
         restoring
@@ -203,6 +241,13 @@ export function SupplierAccountEditor({
   }
 
   const status = account ? supplierStatusView(account.status) : null;
+  const initials = account
+    ? account.label
+        .split(/\s+/)
+        .slice(0, 2)
+        .map((word) => word[0]?.toUpperCase() ?? "")
+        .join("")
+    : "";
 
   return (
     <>
@@ -211,163 +256,134 @@ export function SupplierAccountEditor({
           {open && <div className="detail-panel-overlay" onClick={close} />}
           <aside
             ref={panelRef}
-            className={`detail-panel detail-panel-wide${open ? " open" : ""}`}
+            className={`detail-panel sup-ed-panel${open ? " open" : ""}`}
             role="dialog"
             aria-modal="true"
             aria-labelledby="supplier-editor-title"
             aria-hidden={!open}
           >
             {account && status && (
-              <div className="sup-form">
-                <div className="detail-panel-header">
-                  <div>
-                    <h2 className="prov-title" id="supplier-editor-title">
-                      Editar {account.label}
+              <div className="sup-ed-shell">
+                <header className="sup-ed-header">
+                  <span className="sup-ed-avatar" aria-hidden="true">
+                    {initials}
+                  </span>
+                  <div className="sup-ed-heading">
+                    <h2 id="supplier-editor-title" className="sup-clip">
+                      {account.label}
                     </h2>
-                    <p className="prov-sub">
+                    <p className="sup-clip">
                       {supplierLabel(account.provider)} · versão{" "}
                       {account.version} · atualizada em{" "}
                       {dateTime.format(new Date(account.updated_at))}
                     </p>
                   </div>
-                  <div className="sup-ed-head-side">
-                    <span className={`badge badge-${status.tone}`}>
-                      {status.label}
-                    </span>
+                  <span className={`badge badge-${status.tone}`}>
+                    {status.label}
+                  </span>
+                  {account.status !== "active" ? (
                     <button
-                      className="btn btn-ghost btn-sm"
                       type="button"
-                      aria-label="Fechar"
-                      disabled={busy}
-                      onClick={close}
+                      className="btn btn-primary btn-md"
+                      aria-haspopup="dialog"
+                      onClick={() => onStatusAction("activate", account)}
                     >
-                      ✕
+                      Ativar
                     </button>
-                  </div>
-                </div>
-
-                <nav
-                  className="sup-ed-tabs"
-                  aria-label="Configurações da conta"
-                >
-                  {(
-                    [
-                      "credentials",
-                      ...(account.provider === "onr" ? ["connection"] : []),
-                      "tariffs",
-                      ...(account.provider === "onr" ? ["commercial"] : []),
-                      ...(account.provider === "onr" ? ["preview"] : []),
-                    ] as const
-                  ).map((item) => (
+                  ) : (
                     <button
-                      key={item}
                       type="button"
-                      className="sup-ed-tab"
-                      aria-current={tab === item ? "page" : undefined}
-                      onClick={() => setTab(item as typeof tab)}
+                      className="btn btn-ghost-danger btn-md"
+                      aria-haspopup="dialog"
+                      onClick={() => onStatusAction("suspend", account)}
                     >
-                      {item === "credentials"
-                        ? "Credenciais"
-                        : item === "connection"
-                          ? "Conexão"
-                          : item === "preview"
-                            ? "Prévia de preços"
-                            : item === "commercial"
-                              ? "Preço e PIX"
-                              : "Tarifas"}
+                      Suspender
                     </button>
-                  ))}
-                </nav>
-
-                {tab === "credentials" && (
-                  <div className="detail-panel-body">
-                    <SupplierCredentialRenewal
-                      key={account.id}
-                      account={account}
-                      accounts={accounts}
-                      csrf={csrf}
-                      onCreated={onAccountsChanged}
-                      onUnauthorized={onUnauthorized}
-                      onToast={onToast}
-                    />
-                  </div>
-                )}
-
-                {tab === "tariffs" && (
-                  <div className="detail-panel-body">
-                    <RegistryVisualizationTariffs
-                      key={account.id}
-                      account={account}
-                      accounts={accounts}
-                      csrf={csrf}
-                      onUnauthorized={onUnauthorized}
-                      onToast={onToast}
-                    />
-                    <RegistryOptionalTariffs
-                      key={`${account.id}-optional`}
-                      account={account}
-                      accounts={accounts}
-                      csrf={csrf}
-                      onUnauthorized={onUnauthorized}
-                      onToast={onToast}
-                    />
-                  </div>
-                )}
-
-                {tab === "preview" && account.provider === "onr" && (
-                  <div className="detail-panel-body">
-                    <RegistryHistoricalPrices
-                      key={account.id}
-                      accountId={account.id}
-                      onUnauthorized={onUnauthorized}
-                    />
-                  </div>
-                )}
-
-                {tab === "commercial" && account.provider === "onr" && (
-                  <div className="detail-panel-body">
-                    <RegistryCommercialTerms
-                      key={account.id}
-                      accountId={account.id}
-                      active={account.status === "active"}
-                      csrf={csrf}
-                      onUnauthorized={onUnauthorized}
-                      onToast={onToast}
-                    />
-                  </div>
-                )}
-
-                {tab === "connection" && account.provider === "onr" && (
-                  <form
-                    noValidate
-                    className="sup-form"
-                    autoComplete="off"
-                    onSubmit={(event) => {
-                      event.preventDefault();
-                      review();
-                    }}
+                  )}
+                  <button
+                    className="btn btn-ghost btn-sm"
+                    type="button"
+                    aria-label="Fechar"
+                    disabled={busy}
+                    onClick={close}
                   >
-                    <div className="detail-panel-body">
-                      {error && (
-                        <div className="alert alert-danger" role="alert">
-                          {error}
-                        </div>
-                      )}
+                    ✕
+                  </button>
+                </header>
 
-                      <section className="detail-panel-section">
-                        <div className="sup-ed-section-head">
-                          <h3 className="detail-panel-section-title">
-                            Conexão em uso
-                          </h3>
-                          <button
-                            type="button"
-                            className="btn btn-ghost btn-sm"
-                            disabled={loading || busy}
-                            onClick={() => void load()}
-                          >
-                            {loading ? "Atualizando…" : "Atualizar"}
-                          </button>
-                        </div>
+                <div className="sup-ed-layout">
+                  <nav
+                    className="sup-ed-nav"
+                    aria-label="Configurações da conta"
+                  >
+                    {sections.map((item) => (
+                      <button
+                        key={item.id}
+                        type="button"
+                        className="sup-ed-nav-item"
+                        aria-current={tab === item.id ? "page" : undefined}
+                        onClick={() => setTab(item.id)}
+                      >
+                        <span>{item.label}</span>
+                        <small>{item.hint}</small>
+                      </button>
+                    ))}
+                  </nav>
+
+                  <div className="sup-ed-content">
+                    {tab === "credentials" && (
+                      <SupplierCredentialRenewal
+                        key={account.id}
+                        account={account}
+                        accounts={accounts}
+                        csrf={csrf}
+                        onCreated={onAccountsChanged}
+                        onUnauthorized={onUnauthorized}
+                        onToast={onToast}
+                      />
+                    )}
+
+                    {tab === "connection" && account.provider === "onr" && (
+                      <SettingCard
+                        title="Conexão com o portal"
+                        help="Define por onde as consultas desta conta chegam ao RI Digital. A troca vale para execuções iniciadas depois de salvar; compras com resultado incerto continuam indo para conciliação, sem reenvio automático."
+                        badge={
+                          view && (
+                            <span className={`badge badge-${view.tone}`}>
+                              {view.title}
+                            </span>
+                          )
+                        }
+                        actions={
+                          <>
+                            <button
+                              type="button"
+                              className="btn btn-ghost btn-md"
+                              disabled={loading || busy}
+                              onClick={() => void load()}
+                            >
+                              {loading ? "Atualizando…" : "Atualizar"}
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-primary btn-md"
+                              aria-haspopup="dialog"
+                              disabled={!endpoint}
+                              onClick={() => {
+                                setSubmitted(false);
+                                setConnectionOpen(true);
+                              }}
+                            >
+                              Alterar conexão
+                            </button>
+                          </>
+                        }
+                      >
+                        {error && !connectionOpen && (
+                          <div className="alert alert-danger" role="alert">
+                            {error}
+                          </div>
+                        )}
                         {loading && !endpoint ? (
                           <div
                             className="sup-ed-skeleton"
@@ -378,211 +394,229 @@ export function SupplierAccountEditor({
                             <span className="skeleton" />
                           </div>
                         ) : endpoint && view ? (
-                          <dl className="sup-ed-facts">
-                            <div>
-                              <dt>Origem</dt>
-                              <dd>
-                                <span className={`badge badge-${view.tone}`}>
-                                  {view.title}
-                                </span>
-                              </dd>
-                            </div>
-                            <div>
-                              <dt>Chave do proxy</dt>
-                              <dd>{view.key}</dd>
-                            </div>
-                            <div className="sup-ed-wide">
-                              <dt>Endereço</dt>
-                              <dd>
-                                <code>{endpoint.origin}</code>
-                              </dd>
-                            </div>
-                          </dl>
+                          <>
+                            <Metrics
+                              items={[
+                                { label: "Origem", value: view.title },
+                                { label: "Chave do proxy", value: view.key },
+                                { label: "Versão", value: endpoint.version },
+                              ]}
+                            />
+                            <p className="sup-muted sup-clip">
+                              Endereço <code>{endpoint.origin}</code>
+                            </p>
+                          </>
                         ) : null}
-                      </section>
+                      </SettingCard>
+                    )}
 
-                      {endpoint && (
-                        <section className="detail-panel-section">
-                          <h3 className="detail-panel-section-title">
-                            Origem das consultas
-                          </h3>
-                          <RolePicker<Mode>
-                            label="Usar"
-                            value={mode}
-                            options={MODES}
-                            disabled={busy}
-                            onChange={(next) => {
-                              setMode(next);
-                              setSubmitted(false);
-                            }}
-                          />
+                    {tab === "tariffs" && (
+                      <>
+                        <RegistryVisualizationTariffs
+                          key={account.id}
+                          account={account}
+                          accounts={accounts}
+                          csrf={csrf}
+                          onUnauthorized={onUnauthorized}
+                          onToast={onToast}
+                        />
+                        <RegistryOptionalTariffs
+                          key={`${account.id}-optional`}
+                          account={account}
+                          accounts={accounts}
+                          csrf={csrf}
+                          onUnauthorized={onUnauthorized}
+                          onToast={onToast}
+                        />
+                      </>
+                    )}
 
-                          {mode === "proxy" ? (
-                            <div className="sup-ed-fields">
-                              <div className="form-field">
-                                <label
-                                  className="form-field-label"
-                                  htmlFor="onr-origin"
-                                >
-                                  URL raiz do Worker
-                                </label>
-                                <input
-                                  id="onr-origin"
-                                  className="input"
-                                  type="url"
-                                  inputMode="url"
-                                  autoComplete="off"
-                                  spellCheck={false}
-                                  maxLength={255}
-                                  placeholder={WORKER_EXAMPLE}
-                                  value={origin}
-                                  disabled={busy}
-                                  aria-invalid={
-                                    submitted && check.errors.origin
-                                      ? true
-                                      : undefined
-                                  }
-                                  onChange={(event) =>
-                                    setOrigin(event.target.value)
-                                  }
-                                />
-                                {submitted && check.errors.origin ? (
-                                  <span
-                                    className="form-hint sup-error"
-                                    role="alert"
-                                  >
-                                    {check.errors.origin}
-                                  </span>
-                                ) : (
-                                  <span className="form-hint">
-                                    HTTPS em um Worker
-                                    sec-devchamps.workers.dev, sem caminho nem
-                                    parâmetro.
-                                  </span>
-                                )}
-                              </div>
+                    {tab === "commercial" && account.provider === "onr" && (
+                      <RegistryCommercialTerms
+                        key={account.id}
+                        accountId={account.id}
+                        active={account.status === "active"}
+                        csrf={csrf}
+                        onUnauthorized={onUnauthorized}
+                        onToast={onToast}
+                      />
+                    )}
 
-                              <div className="form-field">
-                                <label
-                                  className="form-field-label"
-                                  htmlFor="onr-key"
-                                >
-                                  Chave do Worker
-                                </label>
-                                {keyConfigured && !replaceKey ? (
-                                  <div className="sup-ed-keep">
-                                    <span>
-                                      <span aria-hidden="true">
-                                        ●●●●●●●●●●●●
-                                      </span>{" "}
-                                      Chave guardada no cofre
-                                    </span>
-                                    <button
-                                      type="button"
-                                      className="btn btn-secondary btn-sm"
-                                      disabled={busy}
-                                      onClick={() => setReplaceKey(true)}
-                                    >
-                                      Trocar chave
-                                    </button>
-                                  </div>
-                                ) : (
-                                  <>
-                                    <input
-                                      id="onr-key"
-                                      className="input"
-                                      type="password"
-                                      autoComplete="off"
-                                      spellCheck={false}
-                                      maxLength={256}
-                                      value={key}
-                                      disabled={busy}
-                                      aria-invalid={
-                                        submitted && check.errors.key
-                                          ? true
-                                          : undefined
-                                      }
-                                      onChange={(event) =>
-                                        setKey(event.target.value)
-                                      }
-                                    />
-                                    {submitted && check.errors.key ? (
-                                      <span
-                                        className="form-hint sup-error"
-                                        role="alert"
-                                      >
-                                        {check.errors.key}
-                                      </span>
-                                    ) : (
-                                      <span className="form-hint">
-                                        Enviada uma vez, cifrada e nunca
-                                        mostrada de novo.
-                                      </span>
-                                    )}
-                                    {keyConfigured && (
-                                      <button
-                                        type="button"
-                                        className="btn btn-ghost btn-sm sup-ed-link"
-                                        disabled={busy}
-                                        onClick={() => {
-                                          setReplaceKey(false);
-                                          setKey("");
-                                        }}
-                                      >
-                                        Manter a chave atual
-                                      </button>
-                                    )}
-                                  </>
-                                )}
-                              </div>
-                            </div>
-                          ) : endpoint.mode === "proxy" ? (
-                            <p className="alert alert-warning sup-ed-note">
-                              Voltar para <code>{OFFICIAL_ORIGIN}</code> remove
-                              a chave do proxy do cofre. Para usar o proxy de
-                              novo será preciso informar a chave outra vez.
-                            </p>
-                          ) : (
-                            <p className="form-hint sup-ed-note">
-                              Esta conta já consulta o portal original. Escolha
-                              o proxy protegido para alterar.
-                            </p>
-                          )}
-
-                          <p className="alert sup-ed-note">
-                            A troca vale para execuções iniciadas depois de
-                            salvar. Uma compra com resultado incerto continua
-                            exigindo conciliação; não há reenvio automático para
-                            outra origem.
-                          </p>
-                        </section>
-                      )}
-                    </div>
-
-                    <div className="detail-panel-footer">
-                      <button
-                        className="btn btn-primary btn-md"
-                        disabled={busy || !endpoint || !changed}
-                      >
-                        {restoring ? "Revisar restauração" : "Revisar e salvar"}
-                      </button>
-                      <button
-                        className="btn btn-ghost btn-md"
-                        type="button"
-                        disabled={busy}
-                        onClick={close}
-                      >
-                        Fechar
-                      </button>
-                    </div>
-                  </form>
-                )}
+                    {tab === "preview" && account.provider === "onr" && (
+                      <RegistryHistoricalPrices
+                        key={account.id}
+                        accountId={account.id}
+                        onUnauthorized={onUnauthorized}
+                      />
+                    )}
+                  </div>
+                </div>
               </div>
             )}
           </aside>
         </>,
         document.body,
       )}
+
+      <FormModal
+        open={connectionOpen && endpoint !== null}
+        title="Alterar conexão"
+        onClose={() => !busy && setConnectionOpen(false)}
+        footer={
+          <>
+            <button
+              type="button"
+              className="btn btn-ghost btn-md"
+              disabled={busy}
+              onClick={() => setConnectionOpen(false)}
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              form="onr-connection-form"
+              className="btn btn-primary btn-md"
+              disabled={busy || !changed}
+            >
+              {restoring ? "Revisar restauração" : "Revisar e salvar"}
+            </button>
+          </>
+        }
+      >
+        {error && (
+          <div className="alert alert-danger" role="alert">
+            {error}
+          </div>
+        )}
+        {endpoint && (
+          <form
+            id="onr-connection-form"
+            noValidate
+            autoComplete="off"
+            className="sup-form-grid"
+            onSubmit={(event) => {
+              event.preventDefault();
+              review();
+            }}
+          >
+            <div className="sup-span">
+              <RolePicker<Mode>
+                label="Origem das consultas"
+                value={mode}
+                options={MODES}
+                disabled={busy}
+                onChange={(next) => {
+                  setMode(next);
+                  setSubmitted(false);
+                }}
+              />
+            </div>
+            {mode === "proxy" ? (
+              <>
+                <div className="form-field sup-span">
+                  <label className="form-field-label" htmlFor="onr-origin">
+                    URL raiz do Worker
+                  </label>
+                  <input
+                    id="onr-origin"
+                    className="input"
+                    type="url"
+                    inputMode="url"
+                    autoComplete="off"
+                    spellCheck={false}
+                    maxLength={255}
+                    placeholder={WORKER_EXAMPLE}
+                    value={origin}
+                    disabled={busy}
+                    aria-invalid={
+                      submitted && check.errors.origin ? true : undefined
+                    }
+                    onChange={(event) => setOrigin(event.target.value)}
+                  />
+                  {submitted && check.errors.origin ? (
+                    <span className="form-hint sup-error" role="alert">
+                      {check.errors.origin}
+                    </span>
+                  ) : (
+                    <span className="form-hint">
+                      HTTPS em um Worker sec-devchamps.workers.dev, sem caminho.
+                    </span>
+                  )}
+                </div>
+                <div className="form-field sup-span">
+                  <label className="form-field-label" htmlFor="onr-key">
+                    Chave do Worker
+                  </label>
+                  {keyConfigured && !replaceKey ? (
+                    <div className="sup-ed-keep">
+                      <span>
+                        <span aria-hidden="true">●●●●●●●●●●●●</span> Guardada no
+                        cofre
+                      </span>
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-sm"
+                        disabled={busy}
+                        onClick={() => setReplaceKey(true)}
+                      >
+                        Trocar chave
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <input
+                        id="onr-key"
+                        className="input"
+                        type="password"
+                        autoComplete="off"
+                        spellCheck={false}
+                        maxLength={256}
+                        value={key}
+                        disabled={busy}
+                        aria-invalid={
+                          submitted && check.errors.key ? true : undefined
+                        }
+                        onChange={(event) => setKey(event.target.value)}
+                      />
+                      {submitted && check.errors.key ? (
+                        <span className="form-hint sup-error" role="alert">
+                          {check.errors.key}
+                        </span>
+                      ) : (
+                        <span className="form-hint">
+                          Enviada uma vez, cifrada e nunca mostrada de novo.
+                        </span>
+                      )}
+                      {keyConfigured && (
+                        <button
+                          type="button"
+                          className="btn btn-ghost btn-sm sup-ed-link"
+                          disabled={busy}
+                          onClick={() => {
+                            setReplaceKey(false);
+                            setKey("");
+                          }}
+                        >
+                          Manter a chave atual
+                        </button>
+                      )}
+                    </>
+                  )}
+                </div>
+              </>
+            ) : endpoint.mode === "proxy" ? (
+              <p className="alert alert-warning sup-span">
+                Voltar para <code>{OFFICIAL_ORIGIN}</code> remove a chave do
+                proxy do cofre.
+              </p>
+            ) : (
+              <p className="sup-muted sup-span">
+                Esta conta já consulta o portal original.
+              </p>
+            )}
+          </form>
+        )}
+      </FormModal>
 
       <ConfirmDialog
         open={confirming && endpoint !== null}
