@@ -47,7 +47,13 @@ export function nextVersionId(
 ) {
   const month = monthInSaoPaulo(now);
   const match = SUFFIX.exec(current.trim());
-  const prefix = cleanPrefix(match ? match[1] : current);
+  const stripped = match
+    ? match[1]
+    : current
+        .trim()
+        .replace(/-v\d+$/, "")
+        .replace(/-(\d{8}|\d{4}-\d{2}-\d{2}|\d{4}-\d{2})$/, "");
+  const prefix = cleanPrefix(stripped);
   const room = MAX_LENGTH - `-${month}-v999`.length;
   const head =
     prefix.slice(0, room).replace(/[^a-zA-Z0-9]+$/, "") || FALLBACK_PREFIX;

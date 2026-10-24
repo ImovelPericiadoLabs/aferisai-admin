@@ -62,6 +62,18 @@ describe("nextVersionId", () => {
     );
   });
 
+  it("drops a trailing date and counter instead of stacking a second suffix", () => {
+    expect(nextVersionId("direct-onr-account-20261024-v1", [], oct)).toBe(
+      "direct-onr-account-2026-10-v1",
+    );
+    expect(nextVersionId("direct-onr-account-20261024", [], oct)).toBe(
+      "direct-onr-account-2026-10-v1",
+    );
+    expect(nextVersionId("direct-onr-v4", [], oct)).toBe(
+      "direct-onr-2026-10-v1",
+    );
+  });
+
   it("builds a valid id from a current version without the pattern", () => {
     const id = nextVersionId("legacy version!", [], oct);
     expect(id).toMatch(VERSION_ID_PATTERN);
