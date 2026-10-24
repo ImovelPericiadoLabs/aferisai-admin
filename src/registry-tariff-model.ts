@@ -1,3 +1,36 @@
+export type LimitRange = { min: number; max: number };
+export type TariffLimits = {
+  order_fee_cents: LimitRange;
+  download_fee_cents: LimitRange;
+  monthly_minimum_reserve_cents: LimitRange;
+  reason_length: LimitRange;
+};
+
+/** Used only while talking to a backend release that does not return limits. */
+export const DEFAULT_TARIFF_LIMITS: TariffLimits = {
+  order_fee_cents: { min: 1, max: 100_000 },
+  download_fee_cents: { min: 1, max: 100_000 },
+  monthly_minimum_reserve_cents: { min: 0, max: 100_000 },
+  reason_length: { min: 10, max: 500 },
+};
+
+/** The backend's ranges win, field by field; anything it does not send keeps the default. */
+export function resolveTariffLimits(
+  raw: Partial<TariffLimits> | null | undefined,
+): TariffLimits {
+  return { ...DEFAULT_TARIFF_LIMITS, ...(raw ?? {}) };
+}
+
+const brl = new Intl.NumberFormat("pt-BR", {
+  style: "currency",
+  currency: "BRL",
+});
+export const rangeText = (range: LimitRange) =>
+  `de ${brl.format(range.min / 100)} a ${brl.format(range.max / 100)}`.replaceAll(
+    "\u00a0",
+    " ",
+  );
+
 export type TariffDraft = {
   infosimplesAccountId: string;
   onrAccountId: string;
@@ -22,6 +55,9 @@ export const emptyTariffDraft: TariffDraft = {
   supplierFeeCovered: false,
 };
 
+const within = (value: number | null, range: LimitRange): value is number =>
+  value !== null && value >= range.min && value <= range.max;
+
 export function parseBrlCents(value: string): number | null {
   if (!/^\d+(?:,\d{1,2})?$/.test(value.trim())) return null;
   const [reais, cents = ""] = value.trim().split(",");
@@ -29,24 +65,22 @@ export function parseBrlCents(value: string): number | null {
   return Number.isSafeInteger(amount) ? amount : null;
 }
 
-export function tariffDraftBody(draft: TariffDraft) {
+export function tariffDraftBody(
+  draft: TariffDraft,
+  limits: TariffLimits = DEFAULT_TARIFF_LIMITS,
+) {
   const order = parseBrlCents(draft.orderFee);
   const download = parseBrlCents(draft.downloadFee);
   const reserve = parseBrlCents(draft.monthlyReserve);
   if (
     !draft.infosimplesAccountId ||
     !draft.onrAccountId ||
-    order === null ||
-    order < 1 ||
-    order > 100_000 ||
-    download === null ||
-    download < 1 ||
-    download > 100_000 ||
-    reserve === null ||
-    reserve > 100_000 ||
+    !within(order, limits.order_fee_cents) ||
+    !within(download, limits.download_fee_cents) ||
+    !within(reserve, limits.monthly_minimum_reserve_cents) ||
     !/^[0-9a-f]{64}$/.test(draft.evidenceSha256.trim()) ||
-    draft.reason.trim().length < 10 ||
-    draft.reason.trim().length > 500 ||
+    draft.reason.trim().length < limits.reason_length.min ||
+    draft.reason.trim().length > limits.reason_length.max ||
     !draft.contractVerified ||
     !draft.supplierFeeCovered
   )
@@ -67,46 +101,55 @@ export function tariffDraftBody(draft: TariffDraft) {
 /** Values, evidence, confirmation: which of the three blocks of the form is finished. */
 export function tariffComplete(
   draft: TariffDraft,
+  limits: TariffLimits = DEFAULT_TARIFF_LIMITS,
 ): [boolean, boolean, boolean] {
-  const order = parseBrlCents(draft.orderFee);
-  const download = parseBrlCents(draft.downloadFee);
-  const reserve = parseBrlCents(draft.monthlyReserve);
   const values =
     !!draft.infosimplesAccountId &&
     !!draft.onrAccountId &&
-    order !== null &&
-    order >= 1 &&
-    order <= 100_000 &&
-    download !== null &&
-    download >= 1 &&
-    download <= 100_000 &&
-    reserve !== null &&
-    reserve <= 100_000;
+    within(parseBrlCents(draft.orderFee), limits.order_fee_cents) &&
+    within(parseBrlCents(draft.downloadFee), limits.download_fee_cents) &&
+    within(
+      parseBrlCents(draft.monthlyReserve),
+      limits.monthly_minimum_reserve_cents,
+    );
+  const reason = draft.reason.trim().length;
   const evidence =
     /^[0-9a-f]{64}$/.test(draft.evidenceSha256.trim()) &&
-    draft.reason.trim().length >= 10 &&
-    draft.reason.trim().length <= 500;
+    reason >= limits.reason_length.min &&
+    reason <= limits.reason_length.max;
   return [values, evidence, draft.contractVerified && draft.supplierFeeCovered];
 }
 
 /** What still blocks publishing, in words the person can act on. */
-export function tariffProblems(draft: TariffDraft): string[] {
+export function tariffProblems(
+  draft: TariffDraft,
+  limits: TariffLimits = DEFAULT_TARIFF_LIMITS,
+): string[] {
   const problems: string[] = [];
-  const inRange = (cents: number | null, min: number) =>
-    cents !== null && cents >= min && cents <= 100_000;
   if (!draft.onrAccountId) problems.push("a conta RI Digital");
   if (!draft.infosimplesAccountId) problems.push("a conta InfoSimples");
-  if (!inRange(parseBrlCents(draft.orderFee), 1))
-    problems.push("o valor do pedido");
-  if (!inRange(parseBrlCents(draft.downloadFee), 1))
-    problems.push("o valor de cada download");
-  if (!inRange(parseBrlCents(draft.monthlyReserve), 0))
-    problems.push("o mínimo mensal");
+  if (!within(parseBrlCents(draft.orderFee), limits.order_fee_cents))
+    problems.push(`o valor do pedido (${rangeText(limits.order_fee_cents)})`);
+  if (!within(parseBrlCents(draft.downloadFee), limits.download_fee_cents))
+    problems.push(
+      `o valor de cada download (${rangeText(limits.download_fee_cents)})`,
+    );
+  if (
+    !within(
+      parseBrlCents(draft.monthlyReserve),
+      limits.monthly_minimum_reserve_cents,
+    )
+  )
+    problems.push(
+      `o mínimo mensal (${rangeText(limits.monthly_minimum_reserve_cents)})`,
+    );
   if (!/^[0-9a-f]{64}$/.test(draft.evidenceSha256.trim()))
     problems.push("o SHA-256 da evidência (64 caracteres hexadecimais)");
   const reason = draft.reason.trim().length;
-  if (reason < 10 || reason > 500)
-    problems.push("o motivo (mínimo 10 caracteres)");
+  if (reason < limits.reason_length.min || reason > limits.reason_length.max)
+    problems.push(
+      `o motivo (de ${limits.reason_length.min} a ${limits.reason_length.max} caracteres)`,
+    );
   if (!draft.contractVerified || !draft.supplierFeeCovered)
     problems.push("as duas declarações");
   return problems;

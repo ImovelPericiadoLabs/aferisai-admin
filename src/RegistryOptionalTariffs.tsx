@@ -6,10 +6,13 @@ import {
   publishRegistryArispTariff,
   publishRegistryCertificateTariff,
   type RegistryArispTariff,
+  type RegistryArispTariffPage,
   type RegistryCertificateKind,
   type RegistryCertificateTariff,
+  type RegistryCertificateTariffPage,
   type RegistrySupplierAccount,
 } from "./api";
+import { rangeText, type LimitRange } from "./registry-tariff-model";
 import {
   Composer,
   ComposerSection,
@@ -36,6 +39,9 @@ const money = (cents: number) =>
     cents / 100,
   );
 const sha = (value: string) => /^[0-9a-f]{64}$/.test(value);
+const DEFAULT_RANGE: LimitRange = { min: 1, max: 100_000 };
+const DEFAULT_REASON: LimitRange = { min: 10, max: 500 };
+
 const parseMoney = (value: string) => {
   const normalized = value.trim().replace(",", ".");
   return /^\d+(?:\.\d{1,2})?$/.test(normalized)
@@ -83,6 +89,9 @@ export function RegistryOptionalTariffs({
   const [reviewing, setReviewing] = useState<"certificate" | "arisp" | null>(
     null,
   );
+  const [arispRaw, setArispRaw] = useState<RegistryArispTariffPage["limits"]>();
+  const [certRaw, setCertRaw] =
+    useState<RegistryCertificateTariffPage["limits"]>();
   const [certOpen, setCertOpen] = useState(false);
   const [arispOpen, setArispOpen] = useState(false);
   const [certAttempted, setCertAttempted] = useState(false);
@@ -91,6 +100,15 @@ export function RegistryOptionalTariffs({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const active = account.status === "active";
+  const orderRange = arispRaw?.order_fee_cents ?? DEFAULT_RANGE;
+  const downloadRange = arispRaw?.download_fee_cents ?? DEFAULT_RANGE;
+  const arispReasonRange = arispRaw?.reason_length ?? DEFAULT_REASON;
+  const costRange = certRaw?.unit_cost_cents ?? DEFAULT_RANGE;
+  const certReasonRange = certRaw?.reason_length ?? DEFAULT_REASON;
+  const inRange = (value: number, range: LimitRange) =>
+    Number.isSafeInteger(value) && value >= range.min && value <= range.max;
+  const lengthOk = (text: string, range: LimitRange) =>
+    text.trim().length >= range.min && text.trim().length <= range.max;
   const arispOrder = parseMoney(orderFee);
   const arispDownload = parseMoney(downloadFee);
   const arispBudget =
@@ -102,11 +120,11 @@ export function RegistryOptionalTariffs({
     (!!certificateType.trim() && sha(certificateTypeEvidence) && typeConfirmed);
   const arispStates = stepStates([
     !!linkedAccount &&
-      Number.isSafeInteger(arispOrder) &&
-      arispOrder > 0 &&
-      Number.isSafeInteger(arispDownload) &&
-      arispDownload > 0,
-    sha(arispEvidence) && arispReason.trim().length >= 10 && typeGroupOk,
+      inRange(arispOrder, orderRange) &&
+      inRange(arispDownload, downloadRange),
+    sha(arispEvidence) &&
+      lengthOk(arispReason, arispReasonRange) &&
+      typeGroupOk,
     reviewing === "arisp",
   ]);
   const certCents = parseMoney(cost);
@@ -122,10 +140,9 @@ export function RegistryOptionalTariffs({
       sampleDocument !== sampleCharge &&
       proofConfirmed);
   const certStates = stepStates([
-    Number.isSafeInteger(certCents) &&
-      certCents > 0 &&
+    inRange(certCents, costRange) &&
       (kind !== "estadual" || /^[A-Z]{2}$/.test(state.trim().toUpperCase())),
-    sha(evidence) && certificateReason.trim().length >= 10 && proofOk,
+    sha(evidence) && lengthOk(certificateReason, certReasonRange) && proofOk,
     reviewing === "certificate",
   ]);
   const otherProvider = account.provider === "onr" ? "infosimples" : "onr";
@@ -143,10 +160,12 @@ export function RegistryOptionalTariffs({
             next ? [...old, ...page.items] : page.items,
           );
           setCertificateCursor(page.next_cursor);
+          if (page.limits) setCertRaw(page.limits);
         } else {
           const page = await listRegistryArispTariffs(account.id, next);
           setArisp((old) => (next ? [...old, ...page.items] : page.items));
           setArispCursor(page.next_cursor);
+          if (page.limits) setArispRaw(page.limits);
         }
         setError("");
       } catch (cause) {
@@ -179,12 +198,14 @@ export function RegistryOptionalTariffs({
       missing.push("a UF com duas letras");
     if (kind !== "estadual" && state.trim())
       missing.push("a UF (só vale para a certidão estadual)");
-    if (!(Number.isSafeInteger(cents) && cents > 0 && cents <= 100000))
-      missing.push("o custo total por chamada");
+    if (!inRange(cents, costRange))
+      missing.push(`o custo total por chamada (${rangeText(costRange)})`);
     if (!sha(evidence))
       missing.push("o SHA-256 da tabela (64 caracteres hexadecimais)");
-    if (certificateReason.trim().length < 10)
-      missing.push("o motivo (mínimo 10 caracteres)");
+    if (!lengthOk(certificateReason, certReasonRange))
+      missing.push(
+        `o motivo (de ${certReasonRange.min} a ${certReasonRange.max} caracteres)`,
+      );
     if (!proofOk)
       missing.push("os comprovantes (dois hashes diferentes e a conferência)");
     return missing;
@@ -250,14 +271,16 @@ export function RegistryOptionalTariffs({
     const download = parseMoney(downloadFee);
     const missing: string[] = [];
     if (!linkedAccount) missing.push("a conta vinculada");
-    if (!(Number.isSafeInteger(order) && order > 0 && order <= 100000))
-      missing.push("o valor do pedido");
-    if (!(Number.isSafeInteger(download) && download > 0 && download <= 100000))
-      missing.push("o valor de cada download");
+    if (!inRange(order, orderRange))
+      missing.push(`o valor do pedido (${rangeText(orderRange)})`);
+    if (!inRange(download, downloadRange))
+      missing.push(`o valor de cada download (${rangeText(downloadRange)})`);
     if (!sha(arispEvidence))
       missing.push("o SHA-256 da tabela (64 caracteres hexadecimais)");
-    if (arispReason.trim().length < 10)
-      missing.push("o motivo (mínimo 10 caracteres)");
+    if (!lengthOk(arispReason, arispReasonRange))
+      missing.push(
+        `o motivo (de ${arispReasonRange.min} a ${arispReasonRange.max} caracteres)`,
+      );
     if (!typeGroupOk)
       missing.push("o tipo de ônus completo (tipo, SHA-256 e confirmação)");
     return missing;
@@ -563,7 +586,7 @@ export function RegistryOptionalTariffs({
                     <textarea
                       className="input"
                       rows={3}
-                      maxLength={500}
+                      maxLength={certReasonRange.max}
                       value={certificateReason}
                       disabled={!active || busy}
                       onChange={(event) =>
@@ -839,7 +862,7 @@ export function RegistryOptionalTariffs({
                 <textarea
                   className="input"
                   rows={3}
-                  maxLength={500}
+                  maxLength={arispReasonRange.max}
                   value={arispReason}
                   disabled={!active || busy}
                   onChange={(event) => setArispReason(event.target.value)}

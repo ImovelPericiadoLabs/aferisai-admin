@@ -11,10 +11,13 @@ import {
   publishRegistryVisualizationTariff,
   type RegistrySupplierAccount,
   type RegistryVisualizationTariff,
+  type RegistryVisualizationTariffPage,
 } from "./api";
 import {
   emptyTariffDraft,
   parseBrlCents,
+  rangeText,
+  resolveTariffLimits,
   tariffComplete,
   tariffDraftBody,
   tariffProblems,
@@ -80,6 +83,8 @@ export function RegistryVisualizationTariffs({
 }) {
   const [tariffs, setTariffs] = useState<RegistryVisualizationTariff[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
+  const [rawLimits, setRawLimits] =
+    useState<RegistryVisualizationTariffPage["limits"]>();
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -98,8 +103,9 @@ export function RegistryVisualizationTariffs({
   const activeInfo = accounts.filter(
     (item) => item.provider === "infosimples" && item.status === "active",
   );
-  const body = tariffDraftBody(draft);
-  const states = stepStates(tariffComplete(draft));
+  const limits = resolveTariffLimits(rawLimits);
+  const body = tariffDraftBody(draft, limits);
+  const states = stepStates(tariffComplete(draft, limits));
   const orderCents = parseBrlCents(draft.orderFee);
   const downloadCents = parseBrlCents(draft.downloadFee);
   const reserveCents = parseBrlCents(draft.monthlyReserve);
@@ -113,6 +119,7 @@ export function RegistryVisualizationTariffs({
           next ? [...current, ...page.items] : page.items,
         );
         setCursor(page.next_cursor);
+        if (page.limits) setRawLimits(page.limits);
         setError("");
       } catch (cause) {
         if (cause instanceof ApiError && cause.status === 401) onUnauthorized();
@@ -439,9 +446,10 @@ export function RegistryVisualizationTariffs({
               {error}
             </div>
           )}
-          {attempted && tariffProblems(draft).length > 0 && (
+          {attempted && tariffProblems(draft, limits).length > 0 && (
             <div className="alert alert-danger" role="alert">
-              Falta ou está inválido: {tariffProblems(draft).join("; ")}.
+              Falta ou está inválido: {tariffProblems(draft, limits).join("; ")}
+              .
             </div>
           )}
           <form
@@ -528,7 +536,10 @@ export function RegistryVisualizationTariffs({
                   }
                   disabled={busy}
                 />
-                <small>Custo fixo da operação aprovado pelo responsável.</small>
+                <small>
+                  Custo fixo da operação aprovado pelo responsável (
+                  {rangeText(limits.monthly_minimum_reserve_cents)}).
+                </small>
               </label>
             </ComposerSection>
 
@@ -558,8 +569,8 @@ export function RegistryVisualizationTariffs({
                 <textarea
                   className="input"
                   rows={3}
-                  minLength={10}
-                  maxLength={500}
+                  minLength={limits.reason_length.min}
+                  maxLength={limits.reason_length.max}
                   value={draft.reason}
                   onChange={(event) => set("reason", event.target.value)}
                   disabled={busy}

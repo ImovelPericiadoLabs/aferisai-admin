@@ -2315,9 +2315,18 @@ export type RegistryVisualizationTariff = {
   managed?: boolean;
   previous_id?: string | null;
 };
+export type TariffLimitRange = { min: number; max: number };
 export type RegistryVisualizationTariffPage = {
   items: RegistryVisualizationTariff[];
   next_cursor: string | null;
+  /** Inclusive bounds the backend enforces; absent on older releases. */
+  limits?: {
+    order_fee_cents?: TariffLimitRange;
+    download_fee_cents?: TariffLimitRange;
+    monthly_minimum_reserve_cents?: TariffLimitRange;
+    reason_length?: TariffLimitRange;
+    download_budget_count?: TariffLimitRange;
+  };
 };
 export type RegistryVisualizationTariffCreate = {
   infosimples_account_id: string;
@@ -2508,6 +2517,10 @@ export type RegistryCertificateTariff = {
 export type RegistryCertificateTariffPage = {
   items: RegistryCertificateTariff[];
   next_cursor: string | null;
+  limits?: {
+    unit_cost_cents?: TariffLimitRange;
+    reason_length?: TariffLimitRange;
+  };
 };
 export type RegistryCertificateTariffCreate = {
   account_id: string;
@@ -2563,6 +2576,12 @@ export type RegistryArispTariff = {
 export type RegistryArispTariffPage = {
   items: RegistryArispTariff[];
   next_cursor: string | null;
+  limits?: {
+    order_fee_cents?: TariffLimitRange;
+    download_fee_cents?: TariffLimitRange;
+    reason_length?: TariffLimitRange;
+    download_budget_count?: TariffLimitRange;
+  };
 };
 export type RegistryArispTariffCreate = {
   infosimples_account_id: string;

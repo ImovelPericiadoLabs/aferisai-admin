@@ -17,6 +17,13 @@ import {
 } from "./SupplierUi";
 import { stepStates } from "./account-model";
 import {
+  DeclarationPanel,
+  FilePickButton,
+  LabelRow,
+  MiniButton,
+} from "./EvidenceTools";
+import { declarationText, nextVersionId, sha256Hex } from "./evidence-model";
+import {
   COMMERCIAL_LIMITS,
   commercialErrors,
   resolveCommercialLimits,
@@ -182,6 +189,11 @@ export function RegistryCommercialTerms({
   const [busy, setBusy] = useState(false);
   const [reviewing, setReviewing] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
+  const [declaration, setDeclaration] = useState<{
+    text: string;
+    hash: string;
+  } | null>(null);
+  const [evidenceNote, setEvidenceNote] = useState("");
   const [historyOpen, setHistoryOpen] = useState(false);
   const [error, setError] = useState("");
   const [attempted, setAttempted] = useState(false);
@@ -273,6 +285,51 @@ export function RegistryCommercialTerms({
     const parsed = parseCommercialNumber(value);
     if (parsed !== null) set(key, parsed);
     else setReviewing(false);
+  }
+
+  function suggestVersion() {
+    if (!effective) return;
+    set(
+      "version",
+      nextVersionId(
+        effective.version,
+        history.map((item) => item.version),
+        new Date(),
+      ),
+    );
+  }
+
+  async function generateEvidence() {
+    if (!draft || !effective) return;
+    if (!draft.version.trim() || !draft.reason.trim()) {
+      setEvidenceNote(
+        "Preencha o identificador e o motivo antes: eles entram no texto que será assinado pelo SHA-256.",
+      );
+      return;
+    }
+    const text = declarationText({
+      version: draft.version.trim(),
+      previousVersion: effective.version,
+      previousFeeCents: effective.payment_fee_cents,
+      nextFeeCents: draft.payment_fee_cents,
+      previousRateBps: effective.payment_fee_rate_bps,
+      nextRateBps: draft.payment_fee_rate_bps,
+      reason: draft.reason,
+      generatedAt: new Date().toISOString(),
+    });
+    const hash = await sha256Hex(text);
+    setDeclaration({ text, hash });
+    setEvidenceNote("");
+    set("payment_fee_evidence_sha256", hash);
+  }
+
+  async function hashFile(bytes: ArrayBuffer, name: string) {
+    const hash = await sha256Hex(bytes);
+    setDeclaration(null);
+    setEvidenceNote(
+      `SHA-256 calculado aqui no navegador para “${name}”. O arquivo não foi enviado.`,
+    );
+    set("payment_fee_evidence_sha256", hash);
   }
 
   function review(event: FormEvent<HTMLFormElement>) {
@@ -611,10 +668,23 @@ export function RegistryCommercialTerms({
               state={termStates[1]}
               recap={`${draft.version.trim()} · ${draft.reason.trim().slice(0, 40)}`}
             >
-              <label>
-                Identificador da nova versão
+              <div className="sup-field">
+                <LabelRow
+                  htmlFor="cm-version"
+                  text="Identificador da nova versão"
+                >
+                  <MiniButton
+                    title="Sugere o próximo identificador a partir da versão vigente"
+                    disabled={!active || busy}
+                    onClick={suggestVersion}
+                  >
+                    Gerar
+                  </MiniButton>
+                </LabelRow>
                 <input
                   className="input"
+                  id="cm-version"
+                  autoComplete="off"
                   value={draft.version}
                   maxLength={120}
                   disabled={!active || busy}
@@ -627,11 +697,30 @@ export function RegistryCommercialTerms({
                     {shown("version", draft.version.length > 0)}
                   </small>
                 )}
-              </label>
-              <label>
-                SHA-256 da evidência da tarifa PIX (se alterada)
+              </div>
+              <div className="sup-field">
+                <LabelRow
+                  htmlFor="cm-evidence"
+                  text="SHA-256 da evidência da tarifa PIX (se alterada)"
+                >
+                  <MiniButton
+                    title="Gera o SHA-256 de um texto de declaração criado pelo painel"
+                    disabled={!active || busy}
+                    onClick={() => void generateEvidence()}
+                  >
+                    Gerar
+                  </MiniButton>
+                  <FilePickButton
+                    disabled={!active || busy}
+                    onHash={hashFile}
+                    onError={setEvidenceNote}
+                  />
+                </LabelRow>
                 <input
                   className="input"
+                  id="cm-evidence"
+                  autoComplete="off"
+                  spellCheck={false}
                   value={draft.payment_fee_evidence_sha256 ?? ""}
                   maxLength={64}
                   disabled={!active || busy}
@@ -662,7 +751,19 @@ export function RegistryCommercialTerms({
                       : "Só é exigida quando a tarifa PIX muda."}
                   </small>
                 )}
-              </label>
+              </div>
+              {evidenceNote && (
+                <p className="sup-muted" role="status">
+                  {evidenceNote}
+                </p>
+              )}
+              {declaration &&
+                declaration.hash === draft.payment_fee_evidence_sha256 && (
+                  <DeclarationPanel
+                    text={declaration.text}
+                    fileName={`declaracao-pix-${draft.version.trim() || "versao"}.txt`}
+                  />
+                )}
               <label>
                 Motivo da publicação
                 <textarea

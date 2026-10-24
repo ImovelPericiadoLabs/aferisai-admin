@@ -959,7 +959,8 @@
   gap: var(--space-3) var(--space-4);
   padding: var(--space-1) var(--space-3) var(--space-3);
 }
-.sup-csection-body label {
+.sup-csection-body label,
+.sup-csection-body .sup-field {
   display: grid;
   align-content: start;
   gap: var(--space-1);
@@ -967,7 +968,8 @@
   font-size: var(--text-sm);
   font-weight: var(--weight-medium);
 }
-.sup-csection-body label small {
+.sup-csection-body label small,
+.sup-csection-body .sup-field small {
   color: var(--text-muted);
   font-weight: var(--weight-normal);
 }
@@ -982,6 +984,7 @@
 .sup-csection-body .sup-span,
 .sup-csection-body label:has(textarea),
 .sup-csection-body label:has(input[maxlength="64"]),
+.sup-csection-body .sup-field:has(input[maxlength="64"]),
 .sup-csection-body details,
 .sup-csection-body label:has(> input[type="checkbox"]) {
   grid-column: 1 / -1;
@@ -1186,4 +1189,73 @@
   font-size: var(--text-caption);
   letter-spacing: 0.05em;
   text-transform: uppercase;
+}
+
+/* Small actions that live in a field's label row. */
+.sup-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-height: 22px;
+}
+.sup-label-actions {
+  display: inline-flex;
+  gap: var(--space-1);
+  flex-shrink: 0;
+}
+.sup-mini {
+  height: 22px;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--primary);
+  font: inherit;
+  font-size: var(--text-caption);
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+}
+.sup-mini:hover:not(:disabled) {
+  background: var(--surface-muted);
+  border-color: var(--primary);
+}
+.sup-mini:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+.sup-mini:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.sup-declaration {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-muted);
+}
+.sup-declaration-text {
+  margin: 0;
+  max-height: 180px;
+  overflow: auto;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: var(--text-caption);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.sup-declaration-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+/* Fields whose hint wraps to a different number of lines still put their inputs on one line. */
+.sup-csection-body label:has(> .sup-unit) {
+  grid-template-rows: auto 1fr auto auto;
+}
+.sup-csection-body .sup-field + p,
+.sup-csection-body .sup-declaration {
+  grid-column: 1 / -1;
 }

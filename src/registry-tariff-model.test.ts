@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  DEFAULT_TARIFF_LIMITS,
   parseBrlCents,
+  resolveTariffLimits,
   tariffProblems,
   tariffComplete,
   tariffDraftBody,
@@ -92,10 +94,56 @@ describe("tariffProblems", () => {
     );
     expect(problems).toEqual([
       "a conta RI Digital",
-      "o valor do pedido",
+      "o valor do pedido (de R$ 0,01 a R$ 1.000,00)",
       "o SHA-256 da evidência (64 caracteres hexadecimais)",
-      "o motivo (mínimo 10 caracteres)",
+      "o motivo (de 10 a 500 caracteres)",
       "as duas declarações",
     ]);
+  });
+});
+
+describe("tariff limits from the backend", () => {
+  const plain = (text: string) => text.replace(/\u00a0/g, " ");
+  it("keeps the defaults when the backend sends nothing", () => {
+    expect(resolveTariffLimits(undefined)).toEqual(DEFAULT_TARIFF_LIMITS);
+    expect(resolveTariffLimits(null)).toEqual(DEFAULT_TARIFF_LIMITS);
+  });
+  it("overrides each range the backend sends and keeps the rest", () => {
+    const limits = resolveTariffLimits({
+      order_fee_cents: { min: 5, max: 5000 },
+    });
+    expect(limits.order_fee_cents).toEqual({ min: 5, max: 5000 });
+    expect(limits.download_fee_cents).toEqual(
+      DEFAULT_TARIFF_LIMITS.download_fee_cents,
+    );
+  });
+  it("validates against the limits it is given", () => {
+    const limits = resolveTariffLimits({
+      order_fee_cents: { min: 5, max: 5000 },
+    });
+    expect(tariffDraftBody(draft({ orderFee: "0,28" }), limits)).not.toBeNull();
+    expect(tariffDraftBody(draft({ orderFee: "60,00" }), limits)).toBeNull();
+    expect(tariffDraftBody(draft({ orderFee: "0,03" }), limits)).toBeNull();
+    expect(tariffComplete(draft({ orderFee: "60,00" }), limits)[0]).toBe(false);
+  });
+  it("states the range in the message so it never drifts from the backend", () => {
+    const limits = resolveTariffLimits({
+      order_fee_cents: { min: 5, max: 5000 },
+    });
+    const message = tariffProblems(draft({ orderFee: "99,00" }), limits)
+      .map(plain)
+      .join("|");
+    expect(message).toContain("de R$ 0,05 a R$ 50,00");
+  });
+  it("follows a different reason length", () => {
+    const limits = resolveTariffLimits({
+      reason_length: { min: 20, max: 100 },
+    });
+    expect(
+      tariffComplete(draft({ reason: "motivo com 15 car" }), limits)[1],
+    ).toBe(false);
+    expect(tariffProblems(draft({ reason: "curto" }), limits)).toContain(
+      "o motivo (de 20 a 100 caracteres)",
+    );
   });
 });
