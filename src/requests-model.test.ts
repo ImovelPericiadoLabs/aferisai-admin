@@ -19,6 +19,9 @@ const row = (over: Partial<RequestRow> = {}): RequestRow => ({
   charge_attempt: null,
   work_id: null,
   work_status: null,
+  work_stage: null,
+  completed_calls: 0,
+  planned_calls: null,
   ...over,
 });
 
@@ -31,11 +34,21 @@ describe("requestView", () => {
     expect(requestView(row({ work_status: "suspended" }))).toBe("attention");
   });
   it("tells waiting-for-payment, in analysis and done apart", () => {
-    expect(requestView(row({ payment_status: "prepared" }))).toBe("awaiting_payment");
+    expect(requestView(row({ payment_status: "prepared" }))).toBe(
+      "awaiting_payment",
+    );
     expect(requestView(row())).toBe("awaiting_payment");
-    expect(requestView(row({ payment_status: "received", work_status: "running" }))).toBe("in_analysis");
-    expect(requestView(row({ payment_status: "received", work_status: "pending" }))).toBe("in_analysis");
-    expect(requestView(row({ payment_status: "received", work_status: "completed" }))).toBe("done");
+    expect(
+      requestView(row({ payment_status: "received", work_status: "running" })),
+    ).toBe("in_analysis");
+    expect(
+      requestView(row({ payment_status: "received", work_status: "pending" })),
+    ).toBe("in_analysis");
+    expect(
+      requestView(
+        row({ payment_status: "received", work_status: "completed" }),
+      ),
+    ).toBe("done");
   });
 });
 
@@ -45,7 +58,11 @@ describe("requestTone", () => {
     expect(requestTone(row({ charge_attempt: "unknown" }))).toBe("danger");
     expect(requestTone(row({ payment_status: "review" }))).toBe("warn");
     expect(requestTone(row({ work_status: "suspended" }))).toBe("warn");
-    expect(requestTone(row({ payment_status: "received", work_status: "completed" }))).toBeUndefined();
+    expect(
+      requestTone(
+        row({ payment_status: "received", work_status: "completed" }),
+      ),
+    ).toBeUndefined();
   });
 });
 
@@ -58,10 +75,22 @@ describe("counts and kpis", () => {
     row({ payment_status: "received", work_status: "completed" }),
   ];
   it("counts every view and the total", () => {
-    expect(viewCounts(rows)).toEqual({ all: 5, attention: 1, awaiting_payment: 1, in_analysis: 1, done: 2 });
+    expect(viewCounts(rows)).toEqual({
+      all: 5,
+      attention: 1,
+      awaiting_payment: 1,
+      in_analysis: 1,
+      done: 2,
+    });
   });
   it("offers the same views in a stable order", () => {
-    expect(REQUEST_VIEWS.map((v) => v.id)).toEqual(["all", "attention", "awaiting_payment", "in_analysis", "done"]);
+    expect(REQUEST_VIEWS.map((v) => v.id)).toEqual([
+      "all",
+      "attention",
+      "awaiting_payment",
+      "in_analysis",
+      "done",
+    ]);
   });
   it("builds kpis from the loaded rows", () => {
     const kpis = requestKpis(rows);
@@ -69,19 +98,39 @@ describe("counts and kpis", () => {
     expect(kpis.find((k) => k.id === "done")?.value).toBe(2);
   });
   it("shows a quiet attention kpi when nothing needs attention", () => {
-    expect(requestKpis([row({ payment_status: "received", work_status: "completed" })]).find((k) => k.id === "attention")?.tone).toBeUndefined();
+    expect(
+      requestKpis([
+        row({ payment_status: "received", work_status: "completed" }),
+      ]).find((k) => k.id === "attention")?.tone,
+    ).toBeUndefined();
   });
 });
 
 describe("requestTimeline", () => {
   it("walks a paid, running request", () => {
-    const steps = requestTimeline(row({ payment_status: "received", work_status: "running" }), "23/10/2026 16:50");
-    expect(steps.map((s) => s.state)).toEqual(["done", "done", "done", "done", "current"]);
+    const steps = requestTimeline(
+      row({ payment_status: "received", work_status: "running" }),
+      "23/10/2026 16:50",
+    );
+    expect(steps.map((s) => s.state)).toEqual([
+      "done",
+      "done",
+      "done",
+      "done",
+      "current",
+    ]);
     expect(steps[0].at).toBe("23/10/2026 16:50");
   });
   it("marks an unsupported file and a failed work as errors", () => {
-    expect(requestTimeline(row({ admission_outcome: "unsupported" }), "x")[2].state).toBe("error");
-    expect(requestTimeline(row({ payment_status: "received", work_status: "failed" }), "x")[4].state).toBe("error");
+    expect(
+      requestTimeline(row({ admission_outcome: "unsupported" }), "x")[2].state,
+    ).toBe("error");
+    expect(
+      requestTimeline(
+        row({ payment_status: "received", work_status: "failed" }),
+        "x",
+      )[4].state,
+    ).toBe("error");
   });
   it("keeps untouched stages as todo", () => {
     const steps = requestTimeline(row({ admission_outcome: null }), "x");

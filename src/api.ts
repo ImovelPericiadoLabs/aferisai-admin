@@ -291,6 +291,9 @@ export type RequestOperationPage = {
     charge_attempt: string | null;
     work_id: string | null;
     work_status: string | null;
+    work_stage: string | null;
+    completed_calls: number;
+    planned_calls: number | null;
   }[];
   next_cursor: string | null;
 };
