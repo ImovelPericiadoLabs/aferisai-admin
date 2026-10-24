@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   COMMERCIAL_LIMITS,
   commercialErrors,
+  resolveCommercialLimits,
   type CommercialFormInput,
 } from "./commercial-form-model";
 
@@ -46,7 +47,7 @@ describe("commercialErrors", () => {
       commercialErrors(
         valid({ values: { ...valid().values, payment_fee_cents: 0 } }),
       ).payment_fee_cents,
-    ).toMatch(/maior que zero/);
+    ).toMatch(/Mínimo de R\$/);
   });
 
   it("keeps PIX percentage plus tax under 100%", () => {
@@ -95,12 +96,12 @@ describe("commercialErrors", () => {
 
 describe("limits", () => {
   it("builds the message from the limit, not from a fixed text", () => {
-    expect(COMMERCIAL_LIMITS.minMarkupBps).toBe(5000);
+    expect(COMMERCIAL_LIMITS.onr_markup_bps.min).toBe(5000);
     const errors = commercialErrors(
       valid({ values: { ...valid().values, onr_markup_bps: 100 } }),
     );
     expect(errors.onr_markup_bps).toBe(
-      `Mínimo de ${COMMERCIAL_LIMITS.minMarkupBps / 100}%.`,
+      `Mínimo de ${COMMERCIAL_LIMITS.onr_markup_bps.min / 100}%.`,
     );
   });
   it("also enforces the ceilings the backend has", () => {
@@ -117,5 +118,32 @@ describe("limits", () => {
     expect(high.tax_rate_bps).toMatch(/Máximo de 50%/);
     expect(high.payment_fee_rate_bps).toMatch(/Máximo de 50%/);
     expect(high.markup_bps).toMatch(/Máximo de 1000%/);
+  });
+
+  it("uses server limits for low and high markups", () => {
+    const limits = resolveCommercialLimits({
+      ...COMMERCIAL_LIMITS,
+      onr_markup_bps: { min: 100, max: 10000 },
+      markup_bps: { min: 100, max: 10000 },
+    });
+    expect(
+      commercialErrors(
+        valid({ values: { ...valid().values, markup_bps: 100 } }),
+        limits,
+      ),
+    ).toEqual({});
+    expect(
+      commercialErrors(
+        valid({ values: { ...valid().values, markup_bps: 99 } }),
+        limits,
+      ).markup_bps,
+    ).toBe("Mínimo de 1%.");
+    expect(
+      commercialErrors(
+        valid({ values: { ...valid().values, onr_markup_bps: 10001 } }),
+        limits,
+      ).onr_markup_bps,
+    ).toBe("Máximo de 100%.");
+    expect(resolveCommercialLimits(undefined)).toBe(COMMERCIAL_LIMITS);
   });
 });

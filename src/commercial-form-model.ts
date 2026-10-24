@@ -26,35 +26,75 @@ export type CommercialErrors = Partial<
   >
 >;
 
-/** Mirrors the backend validation (registry_commercial_routes.py); one place to change. */
-export const COMMERCIAL_LIMITS = {
-  minMarkupBps: 5000,
-  maxMarkupBps: 100000,
-  maxRateBps: 5000,
-} as const;
+export type CommercialLimits = Record<
+  keyof CommercialValues,
+  { min: number; max: number }
+> & {
+  rate_sum_max_bps: number;
+};
+
+/** Used only while talking to a backend release that does not return limits. */
+export const COMMERCIAL_LIMITS: CommercialLimits = {
+  onr_markup_bps: { min: 5000, max: 100000 },
+  markup_bps: { min: 5000, max: 100000 },
+  tax_rate_bps: { min: 0, max: 5000 },
+  payment_fee_cents: { min: 1, max: 1000000 },
+  payment_fee_rate_bps: { min: 0, max: 5000 },
+  operations_reserve_cents: { min: 0, max: 10000000 },
+  exception_reserve_cents: { min: 0, max: 10000000 },
+  minimum_contribution_cents: { min: 0, max: 10000000 },
+  rate_sum_max_bps: 9999,
+};
+
+export function resolveCommercialLimits(
+  value: CommercialLimits | undefined,
+): CommercialLimits {
+  if (!value) return COMMERCIAL_LIMITS;
+  const keys = Object.keys(COMMERCIAL_LIMITS).filter(
+    (key) => key !== "rate_sum_max_bps",
+  ) as (keyof CommercialValues)[];
+  if (
+    !keys.every(
+      (key) =>
+        Number.isSafeInteger(value[key]?.min) &&
+        Number.isSafeInteger(value[key]?.max) &&
+        value[key].min <= value[key].max,
+    ) ||
+    !Number.isSafeInteger(value.rate_sum_max_bps)
+  )
+    return COMMERCIAL_LIMITS;
+  return value;
+}
 
 const pct = (bps: number) => `${bps / 100}%`;
 
 /** The rules the backend enforces, as one message per field so nothing is guesswork. */
-export function commercialErrors(input: CommercialFormInput): CommercialErrors {
+export function commercialErrors(
+  input: CommercialFormInput,
+  limits: CommercialLimits = COMMERCIAL_LIMITS,
+): CommercialErrors {
   const errors: CommercialErrors = {};
   const { values } = input;
   if (!input.inputsMatch)
     errors.values = "Use números como 1,99 em todos os campos de valores.";
-  const { minMarkupBps, maxMarkupBps, maxRateBps } = COMMERCIAL_LIMITS;
-  for (const key of ["onr_markup_bps", "markup_bps"] as const) {
-    if (values[key] < minMarkupBps)
-      errors[key] = `Mínimo de ${pct(minMarkupBps)}.`;
-    else if (values[key] > maxMarkupBps)
-      errors[key] = `Máximo de ${pct(maxMarkupBps)}.`;
+  for (const key of Object.keys(COMMERCIAL_LIMITS).filter(
+    (item) => item !== "rate_sum_max_bps",
+  ) as (keyof CommercialValues)[]) {
+    const bound = limits[key];
+    const show = key.endsWith("_bps")
+      ? pct
+      : (amount: number) =>
+          new Intl.NumberFormat("pt-BR", {
+            style: "currency",
+            currency: "BRL",
+          }).format(amount / 100);
+    if (values[key] < bound.min) errors[key] = `Mínimo de ${show(bound.min)}.`;
+    else if (values[key] > bound.max)
+      errors[key] = `Máximo de ${show(bound.max)}.`;
   }
-  for (const key of ["tax_rate_bps", "payment_fee_rate_bps"] as const)
-    if (values[key] > maxRateBps) errors[key] = `Máximo de ${pct(maxRateBps)}.`;
-  if (values.payment_fee_cents <= 0)
-    errors.payment_fee_cents = "Informe um valor maior que zero.";
   if (
     !errors.tax_rate_bps &&
-    values.payment_fee_rate_bps + values.tax_rate_bps >= 10000
+    values.payment_fee_rate_bps + values.tax_rate_bps > limits.rate_sum_max_bps
   )
     errors.tax_rate_bps =
       "Tributos e tarifa percentual do PIX precisam somar menos de 100%.";

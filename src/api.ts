@@ -2440,6 +2440,7 @@ export type RegistryCommercialTermsPage = {
   effective: RegistryCommercialTerms | null;
   items: RegistryCommercialTerms[];
   next_cursor: string | null;
+  limits?: import("./commercial-form-model").CommercialLimits;
 };
 export type RegistryCommercialTermsCreate = {
   base_offer_id: string;
