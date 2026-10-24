@@ -24,6 +24,7 @@ import {
   requestView,
   viewCounts,
   workLabel,
+  workProgressLabel,
   workTone,
   type RequestRow,
   type RequestViewId,
@@ -187,7 +188,14 @@ export function RequestDirectory({
         id: "work",
         label: "Análise",
         render: (item) => (
-          <Badge tone={workTone(item)}>{workLabel(item)}</Badge>
+          <span>
+            <Badge tone={workTone(item)}>{workLabel(item)}</Badge>
+            {workProgressLabel(item) && (
+              <small style={{ display: "block", marginTop: 4 }}>
+                {workProgressLabel(item)}
+              </small>
+            )}
+          </span>
         ),
         text: workLabel,
       },
@@ -404,6 +412,9 @@ export function RequestDirectory({
                 {item.page_count} {item.page_count === 1 ? "página" : "páginas"}{" "}
                 · {documentLabels[item.document_state]}
               </span>
+              {workProgressLabel(item) && (
+                <span className="ops-card-meta">{workProgressLabel(item)}</span>
+              )}
             </>
           )}
         />
@@ -482,6 +493,12 @@ export function RequestDirectory({
                   <dt>Arquivo</dt>
                   <dd>{admissionLabel(selected)}</dd>
                 </div>
+                {workProgressLabel(selected) && (
+                  <div>
+                    <dt>Andamento técnico</dt>
+                    <dd>{workProgressLabel(selected)}</dd>
+                  </div>
+                )}
               </dl>
             </section>
             {!readOnly && (

@@ -43,6 +43,8 @@ export function admissionLabel(item: RequestRow): string {
 }
 
 export function workLabel(item: RequestRow): string {
+  if (item.work_status === "pending" && item.completed_calls > 0)
+    return "Em processamento";
   const labels: Record<string, string> = {
     blocked: "Trabalho bloqueado",
     pending: "Na fila",
@@ -55,6 +57,22 @@ export function workLabel(item: RequestRow): string {
   return item.work_status
     ? (labels[item.work_status] ?? "Estado em conferência")
     : "Ainda sem trabalho";
+}
+
+export function workProgressLabel(item: RequestRow): string | null {
+  if (!item.work_id || !item.planned_calls) return null;
+  const completed = Math.min(item.completed_calls, item.planned_calls);
+  const criterion = /^criterion_(0[1-9]|1[0-8])$/.exec(item.work_stage ?? "");
+  const stage = criterion
+    ? `Critério jurídico ${Number(criterion[1])} de 18`
+    : ((
+        {
+          registry_facts: "Dados da matrícula",
+          owners: "Titulares",
+          timeline: "Linha do tempo",
+        } as Record<string, string>
+      )[item.work_stage ?? ""] ?? "Verificação final");
+  return `${completed} de ${item.planned_calls} etapas técnicas · ${stage}`;
 }
 
 export type BadgeTone = "success" | "warning" | "danger" | "info" | "neutral";
