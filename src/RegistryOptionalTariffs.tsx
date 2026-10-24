@@ -11,6 +11,7 @@ import {
   type RegistrySupplierAccount,
 } from "./api";
 import { FormModal, SettingCard } from "./SupplierUi";
+import { supplierTariffValidityLabel } from "./supplier-tariff-validity";
 import type { ToastKind } from "./useToast";
 
 const kinds: { value: RegistryCertificateKind; label: string }[] = [
@@ -27,11 +28,6 @@ const money = (cents: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(
     cents / 100,
   );
-const dateTime = new Intl.DateTimeFormat("pt-BR", {
-  dateStyle: "short",
-  timeStyle: "short",
-  timeZone: "America/Sao_Paulo",
-});
 const sha = (value: string) => /^[0-9a-f]{64}$/.test(value);
 const parseMoney = (value: string) => {
   const normalized = value.trim().replace(",", ".");
@@ -185,7 +181,7 @@ export function RegistryOptionalTariffs({
       setCertificateReason("");
       setCertOpen(false);
       onToast(
-        "Tarifa opcional publicada por 72 horas para esta conta.",
+        "Tarifa opcional publicada até nova atualização para esta conta.",
         "success",
       );
       await load(undefined, "certificate");
@@ -262,7 +258,10 @@ export function RegistryOptionalTariffs({
       setTypeConfirmed(false);
       setArispReason("");
       setArispOpen(false);
-      onToast("Tarifa da API de certidão registrada por 72 horas.", "success");
+      onToast(
+        "Tarifa da API de certidão registrada até nova atualização.",
+        "success",
+      );
       await load();
     } catch (cause) {
       setReviewing(null);
@@ -289,7 +288,7 @@ export function RegistryOptionalTariffs({
         <>
           <SettingCard
             title="Certidões InfoSimples"
-            help="A tarifa total é própria desta conta e vale 72 horas. Sem PDF real e débito comprovados, a oferta continua indisponível."
+            help="A tarifa total é própria desta conta e fica vigente até o gestor atualizá-la. Sem PDF real e débito comprovados, a oferta continua indisponível."
             actions={
               <button
                 type="button"
@@ -314,8 +313,8 @@ export function RegistryOptionalTariffs({
                     {item.state ? ` · ${item.state}` : ""}
                   </strong>
                   <span>
-                    {money(item.unit_cost_cents)} · até{" "}
-                    {dateTime.format(new Date(item.valid_until))}
+                    {money(item.unit_cost_cents)} ·{" "}
+                    {supplierTariffValidityLabel(item.valid_until)}
                   </span>
                   <small>
                     {item.sample_document_sha256 && item.sample_charge_sha256
@@ -515,7 +514,7 @@ export function RegistryOptionalTariffs({
                 {item.certificate_type
                   ? `Tipo ${item.certificate_type} comprovado`
                   : "Tipo de ônus não comprovado"}{" "}
-                · até {dateTime.format(new Date(item.valid_until))}
+                · {supplierTariffValidityLabel(item.valid_until)}
               </small>
             </li>
           ))}
