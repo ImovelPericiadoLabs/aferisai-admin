@@ -18,6 +18,10 @@ import {
   type TariffDraft,
 } from "./registry-tariff-model";
 import { FormModal, Metrics, SettingCard } from "./SupplierUi";
+import {
+  supplierTariffIsCurrent,
+  supplierTariffValidityLabel,
+} from "./supplier-tariff-validity";
 import { useNow } from "./useNow";
 import type { ToastKind } from "./useToast";
 
@@ -26,16 +30,9 @@ const money = (cents: number) =>
     style: "currency",
     currency: "BRL",
   }).format(cents / 100);
-const dateTime = new Intl.DateTimeFormat("pt-BR", {
-  dateStyle: "short",
-  timeStyle: "short",
-  timeZone: "America/Sao_Paulo",
-});
 
 function tariffStatus(item: RegistryVisualizationTariff) {
-  return new Date(item.valid_until).getTime() > Date.now()
-    ? `Vigente até ${dateTime.format(new Date(item.valid_until))}`
-    : `Vencida em ${dateTime.format(new Date(item.valid_until))}`;
+  return supplierTariffValidityLabel(item.valid_until);
 }
 
 function draftFor(account: RegistrySupplierAccount): TariffDraft {
@@ -138,7 +135,10 @@ export function RegistryVisualizationTariffs({
       setDraft(draftFor(account));
       setTariffs((current) => [item, ...current].slice(0, 20));
       setError("");
-      onToast("Tarifa de visualização publicada por 72 horas.", "success");
+      onToast(
+        "Tarifa de visualização publicada até nova atualização.",
+        "success",
+      );
     } catch (cause) {
       setReviewing(false);
       if (cause instanceof ApiError && cause.status === 401) onUnauthorized();
@@ -167,14 +167,14 @@ export function RegistryVisualizationTariffs({
         help={
           <>
             A InfoSimples cobra o pedido e até três downloads; o preço do RI
-            Digital é verificado em cada prévia. Cada versão vale 72 horas e
-            fica na auditoria.
+            Digital é verificado em cada prévia. A tarifa fica vigente até o
+            gestor publicar outra versão; ambas ficam na auditoria.
           </>
         }
         badge={
           current && (
             <span
-              className={`badge badge-${new Date(current.valid_until).getTime() > now ? "success" : "warning"}`}
+              className={`badge badge-${supplierTariffIsCurrent(current.valid_until, now) ? "success" : "warning"}`}
             >
               {tariffStatus(current)}
             </span>
@@ -459,8 +459,8 @@ export function RegistryVisualizationTariffs({
                 {accountLabel(body.infosimples_account_id)}: pedido{" "}
                 {money(body.order_fee_cents)}, três downloads de{" "}
                 {money(body.download_fee_cents)} e mínimo mensal{" "}
-                {money(body.monthly_minimum_reserve_cents)}. A versão valerá por
-                72 horas e ficará na auditoria.
+                {money(body.monthly_minimum_reserve_cents)}. A versão ficará
+                vigente até nova atualização e permanecerá na auditoria.
               </p>
               <button
                 ref={confirmRef}
