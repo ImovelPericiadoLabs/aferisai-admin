@@ -15,6 +15,7 @@ const row = (hoursAgo: number, id = "i1"): UncertainRow => ({
   provider: "onr",
   created_at: new Date(NOW - (hoursAgo + 1) * H).toISOString(),
   attempted_at: new Date(NOW - hoursAgo * H).toISOString(),
+  customer_refunded: false,
 });
 
 describe("reconciliationTone", () => {

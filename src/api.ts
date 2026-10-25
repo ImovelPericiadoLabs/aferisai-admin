@@ -1646,6 +1646,7 @@ export type UncertainSubmissionItem = {
   provider: string;
   created_at: string;
   attempted_at: string;
+  customer_refunded: boolean;
 };
 
 export type UncertainSubmissionPage = {
@@ -1679,9 +1680,12 @@ export type SupplierEvidence = {
   };
 };
 
-export const listUncertainSubmissions = (cursor?: string) =>
+export const listUncertainSubmissions = (
+  cursor?: string,
+  state: "active" | "refunded" | "all" = "all",
+) =>
   request<UncertainSubmissionPage>(
-    `/v1/team/registry-submissions/uncertain?limit=20${cursor ? `&after=${encodeURIComponent(cursor)}` : ""}`,
+    `/v1/team/registry-submissions/uncertain?limit=20&state=${state}${cursor ? `&after=${encodeURIComponent(cursor)}` : ""}`,
     { method: "GET" },
   );
 
