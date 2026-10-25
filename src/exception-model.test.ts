@@ -272,6 +272,9 @@ describe("sortByUrgency and filterCases", () => {
     ]);
     expect(filterCases(items, "all", "m1", NOW)).toHaveLength(4);
     expect(filterCases(items, "executing", "m1", NOW)).toHaveLength(0);
+    expect(filterCases(items, "done", "m1", NOW).map((x) => x.id)).toEqual([
+      "done",
+    ]);
   });
 });
 
