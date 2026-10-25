@@ -821,9 +821,12 @@ export const listAnalysisAttention = (cursor?: string) =>
     { method: "GET" },
   );
 
-export const listPaymentExceptions = (cursor?: string) =>
+export const listPaymentExceptions = (
+  cursor?: string,
+  state: "open" | "done" | "all" = "all",
+) =>
   request<PaymentExceptionPage>(
-    `/v1/team/payment-exceptions?limit=20${cursor ? `&after=${encodeURIComponent(cursor)}` : ""}`,
+    `/v1/team/payment-exceptions?limit=20&state=${state}${cursor ? `&after=${encodeURIComponent(cursor)}` : ""}`,
     { method: "GET" },
   );
 

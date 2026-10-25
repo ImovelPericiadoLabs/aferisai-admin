@@ -43,10 +43,11 @@ const money = (cents: number) =>
   );
 
 const tabs: { value: CaseFilter; label: string }[] = [
-  { value: "all", label: "Todos" },
+  { value: "all", label: "Abertos" },
   { value: "overdue", label: "Atrasados" },
   { value: "mine", label: "Meus" },
   { value: "executing", label: "Em execução" },
+  { value: "done", label: "Concluídos" },
 ];
 
 function errorMessage(cause: unknown, fallback: string): string {
@@ -65,6 +66,7 @@ export function FinancialExceptions({
   const [loadFailed, setLoadFailed] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const [filter, setFilter] = useState<CaseFilter>("all");
+  const scope = filter === "done" ? "done" : "open";
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -78,11 +80,11 @@ export function FinancialExceptions({
   const load = useCallback(
     async (cursor?: string, keepPages = 1) => {
       try {
-        let page = await listPaymentExceptions(cursor);
+        let page = await listPaymentExceptions(cursor, scope);
         let items = page.items;
         let loaded = 1;
         while (!cursor && page.next_cursor && loaded < keepPages) {
-          page = await listPaymentExceptions(page.next_cursor);
+          page = await listPaymentExceptions(page.next_cursor, scope);
           items = [...items, ...page.items];
           loaded += 1;
         }
@@ -102,7 +104,7 @@ export function FinancialExceptions({
         setLoading(false);
       }
     },
-    [onUnauthorized],
+    [onUnauthorized, scope],
   );
 
   useEffect(() => {
@@ -158,6 +160,7 @@ export function FinancialExceptions({
       overdue: filterCases(cases, "overdue", memberId, now).length,
       mine: filterCases(cases, "mine", memberId, now).length,
       executing: filterCases(cases, "executing", memberId, now).length,
+      done: filterCases(cases, "done", memberId, now).length,
     }),
     [cases, memberId, now],
   );
@@ -166,6 +169,18 @@ export function FinancialExceptions({
   function close() {
     setOpen(false);
     setPanelError("");
+  }
+
+  function changeFilter(next: CaseFilter) {
+    if ((next === "done") !== (filter === "done")) {
+      setCases([]);
+      setNextCursor(null);
+      setLoading(true);
+      setSelectedId(null);
+      setOpen(false);
+      pagesLoaded.current = 1;
+    }
+    setFilter(next);
   }
 
   useDialogFocus(open, panelRef, close, {
@@ -263,8 +278,12 @@ export function FinancialExceptions({
     run(
       async () => {
         const result = await executePaymentException(selected.id, action, csrf);
+        if (result.status === "done") {
+          setSelectedId(null);
+          setOpen(false);
+        }
         return result.status === "done"
-          ? "Solução confirmada."
+          ? "Solução concluída. Consulte a aba Concluídos."
           : "Tentativa registrada. Consulte a conciliação para confirmar o resultado.";
       },
       "",
@@ -320,10 +339,12 @@ export function FinancialExceptions({
               type="button"
               className="rules-tab"
               aria-pressed={filter === tab.value}
-              onClick={() => setFilter(tab.value)}
+              onClick={() => changeFilter(tab.value)}
             >
               {tab.label}
-              <span className="rules-tab-count">{counts[tab.value]}</span>
+              {(tab.value === "done") === (scope === "done") && (
+                <span className="rules-tab-count">{counts[tab.value]}</span>
+              )}
             </button>
           ))}
         </div>
@@ -339,19 +360,19 @@ export function FinancialExceptions({
         <div className="empty-state" role="status">
           <strong>
             {filter === "all"
-              ? "Nenhum caso financeiro"
+              ? "Nenhum caso financeiro aberto"
               : "Nenhum caso neste filtro"}
           </strong>
           <span>
             {filter === "all"
-              ? "Quando um pagamento ficar sem entrega, o caso aparece aqui com prazo para decidir."
+              ? "Quando um pagamento ficar sem entrega, o caso aparece aqui com prazo para decidir. Os resolvidos ficam em Concluídos."
               : "Escolha outro filtro para ver os demais casos."}
           </span>
           {filter !== "all" && (
             <button
               className="btn btn-secondary btn-sm"
               type="button"
-              onClick={() => setFilter("all")}
+              onClick={() => changeFilter("all")}
             >
               Limpar filtro
             </button>

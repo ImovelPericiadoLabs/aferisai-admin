@@ -115,7 +115,7 @@ export function sortByUrgency(
   });
 }
 
-export type CaseFilter = "all" | "overdue" | "mine" | "executing";
+export type CaseFilter = "all" | "overdue" | "mine" | "executing" | "done";
 
 export function filterCases(
   items: PaymentExceptionCase[],
@@ -135,6 +135,8 @@ export function filterCases(
     );
   if (filter === "executing")
     return items.filter((item) => stageOf(item) === "executing");
+  if (filter === "done")
+    return items.filter((item) => stageOf(item) === "done");
   return items;
 }
 
