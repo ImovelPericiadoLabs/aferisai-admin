@@ -43,6 +43,7 @@ export function RegistryReconciliation({
   onToast: (message: string, kind: ToastKind) => void;
 }) {
   const [items, setItems] = useState<UncertainRow[]>([]);
+  const [scope, setScope] = useState<"active" | "refunded">("active");
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [listError, setListError] = useState("");
@@ -67,7 +68,7 @@ export function RegistryReconciliation({
     async (cursor?: string) => {
       setLoading(true);
       try {
-        const page = await listUncertainSubmissions(cursor);
+        const page = await listUncertainSubmissions(cursor, scope);
         setItems((current) =>
           cursor ? [...current, ...page.items] : page.items,
         );
@@ -85,11 +86,32 @@ export function RegistryReconciliation({
         setLoading(false);
       }
     },
-    [onUnauthorized],
+    [onUnauthorized, scope],
   );
+
+  function changeScope(next: "active" | "refunded") {
+    if (next === scope) return;
+    setItems([]);
+    setNextCursor(null);
+    setLoading(true);
+    setSelected(null);
+    setScope(next);
+  }
 
   useEffect(() => {
     queueMicrotask(() => void load());
+  }, [load]);
+
+  useEffect(() => {
+    const refresh = () => {
+      if (document.visibilityState === "visible") void load();
+    };
+    const timer = window.setInterval(refresh, 30_000);
+    window.addEventListener("focus", refresh);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refresh);
+    };
   }, [load]);
 
   const sorted = useMemo(
@@ -234,9 +256,9 @@ export function RegistryReconciliation({
             Conciliação
           </h1>
           <p className="page-subtitle">
-            Envios ao fornecedor cujo resultado não pôde ser confirmado. Cada
-            item pede uma decisão manual e auditada antes de qualquer nova
-            tentativa. Os mais antigos aparecem primeiro.
+            {scope === "active"
+              ? "Envios ao fornecedor cujo resultado não pôde ser confirmado. Cada item pede decisão auditada antes de qualquer nova tentativa."
+              : "O cliente já foi reembolsado. A resposta do fornecedor ainda precisa de conferência para fechar a exposição operacional; esta decisão nunca reinicia a compra."}
           </p>
         </div>
         <div className="ops-head-actions">
@@ -250,6 +272,31 @@ export function RegistryReconciliation({
           </button>
         </div>
       </header>
+
+      <div className="rules-toolbar">
+        <div
+          className="rules-tabs"
+          role="group"
+          aria-label="Situação da conciliação"
+        >
+          <button
+            type="button"
+            className="rules-tab"
+            aria-pressed={scope === "active"}
+            onClick={() => changeScope("active")}
+          >
+            Em atendimento
+          </button>
+          <button
+            type="button"
+            className="rules-tab"
+            aria-pressed={scope === "refunded"}
+            onClick={() => changeScope("refunded")}
+          >
+            Após reembolso
+          </button>
+        </div>
+      </div>
 
       <OpsKpis
         items={reconciliationKpis(items, now)}
@@ -283,10 +330,15 @@ export function RegistryReconciliation({
         </div>
       ) : !listError && sorted.length === 0 ? (
         <div className="empty-state" role="status">
-          <strong>Nenhum envio incerto no momento</strong>
+          <strong>
+            {scope === "active"
+              ? "Nenhum envio incerto em atendimento"
+              : "Nenhum envio incerto após reembolso"}
+          </strong>
           <span>
-            Quando um envio ficar sem resposta clara, ele aparece aqui para
-            decisão.
+            {scope === "active"
+              ? "Quando um envio ficar sem resposta clara, ele aparece aqui para decisão."
+              : "Os pedidos reembolsados com resultado incerto do fornecedor aparecem aqui para conferência."}
           </span>
         </div>
       ) : (
@@ -322,6 +374,11 @@ export function RegistryReconciliation({
               </span>
               <span className="ops-card-badges">
                 <span className="badge badge-neutral">{item.provider}</span>
+                {item.customer_refunded && (
+                  <span className="badge badge-warning">
+                    Cliente reembolsado
+                  </span>
+                )}
               </span>
               <span className="ops-card-meta">
                 Tentada em {dateTime.format(new Date(item.attempted_at))}
@@ -359,7 +416,11 @@ export function RegistryReconciliation({
         }
         badges={
           selected && (
-            <span className="badge badge-warning">Resultado incerto</span>
+            <span className="badge badge-warning">
+              {selected.customer_refunded
+                ? "Cliente reembolsado · fornecedor incerto"
+                : "Resultado incerto"}
+            </span>
           )
         }
         onClose={() => {
@@ -376,7 +437,9 @@ export function RegistryReconciliation({
               <p className="ops-lead">
                 O envio ao fornecedor foi tentado, mas a resposta não permitiu
                 concluir se a compra ocorreu. Nada é reenviado automaticamente:
-                a decisão abaixo é a única forma de liberar o item.
+                {selected.customer_refunded
+                  ? " o cliente já foi reembolsado e esta decisão apenas fecha a incerteza do fornecedor, sem retomar a compra."
+                  : " a decisão abaixo é a única forma de liberar o item."}
               </p>
               <dl className="ops-facts">
                 <div>
@@ -584,7 +647,11 @@ export function RegistryReconciliation({
             ? "Registrar que não houve compra?"
             : "Confirmar o protocolo?"
         }
-        description="A decisão é auditada e libera o item da fila. Ela não cria cobrança nem reenvia nada."
+        description={
+          selected?.customer_refunded
+            ? "A decisão é auditada e fecha a incerteza do fornecedor. O cliente já foi reembolsado; a compra não será retomada."
+            : "A decisão é auditada e libera o item da fila. Ela não cria cobrança nem reenvia nada."
+        }
         details={
           selected
             ? [

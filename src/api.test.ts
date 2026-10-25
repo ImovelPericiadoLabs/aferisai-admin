@@ -42,13 +42,14 @@ describe("cliente da API interna", () => {
   it("usa as rotas reais de conciliação e o cursor after", async () => {
     const itemId = uuidv7();
     const cursor = uuidv7();
-    const fetchMock = vi.fn().mockImplementation(async () =>
-      new Response(JSON.stringify({ items: [], next_cursor: null }), {
-        status: 200,
-      }),
+    const fetchMock = vi.fn().mockImplementation(
+      async () =>
+        new Response(JSON.stringify({ items: [], next_cursor: null }), {
+          status: 200,
+        }),
     );
     vi.stubGlobal("fetch", fetchMock);
-    await listUncertainSubmissions(cursor);
+    await listUncertainSubmissions(cursor, "active");
     await readSupplierEvidence(itemId, "Conferência da compra incerta", "csrf");
     await reconcileNoPurchase(
       itemId,
@@ -63,6 +64,7 @@ describe("cliente da API interna", () => {
     );
     const calls = fetchMock.mock.calls as [string, RequestInit][];
     expect(new URL(calls[0][0]).searchParams.get("after")).toBe(cursor);
+    expect(new URL(calls[0][0]).searchParams.get("state")).toBe("active");
     expect(calls.slice(1).map(([url]) => new URL(url).pathname)).toEqual([
       `/v1/team/registry-submissions/${itemId}/evidence`,
       `/v1/team/registry-submissions/${itemId}/reconcile/no-purchase`,
