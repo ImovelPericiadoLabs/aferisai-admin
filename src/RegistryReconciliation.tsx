@@ -2,8 +2,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ApiError,
   listUncertainSubmissions,
+  readSupplierEvidence,
   reconcileNoPurchase,
   reconcileProtocol,
+  type SupplierEvidence,
 } from "./api";
 import { ConfirmDialog } from "./ConfirmDialog";
 import {
@@ -17,6 +19,7 @@ import {
 import { AgeBadge, OpsKpis, RecordDrawer } from "./OpsParts";
 import { OpsTable, type OpsColumn } from "./OpsTable";
 import { RolePicker } from "./RolePicker";
+import { SupplierResponseTree } from "./SupplierResponseTree";
 import type { ToastKind } from "./useToast";
 import { useNow } from "./useNow";
 import "./ops.css";
@@ -30,10 +33,12 @@ const shortId = (id: string) => id.slice(-8);
 
 export function RegistryReconciliation({
   csrf,
+  isAdmin,
   onUnauthorized,
   onToast,
 }: {
   csrf: string;
+  isAdmin: boolean;
   onUnauthorized: () => void;
   onToast: (message: string, kind: ToastKind) => void;
 }) {
@@ -48,7 +53,14 @@ export function RegistryReconciliation({
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const [saveError, setSaveError] = useState("");
+  const [evidence, setEvidence] = useState<SupplierEvidence | null>(null);
+  const [evidenceReason, setEvidenceReason] = useState(
+    "Conferência de compra incerta",
+  );
+  const [evidenceError, setEvidenceError] = useState("");
+  const [evidenceLoading, setEvidenceLoading] = useState(false);
   const trigger = useRef<HTMLElement | null>(null);
+  const selectedId = useRef<string | null>(null);
   const now = useNow();
 
   const load = useCallback(
@@ -134,12 +146,41 @@ export function RegistryReconciliation({
   );
 
   function open(item: UncertainRow, element: HTMLElement) {
+    selectedId.current = item.item_id;
     trigger.current = element;
     setSelected(item);
     setDecision("no_purchase");
     setProtocol("");
     setSubmitted(false);
     setSaveError("");
+    setEvidence(null);
+    setEvidenceError("");
+  }
+
+  async function loadEvidence() {
+    if (!selected || evidenceLoading || evidenceReason.trim().length < 10)
+      return;
+    const itemId = selected.item_id;
+    setEvidenceLoading(true);
+    setEvidenceError("");
+    try {
+      const result = await readSupplierEvidence(
+        itemId,
+        evidenceReason.trim(),
+        csrf,
+      );
+      if (selectedId.current === itemId) setEvidence(result);
+    } catch (cause) {
+      if (cause instanceof ApiError && cause.status === 401) onUnauthorized();
+      else if (selectedId.current === itemId)
+        setEvidenceError(
+          cause instanceof ApiError
+            ? cause.detail
+            : "Não foi possível consultar a evidência.",
+        );
+    } finally {
+      setEvidenceLoading(false);
+    }
   }
 
   const error = decisionError(decision, protocol);
@@ -321,7 +362,11 @@ export function RegistryReconciliation({
             <span className="badge badge-warning">Resultado incerto</span>
           )
         }
-        onClose={() => !busy && setSelected(null)}
+        onClose={() => {
+          if (busy) return;
+          selectedId.current = null;
+          setSelected(null);
+        }}
         returnFocus={() => trigger.current}
       >
         {selected && (
@@ -356,6 +401,124 @@ export function RegistryReconciliation({
                 </div>
               </dl>
             </section>
+            {isAdmin && (
+              <section className="detail-panel-section">
+                <h3 className="detail-panel-section-title">
+                  Resposta do fornecedor
+                </h3>
+                <p className="ops-lead">
+                  A leitura é restrita ao administrador e fica auditada. A
+                  consulta da lista de pedidos não reenvia a compra.
+                </p>
+                <div className="form-field ops-field">
+                  <label
+                    className="form-field-label"
+                    htmlFor="rec-evidence-reason"
+                  >
+                    Motivo do acesso
+                  </label>
+                  <input
+                    id="rec-evidence-reason"
+                    className="input"
+                    value={evidenceReason}
+                    maxLength={500}
+                    onChange={(event) => setEvidenceReason(event.target.value)}
+                  />
+                </div>
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-md"
+                  disabled={
+                    evidenceLoading || evidenceReason.trim().length < 10
+                  }
+                  onClick={() => void loadEvidence()}
+                >
+                  {evidenceLoading ? "Consultando…" : "Ver resposta e pedidos"}
+                </button>
+                {evidenceError && (
+                  <p className="alert alert-danger" role="alert">
+                    {evidenceError}
+                  </p>
+                )}
+                {evidence && (
+                  <div className="ops-evidence-stack">
+                    <h4>Resposta da tentativa</h4>
+                    {evidence.response.captured &&
+                    evidence.response.response_text !== null ? (
+                      <>
+                        <p className="ops-hint">
+                          HTTP {evidence.response.http_status ?? "—"} ·{" "}
+                          {evidence.response.content_type ??
+                            "tipo desconhecido"}{" "}
+                          · SHA-256 {evidence.response.response_sha256 ?? "—"}
+                        </p>
+                        <SupplierResponseTree
+                          text={evidence.response.response_text}
+                        />
+                      </>
+                    ) : (
+                      <p className="ops-hint">
+                        A versão que executou esta tentativa não guardou o corpo
+                        da resposta. Não é possível reconstruí-lo agora.
+                      </p>
+                    )}
+                    <h4>Lista atual da InfoSimples</h4>
+                    {evidence.order_list.status === "checked" ? (
+                      <>
+                        <p className="ops-hint">
+                          Consultada em{" "}
+                          {evidence.order_list.checked_at
+                            ? dateTime.format(
+                                new Date(evidence.order_list.checked_at),
+                              )
+                            : "agora"}
+                          . {evidence.order_list.listed_count} pedidos na
+                          primeira página; mais recente em{" "}
+                          {evidence.order_list.newest_date ??
+                            "data indisponível"}
+                          .
+                        </p>
+                        {evidence.order_list.matching_orders.length ? (
+                          <table className="ops-evidence-table">
+                            <thead>
+                              <tr>
+                                <th>Protocolo</th>
+                                <th>Data</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {evidence.order_list.matching_orders.map(
+                                (order) => (
+                                  <tr key={order.protocol}>
+                                    <td>{order.protocol}</td>
+                                    <td>{order.date}</td>
+                                  </tr>
+                                ),
+                              )}
+                            </tbody>
+                          </table>
+                        ) : (
+                          <p className="ops-hint">
+                            Nenhum pedido correspondente apareceu nesta página.
+                          </p>
+                        )}
+                      </>
+                    ) : (
+                      <p className="ops-hint">
+                        Lista:{" "}
+                        {evidence.order_list.status === "account_changed"
+                          ? "a conta ativa mudou"
+                          : evidence.order_list.status === "unavailable"
+                            ? "fornecedor indisponível"
+                            : "não se aplica"}
+                        .
+                      </p>
+                    )}
+                    <p className="ops-hint">{evidence.order_list.limit_note}</p>
+                  </div>
+                )}
+              </section>
+            )}
             <section className="detail-panel-section">
               <h3 className="detail-panel-section-title">Decisão</h3>
               {saveError && (

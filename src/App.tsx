@@ -1014,6 +1014,7 @@ function TeamApp() {
           ) : currentPage === "reconciliation" && canReview ? (
             <RegistryReconciliation
               csrf={session.csrf}
+              isAdmin={session.member.role === "administrator"}
               onUnauthorized={unauthorize}
               onToast={showToast}
             />
