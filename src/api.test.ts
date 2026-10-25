@@ -22,11 +22,15 @@ import {
   listAnalysisAttention,
   listOrganizations,
   listPendingSourceClassifications,
+  listUncertainSubmissions,
   listPartnerCredentials,
   previewApplicationBulkChange,
   mediaUrl,
   replaceOrganizationProfile,
   replaceApplicationRedirectUris,
+  readSupplierEvidence,
+  reconcileNoPurchase,
+  reconcileProtocol,
   revokeApplicationPermission,
   revokePartnerCredential,
 } from "./api";
@@ -35,6 +39,44 @@ import { uuidv7 } from "./uuidv7";
 afterEach(() => vi.unstubAllGlobals());
 
 describe("cliente da API interna", () => {
+  it("usa as rotas reais de conciliação e o cursor after", async () => {
+    const itemId = uuidv7();
+    const cursor = uuidv7();
+    const fetchMock = vi.fn().mockImplementation(async () =>
+      new Response(JSON.stringify({ items: [], next_cursor: null }), {
+        status: 200,
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    await listUncertainSubmissions(cursor);
+    await readSupplierEvidence(itemId, "Conferência da compra incerta", "csrf");
+    await reconcileNoPurchase(
+      itemId,
+      "Não consta compra no portal consultado",
+      "csrf",
+    );
+    await reconcileProtocol(
+      itemId,
+      "IS-123",
+      "Protocolo confirmado no portal",
+      "csrf",
+    );
+    const calls = fetchMock.mock.calls as [string, RequestInit][];
+    expect(new URL(calls[0][0]).searchParams.get("after")).toBe(cursor);
+    expect(calls.slice(1).map(([url]) => new URL(url).pathname)).toEqual([
+      `/v1/team/registry-submissions/${itemId}/evidence`,
+      `/v1/team/registry-submissions/${itemId}/reconcile/no-purchase`,
+      `/v1/team/registry-submissions/${itemId}/reconcile/protocol`,
+    ]);
+    expect(
+      calls
+        .slice(1)
+        .every(
+          ([, init]) =>
+            (init.headers as Record<string, string>)["X-CSRF-Token"] === "csrf",
+        ),
+    ).toBe(true);
+  });
   it("mantém cookie e CSRF nas cerimônias de chave de acesso", async () => {
     const options = {
       challenge_id: uuidv7(),
