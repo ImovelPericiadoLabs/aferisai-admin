@@ -1647,6 +1647,7 @@ export type UncertainSubmissionItem = {
   created_at: string;
   attempted_at: string;
   customer_refunded: boolean;
+  reconciliation_status: "action_required" | "refunded_record";
 };
 
 export type UncertainSubmissionPage = {

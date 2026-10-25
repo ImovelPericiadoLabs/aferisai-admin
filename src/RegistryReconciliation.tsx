@@ -44,6 +44,11 @@ export function RegistryReconciliation({
 }) {
   const [items, setItems] = useState<UncertainRow[]>([]);
   const [scope, setScope] = useState<"active" | "refunded">("active");
+  const [batchMode, setBatchMode] = useState(false);
+  const [batchIds, setBatchIds] = useState<string[]>([]);
+  const [batchConfirming, setBatchConfirming] = useState(false);
+  const [batchBusy, setBatchBusy] = useState(false);
+  const [batchResults, setBatchResults] = useState<string[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [listError, setListError] = useState("");
@@ -95,6 +100,9 @@ export function RegistryReconciliation({
     setNextCursor(null);
     setLoading(true);
     setSelected(null);
+    setBatchMode(false);
+    setBatchIds([]);
+    setBatchResults([]);
     setScope(next);
   }
 
@@ -119,6 +127,61 @@ export function RegistryReconciliation({
       [...items].sort((a, b) => a.attempted_at.localeCompare(b.attempted_at)),
     [items],
   );
+  const batchRows = sorted.filter(
+    (row) =>
+      batchIds.includes(row.item_id) &&
+      row.reconciliation_status === "action_required",
+  );
+
+  function toggleBatch(itemId: string) {
+    if (batchIds.includes(itemId)) {
+      setBatchIds(batchIds.filter((id) => id !== itemId));
+    } else if (batchIds.length >= 20) {
+      onToast("Selecione no máximo 20 envios por lote.", "error");
+    } else {
+      setBatchIds([...batchIds, itemId]);
+    }
+  }
+
+  async function confirmBatch(reason: string) {
+    if (!isAdmin || scope !== "active" || batchRows.length === 0) return;
+    setBatchBusy(true);
+    const completed: string[] = [];
+    const failures: string[] = [];
+    for (const row of batchRows) {
+      try {
+        await reconcileNoPurchase(row.item_id, reason, csrf);
+        completed.push(row.item_id);
+      } catch (cause) {
+        failures.push(
+          `${shortId(row.item_id)}: ${cause instanceof ApiError ? cause.detail : "falha de conexão"}`,
+        );
+        if (cause instanceof ApiError && cause.status === 401) {
+          onUnauthorized();
+          break;
+        }
+      }
+    }
+    setItems((current) =>
+      current.filter((row) => !completed.includes(row.item_id)),
+    );
+    setBatchIds(
+      failures.length
+        ? batchRows
+            .filter((row) => !completed.includes(row.item_id))
+            .map((row) => row.item_id)
+        : [],
+    );
+    setBatchResults(failures);
+    setBatchConfirming(false);
+    setBatchBusy(false);
+    if (completed.length)
+      onToast(
+        `${completed.length} envio(s) conciliado(s) individualmente.`,
+        "success",
+      );
+    if (!failures.length) setBatchMode(false);
+  }
 
   const columns: OpsColumn<UncertainRow>[] = useMemo(
     () => [
@@ -151,17 +214,23 @@ export function RegistryReconciliation({
       },
       {
         id: "age",
-        label: "Parada há",
+        label: "Situação",
         align: "end",
-        render: (item) => (
-          <AgeBadge
-            iso={item.attempted_at}
-            now={now}
-            warnAfterHours={6}
-            dangerAfterHours={24}
-          />
-        ),
-        text: (item) => item.attempted_at,
+        render: (item) =>
+          item.reconciliation_status === "refunded_record" ? (
+            <span className="badge badge-neutral">Cliente reembolsado</span>
+          ) : (
+            <AgeBadge
+              iso={item.attempted_at}
+              now={now}
+              warnAfterHours={6}
+              dangerAfterHours={24}
+            />
+          ),
+        text: (item) =>
+          item.reconciliation_status === "refunded_record"
+            ? "Cliente reembolsado"
+            : item.attempted_at,
       },
     ],
     [now],
@@ -208,13 +277,15 @@ export function RegistryReconciliation({
   const error = decisionError(decision, protocol);
 
   function review() {
+    if (selected?.reconciliation_status !== "action_required") return;
     setSubmitted(true);
     if (error) return;
     setConfirming(true);
   }
 
   async function confirm(reason: string) {
-    if (!selected) return;
+    if (!selected || selected.reconciliation_status !== "action_required")
+      return;
     setBusy(true);
     setSaveError("");
     try {
@@ -258,10 +329,24 @@ export function RegistryReconciliation({
           <p className="page-subtitle">
             {scope === "active"
               ? "Envios ao fornecedor cujo resultado não pôde ser confirmado. Cada item pede decisão auditada antes de qualquer nova tentativa."
-              : "O cliente já foi reembolsado. A resposta do fornecedor ainda precisa de conferência para fechar a exposição operacional; esta decisão nunca reinicia a compra."}
+              : "Pedidos reembolsados ficam aqui como registro técnico. O cliente não tem pagamento ou compra pendente; eventual custo do fornecedor é apurado separadamente."}
           </p>
         </div>
         <div className="ops-head-actions">
+          {isAdmin && scope === "active" && (
+            <button
+              type="button"
+              className="btn btn-secondary btn-md"
+              aria-pressed={batchMode}
+              onClick={() => {
+                setBatchMode((current) => !current);
+                setBatchIds([]);
+                setBatchResults([]);
+              }}
+            >
+              {batchMode ? "Fechar lote" : "Conciliar em lote"}
+            </button>
+          )}
           <button
             type="button"
             className="btn btn-secondary btn-md"
@@ -293,13 +378,60 @@ export function RegistryReconciliation({
             aria-pressed={scope === "refunded"}
             onClick={() => changeScope("refunded")}
           >
-            Após reembolso
+            Reembolsados
           </button>
         </div>
       </div>
 
+      {batchMode && isAdmin && scope === "active" && (
+        <section className="rec-batch" aria-label="Conciliação em lote">
+          <h2>Selecionar envios sem compra</h2>
+          <p>
+            Marque somente os envios que você conferiu individualmente no portal
+            do fornecedor. Cada decisão é auditada e pode liberar uma nova
+            tentativa automática para o pedido ativo.
+          </p>
+          <div className="rec-batch-list">
+            {sorted
+              .filter((row) => row.reconciliation_status === "action_required")
+              .map((row) => (
+                <label key={row.item_id} className="rec-batch-row">
+                  <input
+                    type="checkbox"
+                    checked={batchIds.includes(row.item_id)}
+                    disabled={batchBusy}
+                    onChange={() => toggleBatch(row.item_id)}
+                  />
+                  <span>
+                    <strong>{shortId(row.operation_id)}</strong> · item{" "}
+                    {shortId(row.item_id)} · {row.provider}
+                  </span>
+                </label>
+              ))}
+          </div>
+          <button
+            type="button"
+            className="btn btn-primary btn-md"
+            disabled={batchRows.length === 0 || batchBusy}
+            onClick={() => setBatchConfirming(true)}
+          >
+            Revisar {batchRows.length} selecionado(s)
+          </button>
+          {batchResults.length > 0 && (
+            <div className="alert alert-danger" role="alert">
+              <strong>Alguns envios permaneceram na fila:</strong>
+              <ul>
+                {batchResults.map((result) => (
+                  <li key={result}>{result}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </section>
+      )}
+
       <OpsKpis
-        items={reconciliationKpis(items, now)}
+        items={reconciliationKpis(items, now, scope)}
         active={null}
         onPick={() => undefined}
       />
@@ -333,12 +465,12 @@ export function RegistryReconciliation({
           <strong>
             {scope === "active"
               ? "Nenhum envio incerto em atendimento"
-              : "Nenhum envio incerto após reembolso"}
+              : "Nenhum registro de pedido reembolsado"}
           </strong>
           <span>
             {scope === "active"
               ? "Quando um envio ficar sem resposta clara, ele aparece aqui para decisão."
-              : "Os pedidos reembolsados com resultado incerto do fornecedor aparecem aqui para conferência."}
+              : "Tentativas incertas de pedidos reembolsados aparecem aqui apenas para consulta."}
           </span>
         </div>
       ) : (
@@ -354,10 +486,12 @@ export function RegistryReconciliation({
           actions={(item) => (
             <button
               type="button"
-              className="btn btn-primary btn-sm"
+              className={`btn ${item.reconciliation_status === "refunded_record" ? "btn-secondary" : "btn-primary"} btn-sm`}
               onClick={(event) => open(item, event.currentTarget)}
             >
-              Decidir
+              {item.reconciliation_status === "refunded_record"
+                ? "Consultar"
+                : "Decidir"}
             </button>
           )}
           onOpen={open}
@@ -365,18 +499,20 @@ export function RegistryReconciliation({
             <>
               <span className="ops-card-top">
                 <strong>{shortId(item.operation_id)}</strong>
-                <AgeBadge
-                  iso={item.attempted_at}
-                  now={now}
-                  warnAfterHours={6}
-                  dangerAfterHours={24}
-                />
+                {item.reconciliation_status === "action_required" && (
+                  <AgeBadge
+                    iso={item.attempted_at}
+                    now={now}
+                    warnAfterHours={6}
+                    dangerAfterHours={24}
+                  />
+                )}
               </span>
               <span className="ops-card-badges">
                 <span className="badge badge-neutral">{item.provider}</span>
                 {item.customer_refunded && (
-                  <span className="badge badge-warning">
-                    Cliente reembolsado
+                  <span className="badge badge-neutral">
+                    Encerrado para o cliente
                   </span>
                 )}
               </span>
@@ -391,7 +527,13 @@ export function RegistryReconciliation({
       <div className="ops-foot">
         <span>
           {sorted.length}{" "}
-          {sorted.length === 1 ? "envio carregado" : "envios carregados"}
+          {scope === "refunded"
+            ? sorted.length === 1
+              ? "registro"
+              : "registros"
+            : sorted.length === 1
+              ? "envio carregado"
+              : "envios carregados"}
           <span className="ops-hint"> · J e K navegam, Enter abre</span>
         </span>
         {nextCursor && (
@@ -416,9 +558,11 @@ export function RegistryReconciliation({
         }
         badges={
           selected && (
-            <span className="badge badge-warning">
+            <span
+              className={`badge ${selected.customer_refunded ? "badge-neutral" : "badge-warning"}`}
+            >
               {selected.customer_refunded
-                ? "Cliente reembolsado · fornecedor incerto"
+                ? "Reembolsado · registro técnico"
                 : "Resultado incerto"}
             </span>
           )
@@ -438,7 +582,7 @@ export function RegistryReconciliation({
                 O envio ao fornecedor foi tentado, mas a resposta não permitiu
                 concluir se a compra ocorreu. Nada é reenviado automaticamente:
                 {selected.customer_refunded
-                  ? " o cliente já foi reembolsado e esta decisão apenas fecha a incerteza do fornecedor, sem retomar a compra."
+                  ? " o cliente já foi reembolsado. Este registro não admite decisão de compra nem nova cobrança. Uma eventual despesa do fornecedor é tratada separadamente."
                   : " a decisão abaixo é a única forma de liberar o item."}
               </p>
               <dl className="ops-facts">
@@ -582,65 +726,69 @@ export function RegistryReconciliation({
                 )}
               </section>
             )}
-            <section className="detail-panel-section">
-              <h3 className="detail-panel-section-title">Decisão</h3>
-              {saveError && (
-                <p className="alert alert-danger" role="alert">
-                  {saveError}
-                </p>
-              )}
-              <RolePicker<Decision>
-                label="O que você verificou"
-                value={decision}
-                options={DECISIONS}
-                disabled={busy}
-                onChange={(next) => {
-                  setDecision(next);
-                  setSubmitted(false);
-                }}
-              />
-              {decision === "protocol_confirmed" && (
-                <div className="form-field ops-field">
-                  <label className="form-field-label" htmlFor="rec-protocol">
-                    Protocolo confirmado
-                  </label>
-                  <input
-                    id="rec-protocol"
-                    className="input"
-                    autoComplete="off"
-                    spellCheck={false}
-                    maxLength={160}
-                    placeholder="Número do protocolo no portal"
-                    value={protocol}
-                    disabled={busy}
-                    aria-invalid={submitted && error ? true : undefined}
-                    onChange={(event) => setProtocol(event.target.value)}
-                  />
-                  {submitted && error && (
-                    <span className="form-hint ops-error" role="alert">
-                      {error}
-                    </span>
-                  )}
-                </div>
-              )}
-              <div className="ops-actions">
-                <button
-                  type="button"
-                  className="btn btn-primary btn-md"
-                  aria-haspopup="dialog"
+            {selected.reconciliation_status === "action_required" && (
+              <section className="detail-panel-section">
+                <h3 className="detail-panel-section-title">Decisão</h3>
+                {saveError && (
+                  <p className="alert alert-danger" role="alert">
+                    {saveError}
+                  </p>
+                )}
+                <RolePicker<Decision>
+                  label="O que você verificou"
+                  value={decision}
+                  options={DECISIONS}
                   disabled={busy}
-                  onClick={review}
-                >
-                  Revisar e registrar
-                </button>
-              </div>
-            </section>
+                  onChange={(next) => {
+                    setDecision(next);
+                    setSubmitted(false);
+                  }}
+                />
+                {decision === "protocol_confirmed" && (
+                  <div className="form-field ops-field">
+                    <label className="form-field-label" htmlFor="rec-protocol">
+                      Protocolo confirmado
+                    </label>
+                    <input
+                      id="rec-protocol"
+                      className="input"
+                      autoComplete="off"
+                      spellCheck={false}
+                      maxLength={160}
+                      placeholder="Número do protocolo no portal"
+                      value={protocol}
+                      disabled={busy}
+                      aria-invalid={submitted && error ? true : undefined}
+                      onChange={(event) => setProtocol(event.target.value)}
+                    />
+                    {submitted && error && (
+                      <span className="form-hint ops-error" role="alert">
+                        {error}
+                      </span>
+                    )}
+                  </div>
+                )}
+                <div className="ops-actions">
+                  <button
+                    type="button"
+                    className="btn btn-primary btn-md"
+                    aria-haspopup="dialog"
+                    disabled={busy}
+                    onClick={review}
+                  >
+                    Revisar e registrar
+                  </button>
+                </div>
+              </section>
+            )}
           </>
         )}
       </RecordDrawer>
 
       <ConfirmDialog
-        open={confirming && selected !== null}
+        open={
+          confirming && selected?.reconciliation_status === "action_required"
+        }
         tone={decision === "no_purchase" ? "danger" : "primary"}
         title={
           decision === "no_purchase"
@@ -648,9 +796,9 @@ export function RegistryReconciliation({
             : "Confirmar o protocolo?"
         }
         description={
-          selected?.customer_refunded
-            ? "A decisão é auditada e fecha a incerteza do fornecedor. O cliente já foi reembolsado; a compra não será retomada."
-            : "A decisão é auditada e libera o item da fila. Ela não cria cobrança nem reenvia nada."
+          decision === "no_purchase"
+            ? "A decisão é auditada e pode liberar nova tentativa automática de aquisição para este pedido ativo. Confirme no portal que não houve compra."
+            : "A decisão é auditada e vincula o protocolo confirmado a este pedido ativo."
         }
         details={
           selected
@@ -676,6 +824,26 @@ export function RegistryReconciliation({
         busy={busy}
         onConfirm={(reason) => void confirm(reason)}
         onCancel={() => !busy && setConfirming(false)}
+      />
+
+      <ConfirmDialog
+        open={batchConfirming && batchRows.length > 0}
+        tone="danger"
+        title={`Registrar sem compra em ${batchRows.length} envios?`}
+        description="Confirme que verificou cada envio selecionado no portal. Cada item será revalidado e auditado separadamente; os pedidos ainda ativos podem voltar à fila de aquisição. Falhas ficam visíveis para correção."
+        details={batchRows.map((row) => ({
+          label: shortId(row.item_id),
+          value: `${shortId(row.operation_id)} · ${row.provider}`,
+        }))}
+        reason={{
+          label: "Justificativa da conferência (sem dados pessoais)",
+          min: 20,
+          max: 2000,
+        }}
+        confirmLabel="Registrar lote"
+        busy={batchBusy}
+        onConfirm={(reason) => void confirmBatch(reason)}
+        onCancel={() => !batchBusy && setBatchConfirming(false)}
       />
     </section>
   );
