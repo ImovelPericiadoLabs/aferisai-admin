@@ -231,6 +231,7 @@ export type PaymentExceptionCase = {
   due_at: string;
   reason_code: string;
   amount_cents: number;
+  funding_source?: "pix" | "credits";
   latest_proposal_id: string | null;
   proposed_resolution: "correct" | "refund" | null;
   proposal_reason: string | null;

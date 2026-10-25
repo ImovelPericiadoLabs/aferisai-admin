@@ -40,11 +40,11 @@ describe("capabilitiesFor", () => {
     expect(provider("financial")).toBe(false);
   });
 
-  it("lets only financial confirm and execute refunds", () => {
+  it("lets financial and administrator confirm and execute refunds", () => {
     const confirm = (role: Parameters<typeof capabilitiesFor>[0]) =>
       capabilitiesFor(role).some((item) => item.id === "exception-confirm");
     expect(confirm("financial")).toBe(true);
-    expect(confirm("administrator")).toBe(false);
+    expect(confirm("administrator")).toBe(true);
     expect(confirm("manager")).toBe(false);
   });
 

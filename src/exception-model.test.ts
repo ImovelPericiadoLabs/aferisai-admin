@@ -101,6 +101,35 @@ describe("nextAction", () => {
       nextAction(kase({ manager_assignee_id: "m1" }), "manager", "m1"),
     ).toEqual({ kind: "propose" });
   });
+  it("lets one administrator advance an existing proposal to the financial stage", () => {
+    const item = kase({
+      manager_assignee_id: "admin",
+      latest_proposal_id: "proposal",
+      proposed_resolution: "refund",
+    });
+    expect(nextAction(item, "administrator", "admin")).toEqual({
+      kind: "claim",
+    });
+    expect(
+      nextAction(
+        { ...item, financial_assignee_id: "admin" },
+        "administrator",
+        "admin",
+      ),
+    ).toEqual({ kind: "confirm" });
+    expect(
+      nextAction(
+        {
+          ...item,
+          financial_assignee_id: "admin",
+          financial_decision_id: "decision",
+          resolution: "refund",
+        },
+        "administrator",
+        "admin",
+      ),
+    ).toEqual({ kind: "start-refund" });
+  });
   it("explains when someone else has the case", () => {
     expect(
       nextAction(kase({ manager_assignee_id: "m2" }), "manager", "m1"),

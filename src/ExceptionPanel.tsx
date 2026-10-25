@@ -87,7 +87,9 @@ export function ExceptionPanel({
   onExecute,
 }: Props) {
   const [asking, setAsking] = useState<Asking>(null);
-  const [resolution, setResolution] = useState<"correct" | "refund">("correct");
+  const [resolution, setResolution] = useState<"correct" | "refund">(
+    item.proposed_resolution ?? "correct",
+  );
   const [target, setTarget] = useState<"manager" | "financial">("manager");
   const [newMember, setNewMember] = useState("");
   const [viewing, setViewing] = useState<OriginalTarget | null>(null);
@@ -99,6 +101,11 @@ export function ExceptionPanel({
   const affectedRows = affectedItemRows(item);
   const due = dueState(item.due_at, now);
   const action = nextAction(item, role, memberId);
+  const canReviseProposal =
+    role === "administrator" &&
+    item.manager_assignee_id === memberId &&
+    item.latest_proposal_id !== null &&
+    item.financial_decision_id === null;
   const block = reassignBlock(item, role, target);
   const memberSearch = useMemo(() => searchTeamMembers(target), [target]);
 
@@ -217,6 +224,14 @@ export function ExceptionPanel({
           <dl className="detail-panel-field">
             <dt>Valor pago</dt>
             <dd>{money(item.amount_cents)}</dd>
+            <dt>Forma de pagamento</dt>
+            <dd>
+              {item.funding_source === "credits"
+                ? "Créditos"
+                : item.funding_source === "pix"
+                  ? "PIX"
+                  : "Não informada"}
+            </dd>
             <dt>Trabalho</dt>
             <dd>{item.work_id}</dd>
             <dt>Prazo para decidir</dt>
@@ -304,7 +319,9 @@ export function ExceptionPanel({
               disabled={busy}
               onClick={onClaim}
             >
-              Assumir este caso
+              {role === "administrator" && item.latest_proposal_id
+                ? "Assumir decisão financeira"
+                : "Assumir este caso"}
             </button>
           )}
           {action.kind === "propose" && (
@@ -339,6 +356,32 @@ export function ExceptionPanel({
               </button>
             </div>
           )}
+          {canReviseProposal && action.kind !== "propose" && (
+            <Disclosure title="Alterar proposta antes da confirmação">
+              <div className="exc-stack">
+                <RadioGroup
+                  name="exc-revise-resolution"
+                  legend="Novo encaminhamento"
+                  value={resolution}
+                  onChange={(value) =>
+                    setResolution(value as "correct" | "refund")
+                  }
+                  options={[
+                    { value: "correct", label: "Corrigir entrega" },
+                    { value: "refund", label: "Reembolsar" },
+                  ]}
+                />
+                <button
+                  className="btn btn-secondary btn-md"
+                  type="button"
+                  disabled={busy}
+                  onClick={() => setAsking("propose")}
+                >
+                  Registrar nova proposta
+                </button>
+              </div>
+            </Disclosure>
+          )}
           {action.kind === "confirm" && (
             <button
               className="btn btn-primary btn-md"
@@ -356,7 +399,9 @@ export function ExceptionPanel({
               disabled={busy}
               onClick={() => setAsking("refund")}
             >
-              Iniciar estorno integral
+              {item.funding_source === "credits"
+                ? "Devolver créditos"
+                : "Iniciar estorno integral"}
             </button>
           )}
           {action.kind === "reconcile-refund" && (
@@ -380,8 +425,9 @@ export function ExceptionPanel({
             </button>
           )}
           <div className="alert exc-note" role="note">
-            Nenhum estorno PIX é automático. Confirme a execução e a conciliação
-            no Asaas antes de comunicar o encerramento ao titular.
+            {item.funding_source === "credits"
+              ? "A devolução integral retorna ao saldo de créditos usado nesta compra e fica registrada no extrato."
+              : "O estorno PIX exige confirmação e conciliação no Asaas antes de comunicar o encerramento ao titular."}
           </div>
         </section>
         {role === "administrator" && stage !== "done" && (
@@ -431,7 +477,7 @@ export function ExceptionPanel({
       <ConfirmDialog
         open={asking === "propose"}
         title="Registrar proposta?"
-        description="A proposta segue para confirmação de uma pessoa do financeiro."
+        description="A proposta exige uma decisão financeira registrada separadamente. O administrador pode assumir as duas etapas."
         details={[
           { label: "Encaminhamento", value: outcomeLabel(resolution) },
           { label: "Valor", value: money(item.amount_cents) },
@@ -461,12 +507,20 @@ export function ExceptionPanel({
         open={asking === "refund"}
         tone="danger"
         title="Iniciar estorno integral?"
-        description="O estorno é solicitado ao Asaas sandbox e não pode ser desfeito por este painel."
+        description={
+          item.funding_source === "credits"
+            ? "O valor integral será devolvido ao saldo de créditos do cliente, sem chamada ao Asaas."
+            : "O estorno integral será solicitado ao Asaas da conta que recebeu o PIX. Uma resposta incerta exige conciliação antes de qualquer nova ação."
+        }
         details={[
           { label: "Valor", value: money(item.amount_cents) },
           { label: "Trabalho", value: item.work_id },
         ]}
-        confirmLabel="Iniciar estorno"
+        confirmLabel={
+          item.funding_source === "credits"
+            ? "Devolver créditos"
+            : "Iniciar estorno"
+        }
         busy={busy}
         onConfirm={() => {
           setAsking(null);
