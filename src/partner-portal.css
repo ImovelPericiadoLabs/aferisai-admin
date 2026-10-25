@@ -122,6 +122,14 @@
   padding-top: var(--space-5);
 }
 
+.pp-content > .seg-tabs {
+  overflow-y: hidden;
+}
+
+.pp-content > .seg-tabs > .seg-tab {
+  margin-bottom: 0;
+}
+
 @media (max-width: 720px) {
   .pp-topbar {
     padding: 0 var(--space-3);
