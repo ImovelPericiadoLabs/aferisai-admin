@@ -27,13 +27,27 @@ export function reconciliationTone(
   item: UncertainRow,
   now: number,
 ): RowTone | undefined {
+  if (item.reconciliation_status === "refunded_record") return undefined;
   const hours = (now - Date.parse(item.attempted_at)) / HOUR;
   if (hours >= 24) return "danger";
   if (hours >= 6) return "warn";
   return undefined;
 }
 
-export function reconciliationKpis(rows: UncertainRow[], now: number): Kpi[] {
+export function reconciliationKpis(
+  rows: UncertainRow[],
+  now: number,
+  scope: "active" | "refunded" = "active",
+): Kpi[] {
+  if (scope === "refunded")
+    return [
+      {
+        id: "records",
+        label: "Registros após reembolso",
+        value: rows.length,
+        hint: "sem decisão de compra",
+      },
+    ];
   const late = rows.filter((row) => reconciliationTone(row, now) === "danger");
   const oldest = rows.reduce<string | null>(
     (best, row) =>

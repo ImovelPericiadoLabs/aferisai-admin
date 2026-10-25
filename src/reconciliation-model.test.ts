@@ -16,6 +16,7 @@ const row = (hoursAgo: number, id = "i1"): UncertainRow => ({
   created_at: new Date(NOW - (hoursAgo + 1) * H).toISOString(),
   attempted_at: new Date(NOW - hoursAgo * H).toISOString(),
   customer_refunded: false,
+  reconciliation_status: "action_required",
 });
 
 describe("reconciliationTone", () => {
@@ -42,6 +43,22 @@ describe("reconciliationKpis", () => {
     const kpis = reconciliationKpis([], NOW);
     expect(kpis.find((k) => k.id === "oldest")?.value).toBe("—");
     expect(kpis.find((k) => k.id === "late")?.tone).toBeUndefined();
+  });
+  it("treats refunded attempts as records instead of pending decisions", () => {
+    const refunded = {
+      ...row(30),
+      customer_refunded: true,
+      reconciliation_status: "refunded_record" as const,
+    };
+    expect(reconciliationTone(refunded, NOW)).toBeUndefined();
+    expect(reconciliationKpis([refunded], NOW, "refunded")).toEqual([
+      {
+        id: "records",
+        label: "Registros após reembolso",
+        value: 1,
+        hint: "sem decisão de compra",
+      },
+    ]);
   });
 });
 

@@ -729,3 +729,45 @@
   overflow-wrap: anywhere;
   font-size: var(--text-sm);
 }
+
+.rec-batch {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+.rec-batch h2,
+.rec-batch p {
+  margin: 0;
+}
+.rec-batch h2 {
+  font-size: var(--text-lg);
+}
+.rec-batch p {
+  color: var(--text-muted);
+}
+.rec-batch-list {
+  display: grid;
+  gap: var(--space-2);
+  max-height: 18rem;
+  overflow-y: auto;
+}
+.rec-batch-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+.rec-batch-row input {
+  flex: none;
+  margin-top: 0.2rem;
+}
+.rec-batch > .btn {
+  justify-self: start;
+}
