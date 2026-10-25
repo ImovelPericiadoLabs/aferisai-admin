@@ -218,7 +218,7 @@ export function FinancialExceptions({
     selected
       ? run(
           () => proposePaymentException(selected.id, resolution, reason, csrf),
-          "Proposta registrada. Aguarda confirmação do financeiro.",
+          "Proposta registrada. Aguarda decisão financeira.",
           "Não foi possível registrar a proposta.",
         )
       : Promise.resolve(false);
@@ -280,7 +280,8 @@ export function FinancialExceptions({
           </h1>
           <p className="page-subtitle">
             Casos pagos sem entrega. O prazo começa no primeiro bloqueio e exige
-            proposta do gestor e confirmação do financeiro.
+            proposta do gestor e decisão financeira. O administrador pode
+            assumir ambas as etapas, com registros separados.
           </p>
         </div>
       </header>

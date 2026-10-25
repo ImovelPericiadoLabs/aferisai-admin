@@ -113,7 +113,9 @@ export const searchTeamMembers =
     pagedResult(
       (cursor) => listTeamMembers(cursor),
       (member) =>
-        member.status === "active" && member.role === role
+        member.status === "active" &&
+        (member.role === role ||
+          (role === "financial" && member.role === "administrator"))
           ? {
               id: member.id,
               label: member.email,

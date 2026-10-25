@@ -35,7 +35,7 @@ export type CaseStage =
 
 export const stageLabel: Record<CaseStage, string> = {
   "awaiting-proposal": "Aguardando proposta",
-  "awaiting-financial": "Aguardando financeiro",
+  "awaiting-financial": "Aguardando decisão financeira",
   executing: "Em execução",
   done: "Concluído",
 };
@@ -61,7 +61,10 @@ export function nextAction(
   if (role === "viewer") return wait("Seu perfil só consulta.");
   if (item.financial_decision_id) {
     if (item.execution_status === "done") return { kind: "none" };
-    if (role !== "financial" || item.financial_assignee_id !== memberId)
+    if (
+      (role !== "financial" && role !== "administrator") ||
+      item.financial_assignee_id !== memberId
+    )
       return wait("A execução é feita pela pessoa responsável no financeiro.");
     if (item.resolution === "refund")
       return item.execution_status
@@ -69,7 +72,10 @@ export function nextAction(
         : { kind: "start-refund" };
     return { kind: "verify-correction" };
   }
-  if (role === "financial") {
+  if (
+    role === "financial" ||
+    (role === "administrator" && item.latest_proposal_id)
+  ) {
     if (!item.financial_assignee_id) return { kind: "claim" };
     if (item.financial_assignee_id !== memberId)
       return wait("O caso foi atribuído a outra pessoa do seu papel.");

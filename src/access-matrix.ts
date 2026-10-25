@@ -95,7 +95,7 @@ export const CAPABILITIES: Capability[] = [
     id: "exception-confirm",
     area: "Financeiro",
     label: "Confirmar e executar estorno ou correção",
-    roles: ["financial"],
+    roles: ["financial", "administrator"],
   },
   {
     id: "provider-accounts",
