@@ -995,6 +995,7 @@ function TeamApp() {
             <Analyses
               csrf={session.csrf}
               canReview={canReview}
+              isAdmin={session.member.role === "administrator"}
               onUnauthorized={unauthorize}
               initialWorkId={selectedWorkId}
               openSource={(requestId) => {
