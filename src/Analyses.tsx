@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ApiError, listAnalysisAttention, type AttentionPage } from "./api";
 import { AnalysisReview } from "./AnalysisReview";
+import { AnalysisNotices } from "./AnalysisNotices";
 import {
   ATTENTION_VIEWS,
   attentionKpis,
@@ -20,7 +21,7 @@ import { useNow } from "./useNow";
 import "./review.css";
 import "./ops.css";
 
-type Tab = "attention" | "review" | "requests";
+type Tab = "attention" | "review" | "requests" | "notices";
 
 const short = (id: string) => id.slice(0, 8);
 
@@ -34,12 +35,14 @@ const statusTone = (status: AttentionRow["status"]) =>
 export function Analyses({
   csrf,
   canReview,
+  isAdmin,
   onUnauthorized,
   initialWorkId,
   openSource,
 }: {
   csrf: string;
   canReview: boolean;
+  isAdmin: boolean;
   onUnauthorized: () => void;
   initialWorkId?: string;
   openSource?: (requestId: string) => void;
@@ -175,6 +178,7 @@ export function Analyses({
         ]
       : []),
     { id: "requests", label: "Pedidos" },
+    ...(isAdmin ? [{ id: "notices" as const, label: "Avisos" }] : []),
   ];
 
   return (
@@ -391,6 +395,10 @@ export function Analyses({
             setTab("review");
           }}
         />
+      )}
+
+      {tab === "notices" && isAdmin && (
+        <AnalysisNotices csrf={csrf} onUnauthorized={onUnauthorized} />
       )}
 
       <OriginalViewer

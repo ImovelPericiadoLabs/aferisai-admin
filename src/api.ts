@@ -746,6 +746,43 @@ export const listTeamAnalysisRequests = (cursor?: string) =>
     { method: "GET" },
   );
 
+export type AnalysisNoticeException = {
+  notice_id: string;
+  request_id: string;
+  kind: "payment_confirmed" | "analysis_ready";
+  channel: "email" | "whatsapp";
+  status: "attempted" | "unknown";
+  provider_message_id: string | null;
+  attempted_at: string | null;
+  created_at: string;
+};
+
+export type AnalysisNoticeExceptionPage = {
+  items: AnalysisNoticeException[];
+  next_cursor: string | null;
+};
+
+export const listAnalysisNoticeExceptions = (cursor?: string) =>
+  request<AnalysisNoticeExceptionPage>(
+    `/v1/team/analysis-requests/notice-exceptions?limit=20${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`,
+    { method: "GET" },
+  );
+
+export const reconcileAnalysisNotice = (
+  noticeId: string,
+  evidenceRef: string,
+  reason: string,
+  csrfToken: string,
+) =>
+  request<{ id: string; notice_id: string; outcome: "recipient_received" }>(
+    `/v1/team/analysis-requests/notice-exceptions/${encodeURIComponent(noticeId)}/reconciliations`,
+    {
+      method: "POST",
+      headers: { "X-CSRF-Token": csrfToken },
+      body: JSON.stringify({ evidence_ref: evidenceRef, reason }),
+    },
+  );
+
 export const createAdditionalApplication = (
   organizationId: string,
   applicationId: string,

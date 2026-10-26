@@ -20,6 +20,7 @@ import {
   grantApplicationPermission,
   issuePartnerCredential,
   listAnalysisAttention,
+  listAnalysisNoticeExceptions,
   listOrganizations,
   listPendingSourceClassifications,
   listUncertainSubmissions,
@@ -30,6 +31,7 @@ import {
   replaceApplicationRedirectUris,
   readSupplierEvidence,
   reconcileNoPurchase,
+  reconcileAnalysisNotice,
   reconcileProtocol,
   revokeApplicationPermission,
   revokePartnerCredential,
@@ -39,6 +41,50 @@ import { uuidv7 } from "./uuidv7";
 afterEach(() => vi.unstubAllGlobals());
 
 describe("cliente da API interna", () => {
+  it("lista avisos incertos e registra recebimento com CSRF, sem reenvio", async () => {
+    const noticeId = uuidv7();
+    const cursor = uuidv7();
+    const fetchMock = vi
+      .fn()
+      .mockImplementation(
+        async (_url: string, init: RequestInit) =>
+          new Response(
+            JSON.stringify(
+              init.method === "GET"
+                ? { items: [], next_cursor: null }
+                : {
+                    id: uuidv7(),
+                    notice_id: noticeId,
+                    outcome: "recipient_received",
+                  },
+            ),
+            { status: init.method === "GET" ? 200 : 201 },
+          ),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+    await listAnalysisNoticeExceptions(cursor);
+    await reconcileAnalysisNotice(
+      noticeId,
+      "smtp.sha256:0123456789",
+      "Mensagem e anexo recebidos na caixa.",
+      "csrf",
+    );
+    const calls = fetchMock.mock.calls as [string, RequestInit][];
+    expect(new URL(calls[0][0]).pathname).toBe(
+      "/v1/team/analysis-requests/notice-exceptions",
+    );
+    expect(new URL(calls[0][0]).searchParams.get("cursor")).toBe(cursor);
+    expect(calls[0][1].credentials).toBe("include");
+    expect(new URL(calls[1][0]).pathname).toBe(
+      `/v1/team/analysis-requests/notice-exceptions/${noticeId}/reconciliations`,
+    );
+    expect(calls[1][1].method).toBe("POST");
+    expect(calls[1][1].headers).toMatchObject({ "X-CSRF-Token": "csrf" });
+    expect(JSON.parse(calls[1][1].body as string)).toEqual({
+      evidence_ref: "smtp.sha256:0123456789",
+      reason: "Mensagem e anexo recebidos na caixa.",
+    });
+  });
   it("usa as rotas reais de conciliação e o cursor after", async () => {
     const itemId = uuidv7();
     const cursor = uuidv7();
