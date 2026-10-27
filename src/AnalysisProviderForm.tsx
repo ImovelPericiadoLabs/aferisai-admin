@@ -54,8 +54,8 @@ export function AnalysisProviderForm({
   const [kind, setKind] = useState<AnalysisProviderKind>(
     "vertex_service_account",
   );
-  const [model, setModel] = useState("");
-  const [location, setLocation] = useState("");
+  const [model, setModel] = useState("gemini-3.5-flash-lite");
+  const [location, setLocation] = useState("global");
   const [poolKey, setPoolKey] = useState("");
   const [baseUrl, setBaseUrl] = useState("");
   const [credential, setCredential] = useState("");
@@ -204,17 +204,22 @@ export function AnalysisProviderForm({
               className="input"
               value={kind}
               onChange={(event) => {
-                setKind(event.target.value as AnalysisProviderKind);
+                const next = event.target.value as AnalysisProviderKind;
+                setKind(next);
+                setModel(next === "vertex_service_account" ? "gemini-3.5-flash-lite" : "");
+                setLocation("global");
+                setPoolKey("");
                 setCredential("");
                 setCredentialFile(null);
               }}
             >
-              {Object.entries(kindLabels).map(([value, text]) => (
+              {(["vertex_service_account", "openai_api_key"] as const).map((value) => (
                 <option value={value} key={value}>
-                  {text}
+                  {kindLabels[value]}
                 </option>
               ))}
             </select>
+            <span className="form-hint">Contas Gemini por chave e APIs compatíveis ainda não têm adaptador de análise aprovado.</span>
           </div>
           <div className="form-row">
             <div className="form-field">
@@ -227,7 +232,8 @@ export function AnalysisProviderForm({
                 value={model}
                 required
                 maxLength={100}
-                placeholder="Ex.: gpt-5.4-mini"
+                readOnly={kind === "vertex_service_account"}
+                placeholder="Ex.: gpt-5.4-mini-2026-03-17"
                 onChange={(event) => setModel(event.target.value)}
               />
             </div>
@@ -240,12 +246,9 @@ export function AnalysisProviderForm({
                 className="input"
                 value={location}
                 maxLength={80}
-                required={kind === "vertex_service_account"}
-                placeholder={
-                  kind === "vertex_service_account"
-                    ? "Ex.: us-central1"
-                    : "global"
-                }
+                required
+                readOnly
+                placeholder="global"
                 onChange={(event) => setLocation(event.target.value)}
               />
             </div>
@@ -266,8 +269,9 @@ export function AnalysisProviderForm({
               onChange={(event) => setPoolKey(event.target.value)}
             />
             <span className="form-hint">
-              Contas do mesmo projeto GCP usam o mesmo pool. Para conta de
-              serviço, o ID deve coincidir com o do arquivo JSON.
+              {kind === "vertex_service_account"
+                ? "Contas do mesmo projeto GCP usam o mesmo pool; o ID deve coincidir com o do JSON."
+                : "Identifique o projeto OpenAI deste token. O acesso ao modelo será conferido antes da ativação; o agrupamento de quota continua declarado por você."}
             </span>
           </div>
           {kind === "openai_compatible" && (
