@@ -160,8 +160,8 @@ export function AnalysisProviders({
       </header>
 
       <div className="alert" role="note">
-        As contas cadastradas ainda não são usadas pelo worker e a troca
-        automática entre contas não está ativa. Contas Gemini do mesmo projeto
+        Contas ativas com perfil e custo aprovados podem ser selecionadas pelo
+        worker conforme prioridade e capacidade. Contas Gemini do mesmo projeto
         compartilham um limite conjunto observado de 12 chamadas simultâneas.
       </div>
 

@@ -4,6 +4,7 @@ import {
   getOperationsOverview,
   type OperationsOverview,
 } from "./api";
+import { statusLabel } from "./display-labels";
 import "./operations-dashboard.css";
 
 const stateLabel: Record<
@@ -320,7 +321,7 @@ export function OperationsDashboard({
                           {account.label}
                           <small>{account.model}</small>
                         </th>
-                        <td>{account.status}</td>
+                        <td>{statusLabel(account.status)}</td>
                         <td>
                           {account.calls_today}
                           {account.unpriced_calls_today > 0 && (
