@@ -1,4 +1,5 @@
 export type CommercialValues = {
+  analysis_call_reserve_cents: number;
   onr_markup_bps: number;
   markup_bps: number;
   tax_rate_bps: number;
@@ -35,6 +36,7 @@ export type CommercialLimits = Record<
 
 /** Used only while talking to a backend release that does not return limits. */
 export const COMMERCIAL_LIMITS: CommercialLimits = {
+  analysis_call_reserve_cents: { min: 250, max: 10000 },
   onr_markup_bps: { min: 5000, max: 100000 },
   markup_bps: { min: 5000, max: 100000 },
   tax_rate_bps: { min: 0, max: 5000 },

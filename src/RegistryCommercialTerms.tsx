@@ -46,6 +46,7 @@ const dateTime = new Intl.DateTimeFormat("pt-BR", {
 type NumericKey = keyof Pick<
   RegistryCommercialTermsCreate,
   | "operations_reserve_cents"
+  | "analysis_call_reserve_cents"
   | "exception_reserve_cents"
   | "payment_fee_cents"
   | "payment_fee_rate_bps"
@@ -55,6 +56,7 @@ type NumericKey = keyof Pick<
   | "onr_markup_bps"
 >;
 const numericKeys: NumericKey[] = [
+  "analysis_call_reserve_cents",
   "operations_reserve_cents",
   "exception_reserve_cents",
   "payment_fee_cents",
@@ -85,6 +87,11 @@ const fields: {
   label: string;
   unit: string;
 }[] = [
+  {
+    key: "analysis_call_reserve_cents",
+    label: "Reserva de IA por chamada",
+    unit: "R$ por chamada planejada",
+  },
   {
     key: "onr_markup_bps",
     label: "Acréscimo sobre a matrícula ONR",
@@ -148,6 +155,7 @@ function draftFrom(terms: Terms): RegistryCommercialTermsCreate {
   return {
     base_offer_id: terms.id,
     version: "",
+    analysis_call_reserve_cents: terms.analysis_call_reserve_cents,
     operations_reserve_cents: terms.operations_reserve_cents,
     exception_reserve_cents: terms.exception_reserve_cents,
     payment_fee_cents: terms.payment_fee_cents,
@@ -558,7 +566,7 @@ export function RegistryCommercialTerms({
                 },
                 {
                   label: "Reserva de IA",
-                  value: `${money(effective.analysis_reserve_cents)} (da oferta)`,
+                  value: `${money(draft.analysis_call_reserve_cents * effective.analysis_planned_calls)} por documento (${effective.analysis_planned_calls} chamadas)`,
                 },
                 { label: "Versão", value: draft.version.trim() || "—" },
               ]}
@@ -574,7 +582,9 @@ export function RegistryCommercialTerms({
                       {(draft.onr_markup_bps / 100).toLocaleString("pt-BR")}% ·
                       tributos{" "}
                       {(draft.tax_rate_bps / 100).toLocaleString("pt-BR")}% ·
-                      PIX {money(draft.payment_fee_cents)}.
+                      PIX {money(draft.payment_fee_cents)} · IA {money(
+                        draft.analysis_call_reserve_cents * effective.analysis_planned_calls
+                      )} por documento.
                     </p>
                     <button
                       type="button"

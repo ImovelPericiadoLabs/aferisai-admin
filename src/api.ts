@@ -469,6 +469,19 @@ export type ActivateProviderBody = {
   reason: string;
 };
 
+export type ProviderActivationPreview = {
+  model: string;
+  execution_profile_sha256: string;
+  credential_checked: boolean;
+  pool_key: string;
+};
+
+export const previewAnalysisProviderActivation = (id: string) =>
+  request<ProviderActivationPreview>(
+    `/v1/team/analysis-provider-accounts/${encodeURIComponent(id)}/activation-preview`,
+    {},
+  );
+
 export const activateAnalysisProviderAccount = (
   id: string,
   body: ActivateProviderBody,
@@ -2573,6 +2586,8 @@ export type RegistryCommercialTerms = {
   approved_at: string | null;
   valid_until: string;
   analysis_reserve_cents: number;
+  analysis_call_reserve_cents: number;
+  analysis_planned_calls: number;
   operations_reserve_cents: number;
   exception_reserve_cents: number;
   payment_fee_cents: number;
@@ -2593,6 +2608,7 @@ export type RegistryCommercialTermsPage = {
 export type RegistryCommercialTermsCreate = {
   base_offer_id: string;
   version: string;
+  analysis_call_reserve_cents: number;
   operations_reserve_cents: number;
   exception_reserve_cents: number;
   payment_fee_cents: number;

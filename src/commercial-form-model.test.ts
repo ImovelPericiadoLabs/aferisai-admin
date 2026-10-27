@@ -10,6 +10,7 @@ const valid = (
   over: Partial<CommercialFormInput> = {},
 ): CommercialFormInput => ({
   values: {
+    analysis_call_reserve_cents: 250,
     onr_markup_bps: 5000,
     markup_bps: 5000,
     tax_rate_bps: 1550,

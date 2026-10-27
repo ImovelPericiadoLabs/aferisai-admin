@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
   ApiError,
   activateAnalysisProviderAccount,
+  previewAnalysisProviderActivation,
   suspendAnalysisProviderAccount,
   updateAnalysisProviderLimits,
   type AnalysisProviderAccount,
@@ -66,6 +67,8 @@ export function AnalysisProviderPanel({
   const [seenVersion, setSeenVersion] = useState(account.version);
   const [reserved, setReserved] = useState("0");
   const [profile, setProfile] = useState("");
+  const [previewModel, setPreviewModel] = useState("");
+  const [credentialChecked, setCredentialChecked] = useState(false);
   const [notice, setNotice] = useState("");
   const [ask, setAsk] = useState<Ask>(null);
   const [busy, setBusy] = useState(false);
@@ -75,6 +78,9 @@ export function AnalysisProviderPanel({
   if (account.version !== seenVersion) {
     setSeenVersion(account.version);
     setForm(limitsToForm(account));
+    setProfile("");
+    setPreviewModel("");
+    setCredentialChecked(false);
   }
 
   const editable = account.status !== "suspended";
@@ -132,6 +138,23 @@ export function AnalysisProviderPanel({
   }
 
   const parsed = formToLimits(form);
+
+  async function checkActivation() {
+    setBusy(true);
+    setError("");
+    setProfile("");
+    try {
+      const result = await previewAnalysisProviderActivation(account.id);
+      setProfile(result.execution_profile_sha256);
+      setPreviewModel(result.model);
+      setCredentialChecked(result.credential_checked);
+    } catch (cause) {
+      if (cause instanceof ApiError && cause.status === 401) onUnauthorized();
+      else setError(cause instanceof ApiError ? cause.detail : "Não foi possível conferir a conta agora.");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
     <>
@@ -266,7 +289,7 @@ export function AnalysisProviderPanel({
               <p className="prov-note">{activation.reason}</p>
             ) : (
               <>
-                <div className="form-field prov-reserved">
+                {account.kind === "vertex_service_account" && <div className="form-field prov-reserved">
                   <label className="form-field-label" htmlFor="prov-reserved">
                     Reserva externa (0 a 12 chamadas)
                   </label>
@@ -286,7 +309,10 @@ export function AnalysisProviderPanel({
                       ? "Chamadas simultâneas reservadas a outros sistemas que usam o mesmo projeto."
                       : reservedCheck.message}
                   </span>
-                </div>
+                </div>}
+                <button className="btn btn-secondary btn-md prov-action" type="button" disabled={busy} onClick={() => void checkActivation()}>
+                  {busy ? "Conferindo…" : "Conferir conta e modelo"}
+                </button>
                 <div className="form-field">
                   <label className="form-field-label" htmlFor="prov-profile">
                     Perfil medido (SHA-256)
@@ -297,19 +323,20 @@ export function AnalysisProviderPanel({
                     value={profile}
                     maxLength={80}
                     spellCheck={false}
-                    aria-invalid={profile !== "" && !profileCheck.ok}
-                    onChange={(event) => setProfile(event.target.value)}
+                    readOnly
                   />
                   <span className="form-hint">
-                    {profile !== "" && !profileCheck.ok
-                      ? profileCheck.message
-                      : "Hash do perfil medido para esta conta, gerado na medição do backend. O servidor confere o valor antes de ativar."}
+                    {profile
+                      ? credentialChecked
+                        ? `Acesso ao modelo ${previewModel} confirmado sem gerar análise; isso não comprova saldo nem qualidade jurídica.`
+                        : `Perfil ${previewModel} calculado pelo servidor; a credencial Vertex ainda depende dos gates da oferta.`
+                      : "Clique em Conferir conta e modelo para calcular o perfil no servidor."}
                   </span>
                 </div>
                 <button
                   className="btn btn-primary btn-md prov-action"
                   type="button"
-                  disabled={busy || !reservedCheck.ok || !profileCheck.ok}
+                  disabled={busy || (account.kind === "vertex_service_account" && !reservedCheck.ok) || !profileCheck.ok}
                   onClick={() => setAsk("activate")}
                 >
                   Ativar conta
@@ -386,11 +413,11 @@ export function AnalysisProviderPanel({
         description="A conta sai de rascunho e fica ativa com o perfil de execução conferido abaixo."
         details={[
           { label: "Conta", value: account.label },
-          { label: "Modelo", value: "gemini-3.5-flash-lite" },
-          { label: "Reserva externa", value: reservedCheck.value },
+          { label: "Modelo", value: previewModel || account.model },
+          { label: "Reserva externa", value: account.kind === "vertex_service_account" ? reservedCheck.value : 0 },
           {
             label: "Perfil",
-            value: shortHash(account.execution_profile_sha256),
+            value: shortHash(profile),
           },
         ]}
         reason={REASON}
@@ -399,7 +426,7 @@ export function AnalysisProviderPanel({
         onConfirm={(reason) => {
           const body = activationBody(
             account,
-            reservedCheck.value,
+            account.kind === "vertex_service_account" ? reservedCheck.value : 0,
             reason,
             profileCheck.value,
           );
