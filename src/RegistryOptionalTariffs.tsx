@@ -23,6 +23,8 @@ import {
 import { stepStates } from "./account-model";
 import { supplierTariffValidityLabel } from "./supplier-tariff-validity";
 import type { ToastKind } from "./useToast";
+import { FilePickButton } from "./EvidenceTools";
+import { sha256Hex } from "./evidence-model";
 
 const kinds: { value: RegistryCertificateKind; label: string }[] = [
   { value: "federal", label: "Federal" },
@@ -49,6 +51,46 @@ const parseMoney = (value: string) => {
     : NaN;
 };
 
+function EvidenceFileField({
+  label,
+  value,
+  disabled,
+  accept,
+  onChange,
+  onError,
+}: {
+  label: string;
+  value: string;
+  disabled: boolean;
+  accept?: string;
+  onChange: (hash: string) => void;
+  onError: (message: string) => void;
+}) {
+  return (
+    <div className="sup-field">
+      <label>
+        {label}
+        <input
+          className="input"
+          value={value}
+          readOnly
+          disabled={disabled}
+          aria-label={`Resumo SHA-256 de ${label}`}
+        />
+      </label>
+      <FilePickButton
+        disabled={disabled}
+        accept={accept}
+        onHash={async (bytes) => onChange(await sha256Hex(bytes))}
+        onError={onError}
+      />
+      <small>
+        O painel calcula o resumo; o arquivo permanece no seu dispositivo.
+      </small>
+    </div>
+  );
+}
+
 export function RegistryOptionalTariffs({
   account,
   accounts,
@@ -74,14 +116,21 @@ export function RegistryOptionalTariffs({
   const [state, setState] = useState("");
   const [cost, setCost] = useState("");
   const [evidence, setEvidence] = useState("");
+  const [certEvidenceMode, setCertEvidenceMode] = useState<
+    "supplier_file" | "admin_declaration"
+  >("admin_declaration");
   const [sampleDocument, setSampleDocument] = useState("");
   const [sampleCharge, setSampleCharge] = useState("");
   const [proofConfirmed, setProofConfirmed] = useState(false);
+  const [operationalAttested, setOperationalAttested] = useState(false);
   const [certificateReason, setCertificateReason] = useState("");
   const [linkedAccount, setLinkedAccount] = useState("");
   const [orderFee, setOrderFee] = useState("");
   const [downloadFee, setDownloadFee] = useState("");
   const [arispEvidence, setArispEvidence] = useState("");
+  const [arispEvidenceMode, setArispEvidenceMode] = useState<
+    "supplier_file" | "admin_declaration"
+  >("admin_declaration");
   const [certificateType, setCertificateType] = useState("");
   const [certificateTypeEvidence, setCertificateTypeEvidence] = useState("");
   const [typeConfirmed, setTypeConfirmed] = useState(false);
@@ -122,7 +171,7 @@ export function RegistryOptionalTariffs({
     !!linkedAccount &&
       inRange(arispOrder, orderRange) &&
       inRange(arispDownload, downloadRange),
-    sha(arispEvidence) &&
+    (arispEvidenceMode === "admin_declaration" || sha(arispEvidence)) &&
       lengthOk(arispReason, arispReasonRange) &&
       typeGroupOk,
     reviewing === "arisp",
@@ -134,15 +183,21 @@ export function RegistryOptionalTariffs({
       (item.state ?? "") === (state.trim().toUpperCase() || ""),
   );
   const proofOk =
-    !(sampleDocument || sampleCharge || proofConfirmed) ||
-    (sha(sampleDocument) &&
-      sha(sampleCharge) &&
-      sampleDocument !== sampleCharge &&
-      proofConfirmed);
+    certEvidenceMode === "admin_declaration"
+      ? operationalAttested &&
+        !sampleDocument &&
+        !sampleCharge &&
+        !proofConfirmed
+      : sha(sampleDocument) &&
+        sha(sampleCharge) &&
+        sampleDocument !== sampleCharge &&
+        proofConfirmed;
   const certStates = stepStates([
     inRange(certCents, costRange) &&
       (kind !== "estadual" || /^[A-Z]{2}$/.test(state.trim().toUpperCase())),
-    sha(evidence) && lengthOk(certificateReason, certReasonRange) && proofOk,
+    (certEvidenceMode === "admin_declaration" || sha(evidence)) &&
+      lengthOk(certificateReason, certReasonRange) &&
+      proofOk,
     reviewing === "certificate",
   ]);
   const otherProvider = account.provider === "onr" ? "infosimples" : "onr";
@@ -200,14 +255,18 @@ export function RegistryOptionalTariffs({
       missing.push("a UF (só vale para a certidão estadual)");
     if (!inRange(cents, costRange))
       missing.push(`o custo total por chamada (${rangeText(costRange)})`);
-    if (!sha(evidence))
-      missing.push("o SHA-256 da tabela (64 caracteres hexadecimais)");
+    if (certEvidenceMode === "supplier_file" && !sha(evidence))
+      missing.push("o arquivo da tabela de preços");
     if (!lengthOk(certificateReason, certReasonRange))
       missing.push(
         `o motivo (de ${certReasonRange.min} a ${certReasonRange.max} caracteres)`,
       );
     if (!proofOk)
-      missing.push("os comprovantes (dois hashes diferentes e a conferência)");
+      missing.push(
+        certEvidenceMode === "admin_declaration"
+          ? "sua aprovação operacional"
+          : "o PDF e o débito conferidos",
+      );
     return missing;
   }
 
@@ -229,7 +288,13 @@ export function RegistryOptionalTariffs({
           code: kind,
           state: kind === "estadual" ? state.trim().toUpperCase() : null,
           unit_cost_cents: parseMoney(cost),
-          evidence_sha256: evidence,
+          evidence_mode: certEvidenceMode,
+          evidence_sha256:
+            certEvidenceMode === "supplier_file" ? evidence : null,
+          operational_attestation:
+            certEvidenceMode === "admin_declaration" && operationalAttested
+              ? true
+              : null,
           sample_document_sha256: sampleDocument || null,
           sample_charge_sha256: sampleCharge || null,
           delivery_proof_confirmed: proofConfirmed ? true : null,
@@ -245,6 +310,7 @@ export function RegistryOptionalTariffs({
       setSampleDocument("");
       setSampleCharge("");
       setProofConfirmed(false);
+      setOperationalAttested(false);
       setCertificateReason("");
       setCertOpen(false);
       onToast(
@@ -275,14 +341,16 @@ export function RegistryOptionalTariffs({
       missing.push(`o valor do pedido (${rangeText(orderRange)})`);
     if (!inRange(download, downloadRange))
       missing.push(`o valor de cada download (${rangeText(downloadRange)})`);
-    if (!sha(arispEvidence))
-      missing.push("o SHA-256 da tabela (64 caracteres hexadecimais)");
+    if (arispEvidenceMode === "supplier_file" && !sha(arispEvidence))
+      missing.push("o arquivo da tabela de preços");
     if (!lengthOk(arispReason, arispReasonRange))
       missing.push(
         `o motivo (de ${arispReasonRange.min} a ${arispReasonRange.max} caracteres)`,
       );
     if (!typeGroupOk)
-      missing.push("o tipo de ônus completo (tipo, SHA-256 e confirmação)");
+      missing.push(
+        "o tipo de ônus completo (tipo, arquivo da resposta e confirmação)",
+      );
     return missing;
   }
 
@@ -306,7 +374,9 @@ export function RegistryOptionalTariffs({
             account.provider === "onr" ? account.id : linkedAccount,
           order_fee_cents: parseMoney(orderFee),
           download_fee_cents: parseMoney(downloadFee),
-          evidence_sha256: arispEvidence,
+          evidence_mode: arispEvidenceMode,
+          evidence_sha256:
+            arispEvidenceMode === "supplier_file" ? arispEvidence : null,
           reason: arispReason.trim(),
           contract_verified: true,
           supplier_fee_covered: true,
@@ -355,7 +425,7 @@ export function RegistryOptionalTariffs({
         <>
           <SettingCard
             title="Certidões InfoSimples"
-            help="A tarifa total é própria desta conta e fica vigente até o gestor atualizá-la. Sem PDF real e débito comprovados, a oferta continua indisponível."
+            help="Informe a tarifa total desta conta. Se não houver PDF e débito de amostra, o administrador pode aprovar a oferta por melhor esforço com declaração auditada."
             actions={
               <button
                 type="button"
@@ -387,9 +457,11 @@ export function RegistryOptionalTariffs({
                     {supplierTariffValidityLabel(item.valid_until)}
                   </span>
                   <small>
-                    {item.sample_document_sha256 && item.sample_charge_sha256
-                      ? "Comprovantes registrados"
-                      : "Sem comprovantes de entrega"}
+                    {item.operational_attestation
+                      ? "Disponibilidade declarada pelo administrador"
+                      : item.sample_document_sha256 && item.sample_charge_sha256
+                        ? "Arquivos de entrega conferidos"
+                        : "Sem comprovação de entrega"}
                   </small>
                 </li>
               ))}
@@ -448,10 +520,11 @@ export function RegistryOptionalTariffs({
                       : []),
                     {
                       label: "Comprovantes",
-                      value:
-                        sampleDocument && sampleCharge
-                          ? "Registrados"
-                          : "Sem comprovantes",
+                      value: operationalAttested
+                        ? "Declaração administrativa"
+                        : sampleDocument && sampleCharge
+                          ? "Arquivos conferidos"
+                          : "Sem aprovação operacional",
                     },
                     { label: "Vigência", value: "Até atualização" },
                   ]}
@@ -569,18 +642,45 @@ export function RegistryOptionalTariffs({
                 <ComposerSection
                   title="Evidência"
                   state={certStates[1]}
-                  recap={`SHA ${evidence.slice(0, 8)}… · ${certificateReason.trim().slice(0, 40)}`}
+                  recap={`${certEvidenceMode === "admin_declaration" ? "Declaração administrativa" : `Arquivo ${evidence.slice(0, 8)}…`} · ${certificateReason.trim().slice(0, 40)}`}
                 >
                   <label>
-                    SHA-256 da tabela de preços
-                    <input
+                    Como você conferiu o preço?
+                    <select
                       className="input"
-                      value={evidence}
-                      maxLength={64}
+                      value={certEvidenceMode}
                       disabled={!active || busy}
-                      onChange={(event) => setEvidence(event.target.value)}
-                    />
+                      onChange={(event) => {
+                        setCertEvidenceMode(
+                          event.target.value as typeof certEvidenceMode,
+                        );
+                        setSampleDocument("");
+                        setSampleCharge("");
+                        setProofConfirmed(false);
+                        setOperationalAttested(false);
+                      }}
+                    >
+                      <option value="admin_declaration">
+                        Declaro o preço conferido
+                      </option>
+                      <option value="supplier_file">
+                        Tenho arquivo do fornecedor
+                      </option>
+                    </select>
+                    <small>
+                      A declaração é sua decisão auditada; não é documento do
+                      fornecedor.
+                    </small>
                   </label>
+                  {certEvidenceMode === "supplier_file" && (
+                    <EvidenceFileField
+                      label="Tabela de preços"
+                      value={evidence}
+                      disabled={!active || busy}
+                      onChange={setEvidence}
+                      onError={setError}
+                    />
+                  )}
                   <label>
                     Motivo
                     <textarea
@@ -597,48 +697,50 @@ export function RegistryOptionalTariffs({
                       Fica na auditoria. Sem senhas, tokens ou matrículas.
                     </small>
                   </label>
-                  <details>
-                    <summary>Comprovantes de entrega (opcional)</summary>
-                    <label>
-                      SHA-256 do PDF
-                      <input
-                        className="input"
-                        value={sampleDocument}
-                        maxLength={64}
-                        disabled={!active || busy}
-                        onChange={(event) =>
-                          setSampleDocument(event.target.value)
-                        }
-                      />
-                      <small>
-                        Hashes distintos do PDF e do débito real, após conferir
-                        ambos.
-                      </small>
-                    </label>
-                    <label>
-                      SHA-256 do débito
-                      <input
-                        className="input"
-                        value={sampleCharge}
-                        maxLength={64}
-                        disabled={!active || busy}
-                        onChange={(event) =>
-                          setSampleCharge(event.target.value)
-                        }
-                      />
-                    </label>
+                  {certEvidenceMode === "admin_declaration" ? (
                     <label>
                       <input
                         type="checkbox"
-                        checked={proofConfirmed}
+                        checked={operationalAttested}
                         disabled={!active || busy}
                         onChange={(event) =>
-                          setProofConfirmed(event.target.checked)
+                          setOperationalAttested(event.target.checked)
                         }
                       />
-                      Conferi visualmente o PDF e o débito
+                      Aprovo disponibilizar este tipo por melhor esforço, com
+                      preço e operação declarados sob minha responsabilidade.
                     </label>
-                  </details>
+                  ) : (
+                    <details>
+                      <summary>Comprovantes de entrega</summary>
+                      <EvidenceFileField
+                        label="PDF recebido"
+                        value={sampleDocument}
+                        disabled={!active || busy}
+                        accept="application/pdf"
+                        onChange={setSampleDocument}
+                        onError={setError}
+                      />
+                      <EvidenceFileField
+                        label="Registro do débito"
+                        value={sampleCharge}
+                        disabled={!active || busy}
+                        onChange={setSampleCharge}
+                        onError={setError}
+                      />
+                      <label>
+                        <input
+                          type="checkbox"
+                          checked={proofConfirmed}
+                          disabled={!active || busy}
+                          onChange={(event) =>
+                            setProofConfirmed(event.target.checked)
+                          }
+                        />
+                        Conferi visualmente o PDF e o débito
+                      </label>
+                    </details>
+                  )}
                 </ComposerSection>
               </form>
             </Composer>
@@ -845,18 +947,41 @@ export function RegistryOptionalTariffs({
             <ComposerSection
               title="Evidência"
               state={arispStates[1]}
-              recap={`SHA ${arispEvidence.slice(0, 8)}… · ${arispReason.trim().slice(0, 40)}`}
+              recap={`${arispEvidenceMode === "admin_declaration" ? "Declaração administrativa" : `Arquivo ${arispEvidence.slice(0, 8)}…`} · ${arispReason.trim().slice(0, 40)}`}
             >
               <label>
-                SHA-256 da tabela de preços
-                <input
+                Como você conferiu o preço?
+                <select
                   className="input"
-                  value={arispEvidence}
-                  maxLength={64}
+                  value={arispEvidenceMode}
                   disabled={!active || busy}
-                  onChange={(event) => setArispEvidence(event.target.value)}
-                />
+                  onChange={(event) =>
+                    setArispEvidenceMode(
+                      event.target.value as typeof arispEvidenceMode,
+                    )
+                  }
+                >
+                  <option value="admin_declaration">
+                    Declaro o preço conferido
+                  </option>
+                  <option value="supplier_file">
+                    Tenho arquivo do fornecedor
+                  </option>
+                </select>
+                <small>
+                  A declaração é sua decisão auditada; não é documento do
+                  fornecedor.
+                </small>
               </label>
+              {arispEvidenceMode === "supplier_file" && (
+                <EvidenceFileField
+                  label="Tabela de preços"
+                  value={arispEvidence}
+                  disabled={!active || busy}
+                  onChange={setArispEvidence}
+                  onError={setError}
+                />
+              )}
               <label>
                 Motivo
                 <textarea
@@ -886,18 +1011,13 @@ export function RegistryOptionalTariffs({
                     Só se a conta aceitou este valor e você guardou a evidência.
                   </small>
                 </label>
-                <label>
-                  SHA-256 da evidência do tipo
-                  <input
-                    className="input"
-                    value={certificateTypeEvidence}
-                    maxLength={64}
-                    disabled={!active || busy}
-                    onChange={(event) =>
-                      setCertificateTypeEvidence(event.target.value)
-                    }
-                  />
-                </label>
+                <EvidenceFileField
+                  label="Resposta do tipo aceito"
+                  value={certificateTypeEvidence}
+                  disabled={!active || busy}
+                  onChange={setCertificateTypeEvidence}
+                  onError={setError}
+                />
                 <label>
                   <input
                     type="checkbox"

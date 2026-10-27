@@ -234,6 +234,7 @@ describe("registry visualization tariff API", () => {
         order_fee_cents: 28,
         download_fee_cents: 20,
         monthly_minimum_reserve_cents: 0,
+        evidence_mode: "supplier_file",
         evidence_sha256: "a".repeat(64),
         reason: "Conferido no extrato autenticado.",
         contract_verified: true,

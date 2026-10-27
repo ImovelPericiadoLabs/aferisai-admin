@@ -15,6 +15,7 @@ const draft = (changes: Partial<TariffDraft> = {}): TariffDraft => ({
   orderFee: "0,28",
   downloadFee: "0,20",
   monthlyReserve: "0,00",
+  evidenceMode: "supplier_file",
   evidenceSha256: "a".repeat(64),
   reason: "Tarifa conferida no extrato autenticado.",
   contractVerified: true,
@@ -95,10 +96,23 @@ describe("tariffProblems", () => {
     expect(problems).toEqual([
       "a conta RI Digital",
       "o valor do pedido (de R$ 0,01 a R$ 1.000,00)",
-      "o SHA-256 da evidência (64 caracteres hexadecimais)",
+      "o arquivo da tabela de preços",
       "o motivo (de 10 a 500 caracteres)",
       "as duas declarações",
     ]);
+  });
+});
+
+describe("administrator price declaration", () => {
+  it("publishes without pretending that a supplier file exists", () => {
+    expect(
+      tariffDraftBody(
+        draft({ evidenceMode: "admin_declaration", evidenceSha256: "" }),
+      ),
+    ).toMatchObject({
+      evidence_mode: "admin_declaration",
+      evidence_sha256: null,
+    });
   });
 });
 

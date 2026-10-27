@@ -37,6 +37,7 @@ export type TariffDraft = {
   orderFee: string;
   downloadFee: string;
   monthlyReserve: string;
+  evidenceMode: "supplier_file" | "admin_declaration";
   evidenceSha256: string;
   reason: string;
   contractVerified: boolean;
@@ -49,6 +50,7 @@ export const emptyTariffDraft: TariffDraft = {
   orderFee: "",
   downloadFee: "",
   monthlyReserve: "0,00",
+  evidenceMode: "admin_declaration",
   evidenceSha256: "",
   reason: "",
   contractVerified: false,
@@ -78,7 +80,8 @@ export function tariffDraftBody(
     !within(order, limits.order_fee_cents) ||
     !within(download, limits.download_fee_cents) ||
     !within(reserve, limits.monthly_minimum_reserve_cents) ||
-    !/^[0-9a-f]{64}$/.test(draft.evidenceSha256.trim()) ||
+    (draft.evidenceMode === "supplier_file" &&
+      !/^[0-9a-f]{64}$/.test(draft.evidenceSha256.trim())) ||
     draft.reason.trim().length < limits.reason_length.min ||
     draft.reason.trim().length > limits.reason_length.max ||
     !draft.contractVerified ||
@@ -91,7 +94,11 @@ export function tariffDraftBody(
     order_fee_cents: order,
     download_fee_cents: download,
     monthly_minimum_reserve_cents: reserve,
-    evidence_sha256: draft.evidenceSha256.trim(),
+    evidence_mode: draft.evidenceMode,
+    evidence_sha256:
+      draft.evidenceMode === "supplier_file"
+        ? draft.evidenceSha256.trim()
+        : null,
     reason: draft.reason.trim(),
     contract_verified: true as const,
     supplier_fee_covered: true as const,
@@ -114,7 +121,8 @@ export function tariffComplete(
     );
   const reason = draft.reason.trim().length;
   const evidence =
-    /^[0-9a-f]{64}$/.test(draft.evidenceSha256.trim()) &&
+    (draft.evidenceMode === "admin_declaration" ||
+      /^[0-9a-f]{64}$/.test(draft.evidenceSha256.trim())) &&
     reason >= limits.reason_length.min &&
     reason <= limits.reason_length.max;
   return [values, evidence, draft.contractVerified && draft.supplierFeeCovered];
@@ -143,8 +151,11 @@ export function tariffProblems(
     problems.push(
       `o mínimo mensal (${rangeText(limits.monthly_minimum_reserve_cents)})`,
     );
-  if (!/^[0-9a-f]{64}$/.test(draft.evidenceSha256.trim()))
-    problems.push("o SHA-256 da evidência (64 caracteres hexadecimais)");
+  if (
+    draft.evidenceMode === "supplier_file" &&
+    !/^[0-9a-f]{64}$/.test(draft.evidenceSha256.trim())
+  )
+    problems.push("o arquivo da tabela de preços");
   const reason = draft.reason.trim().length;
   if (reason < limits.reason_length.min || reason > limits.reason_length.max)
     problems.push(

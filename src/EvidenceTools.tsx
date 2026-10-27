@@ -49,10 +49,12 @@ export function MiniButton({
 /** Hashes a file picked on this device. Nothing is uploaded. */
 export function FilePickButton({
   disabled,
+  accept,
   onHash,
   onError,
 }: {
   disabled?: boolean;
+  accept?: string;
   onHash: (bytes: ArrayBuffer, name: string) => void | Promise<void>;
   onError: (message: string) => void;
 }) {
@@ -69,6 +71,7 @@ export function FilePickButton({
       <input
         ref={input}
         type="file"
+        accept={accept}
         hidden
         tabIndex={-1}
         aria-hidden="true"

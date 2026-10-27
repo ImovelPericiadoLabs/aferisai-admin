@@ -38,6 +38,8 @@ import {
   supplierTariffValidityLabel,
 } from "./supplier-tariff-validity";
 import { useNow } from "./useNow";
+import { FilePickButton } from "./EvidenceTools";
+import { sha256Hex } from "./evidence-model";
 import type { ToastKind } from "./useToast";
 
 const money = (cents: number) =>
@@ -88,6 +90,7 @@ export function RegistryVisualizationTariffs({
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [evidenceFile, setEvidenceFile] = useState("");
   const [draft, setDraft] = useState<TariffDraft>(() =>
     draftFor(account, accounts),
   );
@@ -167,6 +170,7 @@ export function RegistryVisualizationTariffs({
       setReviewing(false);
       setFormOpen(false);
       setDraft(draftFor(account, accounts));
+      setEvidenceFile("");
       setTariffs((current) => [item, ...current].slice(0, 20));
       setError("");
       onToast(
@@ -546,24 +550,59 @@ export function RegistryVisualizationTariffs({
             <ComposerSection
               title="Evidência"
               state={states[1]}
-              recap={`SHA ${draft.evidenceSha256.slice(0, 8)}… · ${draft.reason.trim().slice(0, 40)}`}
+              recap={`${draft.evidenceMode === "admin_declaration" ? "Declaração administrativa" : `Arquivo ${draft.evidenceSha256.slice(0, 8)}…`} · ${draft.reason.trim().slice(0, 40)}`}
             >
               <label>
-                SHA-256 da evidência privada
-                <input
+                Como você conferiu o preço?
+                <select
                   className="input"
-                  value={draft.evidenceSha256}
-                  maxLength={64}
-                  autoCapitalize="none"
-                  autoComplete="off"
-                  spellCheck={false}
-                  onChange={(event) =>
-                    set("evidenceSha256", event.target.value)
-                  }
+                  value={draft.evidenceMode}
                   disabled={busy}
-                />
-                <small>Evidência guardada fora do repositório.</small>
+                  onChange={(event) =>
+                    set(
+                      "evidenceMode",
+                      event.target.value as TariffDraft["evidenceMode"],
+                    )
+                  }
+                >
+                  <option value="admin_declaration">
+                    Declaro o preço conferido
+                  </option>
+                  <option value="supplier_file">
+                    Tenho arquivo do fornecedor
+                  </option>
+                </select>
+                <small>
+                  O servidor registra sua decisão com valores, data e motivo. A
+                  declaração não é um documento do fornecedor.
+                </small>
               </label>
+              {draft.evidenceMode === "supplier_file" && (
+                <>
+                  <label>
+                    Tabela de preços consultada
+                    <input
+                      className="input"
+                      value={draft.evidenceSha256}
+                      maxLength={64}
+                      readOnly
+                      disabled={busy}
+                    />
+                    <small>
+                      {evidenceFile ||
+                        "Escolha o arquivo para gerar o resumo automaticamente. O arquivo fica no seu dispositivo."}
+                    </small>
+                  </label>
+                  <FilePickButton
+                    disabled={busy}
+                    onHash={async (bytes, name) => {
+                      set("evidenceSha256", await sha256Hex(bytes));
+                      setEvidenceFile(name);
+                    }}
+                    onError={setError}
+                  />
+                </>
+              )}
               <label>
                 Motivo da conferência
                 <textarea
