@@ -469,6 +469,19 @@ export type ActivateProviderBody = {
   reason: string;
 };
 
+export type ProviderActivationPreview = {
+  model: string;
+  execution_profile_sha256: string;
+  credential_checked: boolean;
+  pool_key: string;
+};
+
+export const previewAnalysisProviderActivation = (id: string) =>
+  request<ProviderActivationPreview>(
+    `/v1/team/analysis-provider-accounts/${encodeURIComponent(id)}/activation-preview`,
+    {},
+  );
+
 export const activateAnalysisProviderAccount = (
   id: string,
   body: ActivateProviderBody,

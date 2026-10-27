@@ -142,10 +142,11 @@ describe("canActivate", () => {
     expect(result.reason).toContain("rascunho");
   });
 
-  it("only allows Vertex service accounts", () => {
-    const result = canActivate(account({ kind: "openai_api_key" }));
+  it("allows native OpenAI but rejects unsupported draft adapters", () => {
+    expect(canActivate(account({ kind: "openai_api_key" })).ok).toBe(true);
+    const result = canActivate(account({ kind: "openai_compatible" }));
     expect(result.ok).toBe(false);
-    expect(result.reason).toContain("Vertex");
+    expect(result.reason).toContain("adaptador");
   });
 
   it("only allows the global location", () => {
