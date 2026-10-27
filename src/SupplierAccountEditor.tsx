@@ -114,6 +114,9 @@ export function SupplierAccountEditor({
 
   const accountId = account?.id ?? null;
   const accountProvider = account?.provider ?? null;
+  const activeOnrAccount = accounts.find(
+    (candidate) => candidate.provider === "onr" && candidate.status === "active",
+  );
   const now = useNow();
   const {
     snapshot,
@@ -217,14 +220,14 @@ export function SupplierAccountEditor({
               hint: "Custo do fornecedor",
               dot: readyState("tariff"),
             },
+            {
+              id: "commercial" as const,
+              label: "Condições comerciais",
+              hint: account.provider === "onr" ? "Margens e impostos" : "Reserva de IA compartilhada",
+              dot: readyState("terms"),
+            },
             ...(account.provider === "onr"
               ? [
-                  {
-                    id: "commercial" as const,
-                    label: "Condições comerciais",
-                    hint: "Margens e impostos",
-                    dot: readyState("terms"),
-                  },
                   {
                     id: "composition" as const,
                     label: "Composição do preço",
@@ -707,15 +710,28 @@ export function SupplierAccountEditor({
                       </>
                     )}
 
-                    {tab === "commercial" && account.provider === "onr" && (
-                      <RegistryCommercialTerms
-                        key={account.id}
-                        accountId={account.id}
-                        active={account.status === "active"}
-                        csrf={csrf}
-                        onUnauthorized={onUnauthorized}
-                        onToast={onToast}
-                      />
+                    {tab === "commercial" && (account.provider === "onr" || activeOnrAccount) && (
+                      <>
+                        {account.provider !== "onr" && (
+                          <p className="sup-muted">
+                            A reserva de IA é a mesma para visualização InfoSimples e pedidos RI Digital.
+                            A versão comercial pertence à conta RI Digital ativa e vale somente para novas cotações.
+                          </p>
+                        )}
+                        <RegistryCommercialTerms
+                          key={account.provider === "onr" ? account.id : activeOnrAccount?.id}
+                          accountId={account.provider === "onr" ? account.id : activeOnrAccount!.id}
+                          active={account.provider === "onr" ? account.status === "active" : !!activeOnrAccount}
+                          csrf={csrf}
+                          onUnauthorized={onUnauthorized}
+                          onToast={onToast}
+                        />
+                      </>
+                    )}
+                    {tab === "commercial" && account.provider !== "onr" && !activeOnrAccount && (
+                      <p className="alert alert-warning" role="status">
+                        Ative uma conta RI Digital para publicar a reserva de IA compartilhada.
+                      </p>
                     )}
 
                     {tab === "composition" && account.provider === "onr" && (
