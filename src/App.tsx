@@ -38,6 +38,7 @@ import { Users } from "./Users";
 import { TeamMembers } from "./TeamMembers";
 import type { PeopleTab } from "./people-model";
 import { AnalysisProviders } from "./AnalysisProviders";
+import { OperationsDashboard } from "./OperationsDashboard";
 import { ExecutiveDashboard } from "./ExecutiveDashboard";
 import { ReportsHub } from "./ReportsHub";
 import { RegistrySuppliers } from "./RegistrySuppliers";
@@ -79,6 +80,7 @@ type Page =
   | "users"
   | "team-members"
   | "analysis-providers"
+  | "operations"
   | "registry-suppliers"
   | "passkeys";
 type HiddenPage = "design-system" | "integration-map";
@@ -102,6 +104,11 @@ const nav: { page: Page; label: string; detail: string }[] = [
   { page: "requests", label: "Pedidos", detail: "Triagem operacional" },
   { page: "sources", label: "Fontes", detail: "Antes da cobrança" },
   { page: "analyses", label: "Análises", detail: "Conferência interna" },
+  {
+    page: "operations",
+    label: "Estado do sistema",
+    detail: "Serviços e capacidade",
+  },
   { page: "financial", label: "Exceções", detail: "Decisão financeira" },
   { page: "commissions", label: "Repasses", detail: "Comissões e pagamentos" },
   { page: "connections", label: "Conexões", detail: "Consentimentos ativos" },
@@ -141,6 +148,7 @@ const navGroups: { title: string; pages: Page[] }[] = [
       "registry-requests",
       "sources",
       "analyses",
+      "operations",
       "reconciliation",
       "onr-review",
     ],
@@ -499,6 +507,7 @@ function pageFromHash(): Page | HiddenPage {
     value === "users" ||
     value === "team-members" ||
     value === "analysis-providers" ||
+    value === "operations" ||
     value === "registry-suppliers" ||
     value === "passkeys" ||
     value === "design-system" ||
@@ -678,6 +687,8 @@ function TeamApp() {
           (item.page !== "team-members" ||
             session.member.role === "administrator") &&
           (item.page !== "analysis-providers" ||
+            session.member.role === "administrator") &&
+          (item.page !== "operations" ||
             session.member.role === "administrator") &&
           (item.page !== "registry-suppliers" ||
             session.member.role === "administrator") &&
@@ -1063,6 +1074,9 @@ function TeamApp() {
               csrf={session.csrf}
               onUnauthorized={unauthorize}
             />
+          ) : currentPage === "operations" &&
+            session.member.role === "administrator" ? (
+            <OperationsDashboard onUnauthorized={unauthorize} />
           ) : currentPage === "registry-suppliers" &&
             session.member.role === "administrator" ? (
             <RegistrySuppliers

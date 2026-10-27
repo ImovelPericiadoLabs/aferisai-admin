@@ -20,6 +20,7 @@ type IconName =
   | "users"
   | "team-members"
   | "analysis-providers"
+  | "operations"
   | "registry-suppliers"
   | "passkeys"
   | "settings"
@@ -146,6 +147,12 @@ const paths: Record<IconName, ReactNode> = {
     <>
       <rect x="3" y="3" width="18" height="18" rx="3" />
       <path d="M8 8h8v8H8zM12 1v2m0 18v2M1 12h2m18 0h2" />
+    </>
+  ),
+  operations: (
+    <>
+      <path d="M3 12h4l2-5 4 10 2-5h6" />
+      <path d="M3 4h18v16H3z" />
     </>
   ),
   "registry-suppliers": (
