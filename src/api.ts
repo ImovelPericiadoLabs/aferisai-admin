@@ -2573,6 +2573,8 @@ export type RegistryCommercialTerms = {
   approved_at: string | null;
   valid_until: string;
   analysis_reserve_cents: number;
+  analysis_call_reserve_cents: number;
+  analysis_planned_calls: number;
   operations_reserve_cents: number;
   exception_reserve_cents: number;
   payment_fee_cents: number;
@@ -2593,6 +2595,7 @@ export type RegistryCommercialTermsPage = {
 export type RegistryCommercialTermsCreate = {
   base_offer_id: string;
   version: string;
+  analysis_call_reserve_cents: number;
   operations_reserve_cents: number;
   exception_reserve_cents: number;
   payment_fee_cents: number;
