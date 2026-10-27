@@ -2461,6 +2461,7 @@ export type RegistryVisualizationTariff = {
   monthly_minimum_reserve_cents: number;
   budget_cents: number;
   evidence_sha256: string;
+  evidence_mode?: "supplier_file" | "admin_declaration";
   reason: string;
   verified_at: string;
   valid_until: string; /** True when the tariff has no automatic expiry (valid_until is a technical sentinel). */
@@ -2486,7 +2487,8 @@ export type RegistryVisualizationTariffCreate = {
   order_fee_cents: number;
   download_fee_cents: number;
   monthly_minimum_reserve_cents: number;
-  evidence_sha256: string;
+  evidence_mode: "supplier_file" | "admin_declaration";
+  evidence_sha256: string | null;
   reason: string;
   contract_verified: true;
   supplier_fee_covered: true;
@@ -2660,6 +2662,8 @@ export type RegistryCertificateTariff = {
   unit_cost_cents: number;
   source_url: string;
   evidence_sha256: string;
+  evidence_mode?: "supplier_file" | "admin_declaration";
+  operational_attestation?: boolean;
   sample_document_sha256: string | null;
   sample_charge_sha256: string | null;
   actor_team_member_id: string;
@@ -2682,7 +2686,9 @@ export type RegistryCertificateTariffCreate = {
   code: RegistryCertificateKind;
   state: string | null;
   unit_cost_cents: number;
-  evidence_sha256: string;
+  evidence_mode: "supplier_file" | "admin_declaration";
+  evidence_sha256: string | null;
+  operational_attestation: true | null;
   sample_document_sha256: string | null;
   sample_charge_sha256: string | null;
   delivery_proof_confirmed: true | null;
@@ -2719,6 +2725,7 @@ export type RegistryArispTariff = {
   budget_cents: number;
   source_url: string;
   evidence_sha256: string;
+  evidence_mode?: "supplier_file" | "admin_declaration";
   certificate_type: string | null;
   certificate_type_evidence_sha256: string | null;
   actor_team_member_id: string;
@@ -2743,7 +2750,8 @@ export type RegistryArispTariffCreate = {
   onr_account_id: string;
   order_fee_cents: number;
   download_fee_cents: number;
-  evidence_sha256: string;
+  evidence_mode: "supplier_file" | "admin_declaration";
+  evidence_sha256: string | null;
   reason: string;
   contract_verified: true;
   supplier_fee_covered: true;

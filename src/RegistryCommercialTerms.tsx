@@ -308,12 +308,12 @@ export function RegistryCommercialTerms({
   }
 
   async function generateEvidence() {
-    if (!draft || !effective) return;
+    if (!draft || !effective) return null;
     if (!draft.version.trim() || !draft.reason.trim()) {
       setEvidenceNote(
         "Preencha o identificador e o motivo antes: eles entram no texto que será assinado pelo SHA-256.",
       );
-      return;
+      return null;
     }
     const text = declarationText({
       version: draft.version.trim(),
@@ -329,6 +329,7 @@ export function RegistryCommercialTerms({
     setDeclaration({ text, hash });
     setEvidenceNote("");
     set("payment_fee_evidence_sha256", hash);
+    return hash;
   }
 
   async function hashFile(bytes: ArrayBuffer, name: string) {
@@ -340,11 +341,26 @@ export function RegistryCommercialTerms({
     set("payment_fee_evidence_sha256", hash);
   }
 
-  function review(event: FormEvent<HTMLFormElement>) {
+  async function review(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!draft || !effective || !active) return;
     setAttempted(true);
-    if (Object.keys(errors).length > 0) return;
+    const evidence =
+      feeChanged && !draft.payment_fee_evidence_sha256
+        ? await generateEvidence()
+        : draft.payment_fee_evidence_sha256;
+    const reviewErrors = commercialErrors(
+      {
+        values: draft as CommercialValues,
+        inputsMatch,
+        version: draft.version,
+        reason: draft.reason,
+        evidence: evidence ?? "",
+        feeChanged,
+      },
+      limits,
+    );
+    if (Object.keys(reviewErrors).length > 0) return;
     setError("");
     setReviewing(true);
   }
@@ -582,9 +598,12 @@ export function RegistryCommercialTerms({
                       {(draft.onr_markup_bps / 100).toLocaleString("pt-BR")}% ·
                       tributos{" "}
                       {(draft.tax_rate_bps / 100).toLocaleString("pt-BR")}% ·
-                      PIX {money(draft.payment_fee_cents)} · IA {money(
-                        draft.analysis_call_reserve_cents * effective.analysis_planned_calls
-                      )} por documento.
+                      PIX {money(draft.payment_fee_cents)} · IA{" "}
+                      {money(
+                        draft.analysis_call_reserve_cents *
+                          effective.analysis_planned_calls,
+                      )}{" "}
+                      por documento.
                     </p>
                     <button
                       type="button"
@@ -740,12 +759,7 @@ export function RegistryCommercialTerms({
                       (draft.payment_fee_evidence_sha256 ?? "").length > 0,
                     )
                   }
-                  onChange={(event) =>
-                    set(
-                      "payment_fee_evidence_sha256",
-                      event.target.value || null,
-                    )
-                  }
+                  readOnly
                 />
                 {shown(
                   "evidence",
@@ -757,7 +771,7 @@ export function RegistryCommercialTerms({
                 ) : (
                   <small>
                     {feeChanged
-                      ? "Obrigatório: a tarifa PIX mudou."
+                      ? "O painel gera a declaração ao revisar, se nenhum arquivo foi escolhido."
                       : "Só é exigida quando a tarifa PIX muda."}
                   </small>
                 )}
