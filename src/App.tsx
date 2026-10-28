@@ -681,7 +681,7 @@ function TeamApp() {
         }
         window.addEventListener("message", onReady);
       });
-      previewWindow.location.replace(`${origin}/api/site-preview`);
+      previewWindow.location.replace(`${origin}/api/acesso-equipe`);
       await ready;
       previewWindow.postMessage({ type: "aferis-site-preview-grant", grant: result.grant }, origin);
     } catch (cause) {
