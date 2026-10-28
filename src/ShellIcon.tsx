@@ -23,6 +23,7 @@ type IconName =
   | "operations"
   | "registry-suppliers"
   | "passkeys"
+  | "maintenance"
   | "settings"
   | "operations-group"
   | "commercial-group"
@@ -166,6 +167,9 @@ const paths: Record<IconName, ReactNode> = {
       <circle cx="8" cy="10" r="4" />
       <path d="M11 13h10v3h-3v3h-3v-3h-4" />
     </>
+  ),
+  maintenance: (
+    <><path d="M4 7h16M4 12h16M4 17h16" /><circle cx="8" cy="7" r="2" fill="currentColor" /><circle cx="16" cy="12" r="2" fill="currentColor" /><circle cx="11" cy="17" r="2" fill="currentColor" /></>
   ),
   settings: (
     <>

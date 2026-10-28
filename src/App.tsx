@@ -16,6 +16,7 @@ import {
   ApiError,
   beginPasskeyLogin,
   createSession,
+  createSitePreviewGrant,
   currentMember,
   deleteSession,
   finishPasskeyLogin,
@@ -47,6 +48,7 @@ import { DesignSystemGuide } from "./DesignSystemGuide";
 import { IntegrationMap } from "./IntegrationMap";
 import { Access } from "./Access";
 import { Passkeys } from "./Passkeys";
+import { SiteMaintenance } from "./SiteMaintenance";
 import { homePageFor, showsOverview } from "./home-page";
 import { installNoAutofill } from "./no-autofill";
 import { ShellIcon } from "./ShellIcon";
@@ -82,7 +84,8 @@ type Page =
   | "analysis-providers"
   | "operations"
   | "registry-suppliers"
-  | "passkeys";
+  | "passkeys"
+  | "maintenance";
 type HiddenPage = "design-system" | "integration-map";
 type Session = { csrf: string; member: TeamMember };
 
@@ -125,6 +128,7 @@ const nav: { page: Page; label: string; detail: string }[] = [
     detail: "Contas registrais",
   },
   { page: "passkeys", label: "Minhas chaves", detail: "Acesso à conta" },
+  { page: "maintenance", label: "Manutenção", detail: "Disponibilidade do site" },
   { page: "access", label: "Permissões", detail: "Estrutura de acesso" },
   {
     page: "reconciliation",
@@ -164,6 +168,7 @@ const navGroups: { title: string; pages: Page[] }[] = [
     ],
   },
   { title: "Financeiro", pages: ["financial", "commissions"] },
+  { title: "Configurações", pages: ["maintenance"] },
 ];
 
 function message(error: unknown): string {
@@ -510,6 +515,7 @@ function pageFromHash(): Page | HiddenPage {
     value === "operations" ||
     value === "registry-suppliers" ||
     value === "passkeys" ||
+    value === "maintenance" ||
     value === "design-system" ||
     value === "integration-map"
     ? value
@@ -534,6 +540,7 @@ function TeamApp() {
   const accountMenuRef = useRef<HTMLDivElement>(null);
   const accountActionRef = useRef<HTMLButtonElement>(null);
   const [logoutError, setLogoutError] = useState("");
+  const [sitePreviewBusy, setSitePreviewBusy] = useState(false);
   const [selectedRequestId, setSelectedRequestId] = useState("");
   const [selectedWorkId, setSelectedWorkId] = useState("");
   const { toasts, show: showToast, dismiss: dismissToast } = useToast();
@@ -641,6 +648,35 @@ function TeamApp() {
     }
   }
 
+  async function openSitePreview() {
+    if (!session || session.member.role !== "administrator" || sitePreviewBusy) return;
+    setSitePreviewBusy(true);
+    try {
+      const options = await beginPasskeyLogin(session.member.email);
+      const credential = await startAuthentication({
+        optionsJSON: options.public_key as unknown as PublicKeyCredentialRequestOptionsJSON,
+      });
+      const result = await createSitePreviewGrant(
+        session.member.email,
+        options.challenge_id,
+        credential as unknown as Record<string, unknown>,
+      );
+      const form = document.createElement("form");
+      form.method = "POST";
+      form.action = `${result.site_origin}/api/site-preview`;
+      const grant = document.createElement("input");
+      grant.type = "hidden";
+      grant.name = "grant";
+      grant.value = result.grant;
+      form.append(grant);
+      document.body.append(form);
+      form.submit();
+    } catch (cause) {
+      showToast(cause instanceof ApiError ? message(cause) : "Não foi possível confirmar a chave de acesso.", "error");
+      setSitePreviewBusy(false);
+    }
+  }
+
   if (loading)
     return (
       <main
@@ -693,6 +729,8 @@ function TeamApp() {
           (item.page !== "registry-suppliers" ||
             session.member.role === "administrator") &&
           (item.page !== "executive" ||
+            session.member.role === "administrator") &&
+          (item.page !== "maintenance" ||
             session.member.role === "administrator"),
   );
   const currentPage =
@@ -858,6 +896,11 @@ function TeamApp() {
                   >
                     <ShellIcon name="passkeys" size={17} /> Minhas chaves
                   </button>
+                  {session.member.role === "administrator" && browserSupportsWebAuthn() && (
+                    <button type="button" disabled={sitePreviewBusy} onClick={() => void openSitePreview()}>
+                      <ShellIcon name="passkeys" size={17} /> {sitePreviewBusy ? "Confirmando…" : "Abrir prévia do site"}
+                    </button>
+                  )}
                   {visibleNav.some((item) =>
                     [
                       "team-members",
@@ -1090,6 +1133,8 @@ function TeamApp() {
             <IntegrationMap />
           ) : currentPage === "passkeys" ? (
             <Passkeys csrf={session.csrf} onUnauthorized={unauthorize} />
+          ) : currentPage === "maintenance" && session.member.role === "administrator" ? (
+            <SiteMaintenance csrf={session.csrf} onUnauthorized={unauthorize} onToast={showToast} />
           ) : (
             <Access
               role={session.member.role}
