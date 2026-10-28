@@ -47,7 +47,7 @@ export function SiteMaintenance({ csrf, onUnauthorized, onToast }: {
 
   useEffect(() => {
     let live = true;
-    getSiteMaintenancePolicy()
+    getSiteMaintenancePolicy(csrf)
       .then((current) => { if (live) apply(current); })
       .catch((cause: unknown) => {
         if (!live) return;
@@ -56,7 +56,7 @@ export function SiteMaintenance({ csrf, onUnauthorized, onToast }: {
       })
       .finally(() => { if (live) setLoading(false); });
     return () => { live = false; };
-  }, [onUnauthorized]);
+  }, [csrf, onUnauthorized]);
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -75,7 +75,7 @@ export function SiteMaintenance({ csrf, onUnauthorized, onToast }: {
     } catch (cause) {
       if (cause instanceof ApiError && cause.status === 401) onUnauthorized();
       if (cause instanceof ApiError && cause.status === 409) {
-        const current = await getSiteMaintenancePolicy().catch(() => null);
+        const current = await getSiteMaintenancePolicy(csrf).catch(() => null);
         if (current) apply(current);
       }
       setError(cause instanceof ApiError ? cause.detail : "Não foi possível salvar a manutenção.");

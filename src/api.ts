@@ -1026,8 +1026,10 @@ export type SiteMaintenanceChange = {
   internal_note: string | null;
   reason: string;
 };
-export const getSiteMaintenancePolicy = () =>
-  request<SiteMaintenancePolicy>("/v1/team/site-maintenance", { method: "GET" });
+export const getSiteMaintenancePolicy = (csrfToken: string) =>
+  request<SiteMaintenancePolicy>("/v1/team/site-maintenance", {
+    method: "GET", headers: { "X-CSRF-Token": csrfToken },
+  });
 export const updateSiteMaintenancePolicy = (body: SiteMaintenanceChange, csrfToken: string) =>
   request<SiteMaintenancePolicy>("/v1/team/site-maintenance", {
     method: "PUT", headers: { "X-CSRF-Token": csrfToken }, body: JSON.stringify(body),
