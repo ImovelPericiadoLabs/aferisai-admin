@@ -998,6 +998,40 @@ export const finishPasskeyLogin = (
     method: "POST",
     body: JSON.stringify({ email, challenge_id: challengeId, credential }),
   });
+export const createSitePreviewGrant = (
+  email: string,
+  challengeId: string,
+  credential: Record<string, unknown>,
+) => request<{ grant: string; site_origin: string }>("/v1/team/passkeys/authentication/site-preview", {
+  method: "POST",
+  body: JSON.stringify({ email, challenge_id: challengeId, credential }),
+});
+export type SiteMaintenancePolicy = {
+  enabled: boolean;
+  active: boolean;
+  version: number;
+  starts_at: string | null;
+  ends_at: string | null;
+  public_message: string | null;
+  internal_note: string | null;
+  updated_by_id: string | null;
+  updated_at: string | null;
+};
+export type SiteMaintenanceChange = {
+  expected_version: number;
+  enabled: boolean;
+  starts_at: string | null;
+  ends_at: string | null;
+  public_message: string | null;
+  internal_note: string | null;
+  reason: string;
+};
+export const getSiteMaintenancePolicy = () =>
+  request<SiteMaintenancePolicy>("/v1/team/site-maintenance", { method: "GET" });
+export const updateSiteMaintenancePolicy = (body: SiteMaintenanceChange, csrfToken: string) =>
+  request<SiteMaintenancePolicy>("/v1/team/site-maintenance", {
+    method: "PUT", headers: { "X-CSRF-Token": csrfToken }, body: JSON.stringify(body),
+  });
 export const listPasskeys = () =>
   request<PasskeyList>("/v1/team/passkeys", { method: "GET" });
 export const beginPasskeyRegistration = (csrfToken: string) =>
