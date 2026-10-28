@@ -650,7 +650,8 @@ function TeamApp() {
 
   async function openSitePreview() {
     if (!session || session.member.role !== "administrator" || sitePreviewBusy) return;
-    const previewWindow = window.open("about:blank", "_blank");
+    const previewWindowName = `aferis-preview-${Date.now()}`;
+    const previewWindow = window.open("about:blank", previewWindowName);
     if (!previewWindow) {
       showToast("Permita a abertura da prévia pelo navegador e tente novamente.", "error");
       return;
@@ -668,22 +669,19 @@ function TeamApp() {
       );
       const origin = new URL(result.site_origin).origin;
       if (origin !== result.site_origin || !origin.startsWith("https://")) throw new Error("invalid preview origin");
-      const ready = new Promise<void>((resolve, reject) => {
-        const timeout = window.setTimeout(() => {
-          window.removeEventListener("message", onReady);
-          reject(new Error("preview bridge timeout"));
-        }, 10_000);
-        function onReady(event: MessageEvent) {
-          if (event.origin !== origin || event.source !== previewWindow || event.data?.type !== "aferis-site-preview-ready") return;
-          window.clearTimeout(timeout);
-          window.removeEventListener("message", onReady);
-          resolve();
-        }
-        window.addEventListener("message", onReady);
-      });
-      previewWindow.location.replace(`${origin}/api/acesso-equipe`);
-      await ready;
-      previewWindow.postMessage({ type: "aferis-site-preview-grant", grant: result.grant }, origin);
+      const form = document.createElement("form");
+      form.method = "POST";
+      form.action = `${origin}/api/acesso-equipe`;
+      form.target = previewWindowName;
+      form.referrerPolicy = "no-referrer";
+      const grant = document.createElement("input");
+      grant.type = "hidden";
+      grant.name = "grant";
+      grant.value = result.grant;
+      form.append(grant);
+      document.body.append(form);
+      try { form.submit(); }
+      finally { form.remove(); }
     } catch (cause) {
       previewWindow.close();
       showToast(cause instanceof ApiError ? message(cause) : "Não foi possível confirmar a chave de acesso.", "error");
