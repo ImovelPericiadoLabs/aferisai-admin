@@ -650,8 +650,7 @@ function TeamApp() {
 
   async function openSitePreview() {
     if (!session || session.member.role !== "administrator" || sitePreviewBusy) return;
-    const previewWindowName = `aferis-preview-${Date.now()}`;
-    const previewWindow = window.open("about:blank", previewWindowName);
+    const previewWindow = window.open("about:blank", "_blank");
     if (!previewWindow) {
       showToast("Permita a abertura da prévia pelo navegador e tente novamente.", "error");
       return;
@@ -669,19 +668,7 @@ function TeamApp() {
       );
       const origin = new URL(result.site_origin).origin;
       if (origin !== result.site_origin || !origin.startsWith("https://")) throw new Error("invalid preview origin");
-      const form = document.createElement("form");
-      form.method = "POST";
-      form.action = `${origin}/api/acesso-equipe`;
-      form.target = previewWindowName;
-      form.referrerPolicy = "no-referrer";
-      const grant = document.createElement("input");
-      grant.type = "hidden";
-      grant.name = "grant";
-      grant.value = result.grant;
-      form.append(grant);
-      document.body.append(form);
-      try { form.submit(); }
-      finally { form.remove(); }
+      previewWindow.location.replace(`${origin}/api/acesso-equipe#${encodeURIComponent(result.grant)}`);
     } catch (cause) {
       previewWindow.close();
       showToast(cause instanceof ApiError ? message(cause) : "Não foi possível confirmar a chave de acesso.", "error");
