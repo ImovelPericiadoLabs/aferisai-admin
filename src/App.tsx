@@ -128,11 +128,7 @@ const nav: { page: Page; label: string; detail: string }[] = [
     detail: "Contas registrais",
   },
   { page: "passkeys", label: "Minhas chaves", detail: "Acesso à conta" },
-  {
-    page: "maintenance",
-    label: "Manutenção",
-    detail: "Disponibilidade do site",
-  },
+  { page: "maintenance", label: "Manutenção", detail: "Disponibilidade do site" },
   { page: "access", label: "Permissões", detail: "Estrutura de acesso" },
   {
     page: "reconciliation",
@@ -653,22 +649,17 @@ function TeamApp() {
   }
 
   async function openSitePreview() {
-    if (!session || session.member.role !== "administrator" || sitePreviewBusy)
-      return;
+    if (!session || session.member.role !== "administrator" || sitePreviewBusy) return;
     const previewWindow = window.open("about:blank", "_blank");
     if (!previewWindow) {
-      showToast(
-        "Permita a abertura da prévia pelo navegador e tente novamente.",
-        "error",
-      );
+      showToast("Permita a abertura da prévia pelo navegador e tente novamente.", "error");
       return;
     }
     setSitePreviewBusy(true);
     try {
       const options = await beginPasskeyLogin(session.member.email);
       const credential = await startAuthentication({
-        optionsJSON:
-          options.public_key as unknown as PublicKeyCredentialRequestOptionsJSON,
+        optionsJSON: options.public_key as unknown as PublicKeyCredentialRequestOptionsJSON,
       });
       const result = await createSitePreviewGrant(
         session.member.email,
@@ -676,22 +667,12 @@ function TeamApp() {
         credential as unknown as Record<string, unknown>,
       );
       const origin = new URL(result.site_origin).origin;
-      if (origin !== result.site_origin || !origin.startsWith("https://"))
-        throw new Error("invalid preview origin");
-      previewWindow.location.replace(
-        `${origin}/api/acesso-equipe#${encodeURIComponent(result.grant)}`,
-      );
+      if (origin !== result.site_origin || !origin.startsWith("https://")) throw new Error("invalid preview origin");
+      previewWindow.location.replace(`${origin}/api/acesso-equipe#${encodeURIComponent(result.grant)}`);
     } catch (cause) {
       previewWindow.close();
-      showToast(
-        cause instanceof ApiError
-          ? message(cause)
-          : "Não foi possível confirmar a chave de acesso.",
-        "error",
-      );
-    } finally {
-      setSitePreviewBusy(false);
-    }
+      showToast(cause instanceof ApiError ? message(cause) : "Não foi possível confirmar a chave de acesso.", "error");
+    } finally { setSitePreviewBusy(false); }
   }
 
   if (loading)
@@ -913,19 +894,11 @@ function TeamApp() {
                   >
                     <ShellIcon name="passkeys" size={17} /> Minhas chaves
                   </button>
-                  {session.member.role === "administrator" &&
-                    browserSupportsWebAuthn() && (
-                      <button
-                        type="button"
-                        disabled={sitePreviewBusy}
-                        onClick={() => void openSitePreview()}
-                      >
-                        <ShellIcon name="passkeys" size={17} />{" "}
-                        {sitePreviewBusy
-                          ? "Confirmando…"
-                          : "Abrir prévia do site"}
-                      </button>
-                    )}
+                  {session.member.role === "administrator" && browserSupportsWebAuthn() && (
+                    <button type="button" disabled={sitePreviewBusy} onClick={() => void openSitePreview()}>
+                      <ShellIcon name="passkeys" size={17} /> {sitePreviewBusy ? "Confirmando…" : "Abrir prévia do site"}
+                    </button>
+                  )}
                   {visibleNav.some((item) =>
                     [
                       "team-members",
@@ -1158,13 +1131,8 @@ function TeamApp() {
             <IntegrationMap />
           ) : currentPage === "passkeys" ? (
             <Passkeys csrf={session.csrf} onUnauthorized={unauthorize} />
-          ) : currentPage === "maintenance" &&
-            session.member.role === "administrator" ? (
-            <SiteMaintenance
-              csrf={session.csrf}
-              onUnauthorized={unauthorize}
-              onToast={showToast}
-            />
+          ) : currentPage === "maintenance" && session.member.role === "administrator" ? (
+            <SiteMaintenance csrf={session.csrf} onUnauthorized={unauthorize} onToast={showToast} />
           ) : (
             <Access
               role={session.member.role}
