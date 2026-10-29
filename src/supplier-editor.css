@@ -1116,6 +1116,53 @@
   font-weight: var(--weight-normal);
 }
 
+.sup-analysis-availability {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-muted);
+}
+.sup-analysis-availability > div,
+.sup-analysis-field-note {
+  display: grid;
+  gap: var(--space-1);
+}
+.sup-analysis-availability strong {
+  font-size: var(--text-sm);
+}
+.sup-analysis-availability span,
+.sup-analysis-field-note span {
+  color: var(--text-muted);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-normal);
+  line-height: 1.4;
+}
+.sup-analysis-field-note {
+  grid-column: 1 / -1;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-muted);
+}
+.sup-analysis-field-note .sup-mini {
+  white-space: nowrap;
+}
+@media (max-width: 640px) {
+  .sup-analysis-availability,
+  .sup-analysis-field-note {
+    grid-template-columns: 1fr;
+  }
+  .sup-analysis-field-note .sup-mini {
+    justify-self: start;
+  }
+}
+
 /* Folding is CSS: a block stays open while focus is inside it */
 .sup-csection-collapse {
   display: grid;

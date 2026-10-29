@@ -82,6 +82,30 @@ export function parseCommercialNumber(value: string): number | null {
   return Number.isSafeInteger(scaled) ? scaled : null;
 }
 
+/** Calculates the per-document AI reserve from the planned calls and reserve per call. */
+export function analysisBudgetPerDocumentCents(
+  plannedCalls: number,
+  callReserveCents: number,
+): number {
+  return Number.isSafeInteger(plannedCalls) &&
+    Number.isSafeInteger(callReserveCents)
+    ? plannedCalls * callReserveCents
+    : 0;
+}
+
+/** Returns the lowest server-allowed reserve when it is cheaper than the current one. */
+export function economicAnalysisCallSuggestion(
+  currentCents: number,
+  minimumCents: number,
+): number | null {
+  if (
+    !Number.isSafeInteger(currentCents) ||
+    !Number.isSafeInteger(minimumCents)
+  )
+    return null;
+  return currentCents > minimumCents ? minimumCents : null;
+}
+
 const fields: {
   key: NumericKey;
   label: string;
@@ -232,6 +256,19 @@ export function RegistryCommercialTerms({
   const valuesBad = !!errors.values || fields.some(({ key }) => errors[key]);
   const identityBad = !!(errors.version || errors.reason || errors.evidence);
   const termStates = stepStates([!valuesBad, !identityBad, reviewing]);
+  const analysisBudgetCents =
+    draft && effective
+      ? analysisBudgetPerDocumentCents(
+          effective.analysis_planned_calls,
+          draft.analysis_call_reserve_cents,
+        )
+      : 0;
+  const economicAnalysisReserve = draft
+    ? economicAnalysisCallSuggestion(
+        draft.analysis_call_reserve_cents,
+        limits.analysis_call_reserve_cents.min,
+      )
+    : null;
   /** Typed-in problems show at once; the untouched ones wait for a first attempt. */
   const shown = (key: keyof typeof errors, typed: boolean) =>
     errors[key] && (attempted || typed) ? errors[key] : undefined;
@@ -483,6 +520,31 @@ export function RegistryCommercialTerms({
               {effective.onr_account_id === null &&
                 " · geral anterior; publique uma desta conta para personalizar"}
             </p>
+            <div
+              className="sup-analysis-availability"
+              aria-label="Disponibilidade da IA por documento"
+            >
+              <div>
+                <strong>
+                  {effective.analysis_planned_calls > 0
+                    ? "IA disponível"
+                    : "IA indisponível"}
+                </strong>
+                <span>
+                  {effective.analysis_planned_calls > 0
+                    ? `${effective.analysis_planned_calls} chamadas planejadas por documento`
+                    : "O orçamento de IA não está completo"}
+                </span>
+              </div>
+              <div>
+                <strong>Como é calculado</strong>
+                <span>
+                  {effective.analysis_planned_calls} chamadas ×{" "}
+                  {money(effective.analysis_call_reserve_cents)} ={" "}
+                  {money(effective.analysis_reserve_cents)} por documento
+                </span>
+              </div>
+            </div>
           </>
         )}
         {!loading && !effective && (
@@ -582,7 +644,7 @@ export function RegistryCommercialTerms({
                 },
                 {
                   label: "Reserva de IA",
-                  value: `${money(draft.analysis_call_reserve_cents * effective.analysis_planned_calls)} por documento (${effective.analysis_planned_calls} chamadas)`,
+                  value: `${money(analysisBudgetCents)} por documento (${effective.analysis_planned_calls} chamadas)`,
                 },
                 { label: "Versão", value: draft.version.trim() || "—" },
               ]}
@@ -599,11 +661,7 @@ export function RegistryCommercialTerms({
                       tributos{" "}
                       {(draft.tax_rate_bps / 100).toLocaleString("pt-BR")}% ·
                       PIX {money(draft.payment_fee_cents)} · IA{" "}
-                      {money(
-                        draft.analysis_call_reserve_cents *
-                          effective.analysis_planned_calls,
-                      )}{" "}
-                      por documento.
+                      {money(analysisBudgetCents)} por documento.
                     </p>
                     <button
                       type="button"
@@ -665,19 +723,50 @@ export function RegistryCommercialTerms({
                 </p>
               )}
               {fields.map(({ key, label, unit }) => (
-                <label key={key}>
-                  {label}{" "}
-                  <span className="sup-unit">
-                    {unitHint(key, unit, effective, limits)}
-                  </span>
+                <div key={key} className="sup-field">
+                  <label htmlFor={`cm-${key}`}>
+                    {label}{" "}
+                    <span className="sup-unit">
+                      {unitHint(key, unit, effective, limits)}
+                    </span>
+                  </label>
                   <input
                     className="input"
+                    id={`cm-${key}`}
                     type="text"
                     inputMode="decimal"
                     value={numericInputs[key]}
                     disabled={!active || busy}
                     onChange={(event) => setNumeric(key, event.target.value)}
                   />
+                  {key === "analysis_call_reserve_cents" && (
+                    <div className="sup-analysis-field-note">
+                      <span>
+                        {effective.analysis_planned_calls} chamadas planejadas
+                        por documento · total atual {money(analysisBudgetCents)}
+                        .
+                      </span>
+                      {economicAnalysisReserve !== null ? (
+                        <button
+                          type="button"
+                          className="sup-mini"
+                          disabled={!active || busy}
+                          onClick={() =>
+                            setNumeric(
+                              key,
+                              displayNumber(economicAnalysisReserve),
+                            )
+                          }
+                        >
+                          Sugerir {money(economicAnalysisReserve)}/chamada
+                        </button>
+                      ) : (
+                        <span>
+                          Já está no menor valor permitido pelo backend.
+                        </span>
+                      )}
+                    </div>
+                  )}
                   {shown(key, true) ? (
                     <small className="sup-error" role="alert">
                       {shown(key, true)}
@@ -689,7 +778,7 @@ export function RegistryCommercialTerms({
                         : "Valor da nova versão"}
                     </small>
                   )}
-                </label>
+                </div>
               ))}
             </ComposerSection>
             <ComposerSection
