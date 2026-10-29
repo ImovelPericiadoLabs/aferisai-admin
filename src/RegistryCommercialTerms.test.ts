@@ -16,6 +16,7 @@ describe("commercial term input", () => {
 
   it("calculates the AI reserve per document from planned calls", () => {
     expect(analysisBudgetPerDocumentCents(27, 250)).toBe(6750);
+    expect(analysisBudgetPerDocumentCents(27, 37)).toBe(1000);
   });
 
   it("suggests the configured minimum without changing it automatically", () => {

@@ -89,7 +89,7 @@ export function analysisBudgetPerDocumentCents(
 ): number {
   return Number.isSafeInteger(plannedCalls) &&
     Number.isSafeInteger(callReserveCents)
-    ? plannedCalls * callReserveCents
+    ? Math.max(1000, plannedCalls * callReserveCents)
     : 0;
 }
 
