@@ -35,6 +35,7 @@ import { portalSections, type PortalSection } from "./partner-finance-model";
 import { memberAccess, roleLabel } from "./partner-roles";
 import { ToastStack } from "./ToastStack";
 import { useToast } from "./useToast";
+import { PartnerMfaRecovery } from "./PartnerMfaRecovery";
 import "./partner-portal.css";
 
 type PartnerSession = { member: PartnerMember; csrf: string };
@@ -285,6 +286,9 @@ export function PartnerPortal() {
   const [switching, setSwitching] = useState(false);
   const [error, setError] = useState("");
   const isInvitation = window.location.hash.startsWith("#convite");
+  const [recoveringMfa, setRecoveringMfa] = useState(() =>
+    window.location.hash.startsWith("#recuperar-2fa"),
+  );
   const unauthorize = useCallback(() => {
     setSession(null);
     setApplications([]);
@@ -440,7 +444,24 @@ export function PartnerPortal() {
     }
   }
 
+  function openMfaRecovery() {
+    setError("");
+    setRecoveringMfa(true);
+    window.history.replaceState(null, "", "/#recuperar-2fa");
+  }
+
+  function closeMfaRecovery() {
+    setRecoveringMfa(false);
+    window.history.replaceState(null, "", "/#parceiro");
+  }
+
   if (isInvitation) return <Invitation />;
+  if (recoveringMfa)
+    return (
+      <PartnerAuthShell>
+        <PartnerMfaRecovery onBack={closeMfaRecovery} />
+      </PartnerAuthShell>
+    );
   if (loading)
     return (
       <PartnerAuthShell>
@@ -518,6 +539,13 @@ export function PartnerPortal() {
           )}
           <button className="btn btn-primary btn-md" disabled={busy}>
             {busy ? "Entrando…" : "Entrar"}
+          </button>
+          <button
+            type="button"
+            className="pp-recovery-link"
+            onClick={openMfaRecovery}
+          >
+            Perdi meu autenticador
           </button>
           <a className="pp-link" href="/#">
             Acesso da equipe

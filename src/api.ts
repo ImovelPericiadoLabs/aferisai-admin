@@ -54,6 +54,15 @@ export type TeamInvitationEnrollment = {
   totp_secret: string;
   otpauth_uri: string;
 };
+export type PartnerMfaRecoveryRequest = {
+  challenge_id: string | null;
+  expires_in: number;
+};
+export type PartnerMfaRecoveryVerification = {
+  recovery_token: string;
+  totp_secret: string;
+  otpauth_uri: string;
+};
 export type OnboardingBody = {
   organization_slug: string;
   organization_name: string;
@@ -1070,6 +1079,29 @@ export const createPartnerSession = (body: LoginBody) =>
   request<SessionResult>("/v1/partner/sessions", {
     method: "POST",
     body: JSON.stringify(body),
+  });
+export const requestPartnerMfaRecovery = (email: string, password: string) =>
+  request<PartnerMfaRecoveryRequest>("/v1/partner/mfa/recovery/request", {
+    method: "POST",
+    body: JSON.stringify({ email, password }),
+  });
+export const verifyPartnerMfaRecovery = (body: {
+  challenge_id: string;
+  email: string;
+  password: string;
+  code: string;
+}) =>
+  request<PartnerMfaRecoveryVerification>("/v1/partner/mfa/recovery/verify", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+export const completePartnerMfaRecovery = (
+  recoveryToken: string,
+  otp: string,
+) =>
+  request<void>("/v1/partner/mfa/recovery/complete", {
+    method: "POST",
+    body: JSON.stringify({ recovery_token: recoveryToken, otp }),
   });
 export const currentPartnerMember = () =>
   request<PartnerMember>("/v1/partner/sessions/current", { method: "GET" });
