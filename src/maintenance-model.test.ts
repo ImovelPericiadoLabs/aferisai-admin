@@ -12,17 +12,17 @@ import {
 
 const now = new Date("2026-10-29T15:00:00Z").getTime();
 const policy = (over: object = {}) => ({
-  enabled: true,
+  mode: "full" as const,
   starts_at: null as string | null,
   ends_at: null as string | null,
   ...over,
 });
 
 describe("maintenanceState", () => {
-  it("is off when the switch is off, whatever the dates say", () => {
+  it("is off when mode is off, whatever the dates say", () => {
     expect(
       maintenanceState(
-        policy({ enabled: false, starts_at: "2026-10-29T10:00:00Z" }),
+        policy({ mode: "off", starts_at: "2026-10-29T10:00:00Z" }),
         now,
       ),
     ).toBe("off");
@@ -116,14 +116,14 @@ describe("describeWindow", () => {
 
 describe("draftChanges", () => {
   const saved = {
-    enabled: false,
+    mode: "off" as const,
     starts_at: null,
     ends_at: null,
     public_message: null,
     internal_note: null,
   };
   const draft: MaintenanceDraft = {
-    enabled: false,
+    mode: "off",
     startsAt: "",
     endsAt: "",
     publicMessage: "",
@@ -135,10 +135,10 @@ describe("draftChanges", () => {
   it("names each field that changed", () => {
     const out = draftChanges(saved, {
       ...draft,
-      enabled: true,
+      mode: "full" as const,
       publicMessage: "Voltamos já",
     });
-    expect(out.map((c) => c.field)).toEqual(["enabled", "public_message"]);
+    expect(out.map((c) => c.field)).toEqual(["mode", "public_message"]);
   });
   it("treats blank text as no message, like the save does", () => {
     expect(draftChanges(saved, { ...draft, publicMessage: "   " })).toEqual([]);
@@ -148,14 +148,14 @@ describe("draftChanges", () => {
 describe("draftChanges and the backend's date format", () => {
   it("does not flag a date the user did not touch (seconds, offsets)", () => {
     const saved = {
-      enabled: true,
+      mode: "full" as const,
       starts_at: "2026-10-29T15:30:12.345+00:00",
       ends_at: null,
       public_message: null,
       internal_note: null,
     };
     const draft = {
-      enabled: true,
+      mode: "full" as const,
       startsAt: localValue("2026-10-29T15:30:12.345+00:00"),
       endsAt: "",
       publicMessage: "",
