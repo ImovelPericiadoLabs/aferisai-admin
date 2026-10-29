@@ -3,6 +3,7 @@ import {
   ApiError,
   getSiteMaintenancePolicy,
   updateSiteMaintenancePolicy,
+  type MaintenanceMode,
   type SiteMaintenancePolicy,
 } from "./api";
 import { ConfirmDialog } from "./ConfirmDialog";
@@ -38,22 +39,22 @@ const STATE_VIEW: Record<
   scheduled: {
     label: "Agendada",
     tone: "badge-info",
-    headline: "Manutenção agendada",
+    headline: "Restrição agendada",
     detail: "O site continua no ar até o horário de início.",
   },
   active: {
-    label: "Em manutenção",
+    label: "Ativa",
     tone: "badge-warning",
-    headline: "O site está fora do ar para visitantes",
+    headline: "Restrição de acesso ativa",
     detail:
-      "Visitantes veem a página de manutenção e os endpoints públicos respondem indisponíveis.",
+      "O modo configurado está em vigor. Veja o painel de detalhes abaixo.",
   },
   ended: {
     label: "Encerrada",
     tone: "badge-neutral",
-    headline: "A manutenção já terminou",
+    headline: "A restrição já terminou",
     detail:
-      "O término passou e o site voltou ao ar. A configuração continua ligada: desligue-a ou agende outra janela.",
+      "O término passou e o site voltou ao ar. A configuração continua ligada: mude o modo para Disponível ou agende outra janela.",
   },
 };
 
@@ -65,7 +66,7 @@ const PRESETS: { label: string; minutes: number }[] = [
 ];
 
 const emptyDraft: MaintenanceDraft = {
-  enabled: false,
+  mode: "off",
   startsAt: "",
   endsAt: "",
   publicMessage: "",
@@ -73,7 +74,7 @@ const emptyDraft: MaintenanceDraft = {
 };
 
 const draftFrom = (policy: SiteMaintenancePolicy): MaintenanceDraft => ({
-  enabled: policy.enabled,
+  mode: policy.mode,
   startsAt: localValue(policy.starts_at),
   endsAt: localValue(policy.ends_at),
   publicMessage: policy.public_message ?? "",
@@ -144,13 +145,13 @@ export function SiteMaintenance({
   const view = STATE_VIEW[state];
   const draftState = maintenanceState(
     {
-      enabled: draft.enabled,
+      mode: draft.mode,
       starts_at: isoValue(draft.startsAt),
       ends_at: isoValue(draft.endsAt),
     },
     now,
   );
-  const takesSiteDown = draft.enabled && draftState !== "ended";
+  const takesSiteDown = draft.mode !== "off" && draftState !== "ended";
 
   async function save(reason: string) {
     if (!policy || busy) return;
@@ -160,7 +161,7 @@ export function SiteMaintenance({
       const updated = await updateSiteMaintenancePolicy(
         {
           expected_version: policy.version,
-          enabled: draft.enabled,
+          mode: draft.mode,
           starts_at: isoValue(draft.startsAt),
           ends_at: isoValue(draft.endsAt),
           public_message: draft.publicMessage.trim() || null,
@@ -190,7 +191,7 @@ export function SiteMaintenance({
   }
 
   const showValue = (field: string, value: string) => {
-    if (!value) return field === "enabled" ? "—" : "Não definido";
+    if (!value) return "Não definido";
     if (field === "starts_at" || field === "ends_at")
       return formatIso(isoValue(value) ?? value);
     return value;
@@ -235,6 +236,14 @@ export function SiteMaintenance({
               )}
               <dl className="maint-facts">
                 <div>
+                  <dt>Modo</dt>
+                  <dd>
+                    {policy.mode === "off" && "Disponível"}
+                    {policy.mode === "restricted" && "Em preparação — consultas e pagamentos bloqueados"}
+                    {policy.mode === "full" && "Em manutenção — tudo bloqueado para visitantes"}
+                  </dd>
+                </div>
+                <div>
                   <dt>Continua funcionando</dt>
                   <dd>Painel da equipe e conciliação de pagamentos</dd>
                 </div>
@@ -260,30 +269,45 @@ export function SiteMaintenance({
               }}
             >
               <fieldset className="maint-section">
-                <legend>Acesso público</legend>
+                <legend>Modo de acesso</legend>
                 <div
                   className="maint-choice"
                   role="radiogroup"
-                  aria-label="Acesso público"
+                  aria-label="Modo de acesso"
                 >
-                  <label data-checked={!draft.enabled}>
+                  <label data-checked={draft.mode === "off"}>
                     <input
                       type="radio"
-                      name="maint-enabled"
-                      checked={!draft.enabled}
-                      onChange={() => set("enabled", false)}
+                      name="maint-mode"
+                      checked={draft.mode === "off"}
+                      onChange={() => set("mode", "off" as MaintenanceMode)}
                     />
                     <span>
                       <strong>Site disponível</strong>
                       <small>Visitantes acessam normalmente.</small>
                     </span>
                   </label>
-                  <label data-checked={draft.enabled} data-tone="warning">
+                  <label data-checked={draft.mode === "restricted"} data-tone="info">
                     <input
                       type="radio"
-                      name="maint-enabled"
-                      checked={draft.enabled}
-                      onChange={() => set("enabled", true)}
+                      name="maint-mode"
+                      checked={draft.mode === "restricted"}
+                      onChange={() => set("mode", "restricted" as MaintenanceMode)}
+                    />
+                    <span>
+                      <strong>Em preparação</strong>
+                      <small>
+                        Site institucional no ar; consultas, pagamentos e login
+                        bloqueados.
+                      </small>
+                    </span>
+                  </label>
+                  <label data-checked={draft.mode === "full"} data-tone="warning">
+                    <input
+                      type="radio"
+                      name="maint-mode"
+                      checked={draft.mode === "full"}
+                      onChange={() => set("mode", "full" as MaintenanceMode)}
                     />
                     <span>
                       <strong>Em manutenção</strong>
@@ -296,7 +320,7 @@ export function SiteMaintenance({
                 </div>
               </fieldset>
 
-              <fieldset className="maint-section" disabled={!draft.enabled}>
+              <fieldset className="maint-section" disabled={draft.mode === "off"}>
                 <legend>Janela</legend>
                 <div className="maint-dates">
                   <div className="form-field">
@@ -374,9 +398,9 @@ export function SiteMaintenance({
                     {problem}
                   </p>
                 )}
-                {!draft.enabled && (
+                {draft.mode === "off" && (
                   <p className="form-hint">
-                    A janela só vale quando o acesso está em manutenção.
+                    A janela só vale quando o modo não é "Disponível".
                   </p>
                 )}
               </fieldset>
@@ -464,14 +488,18 @@ export function SiteMaintenance({
         open={confirming}
         title={
           takesSiteDown
-            ? "Colocar o site em manutenção?"
+            ? draft.mode === "restricted"
+              ? "Ativar modo Em preparação?"
+              : "Colocar o site em manutenção?"
             : "Salvar a configuração de manutenção?"
         }
         description={
           takesSiteDown
             ? draftState === "scheduled"
-              ? "O site continua no ar até o início da janela; depois, visitantes veem a página de manutenção."
-              : "Assim que salvar, visitantes veem a página de manutenção e a API pública responde indisponível."
+              ? "O site continua no ar até o início da janela."
+              : draft.mode === "restricted"
+                ? "Assim que salvar, consultas, pagamentos e login ficam bloqueados. O site institucional continua no ar."
+                : "Assim que salvar, visitantes veem a página de manutenção e a API pública responde indisponível."
             : "Confira o que vai mudar. Cada alteração fica registrada no histórico."
         }
         details={changes.map((change) => ({

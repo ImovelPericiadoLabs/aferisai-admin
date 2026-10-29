@@ -1,17 +1,17 @@
 export type MaintenanceState = "off" | "scheduled" | "active" | "ended";
 
 type PolicyTimes = {
-  enabled: boolean;
+  mode: MaintenanceMode;
   starts_at: string | null;
   ends_at: string | null;
 };
 
-/** What visitors get right now, derived from the switch and the window. */
+/** What visitors get right now, derived from the mode and the window. */
 export function maintenanceState(
   policy: PolicyTimes | null,
   now: number,
 ): MaintenanceState {
-  if (!policy?.enabled) return "off";
+  if (!policy || policy.mode === "off") return "off";
   if (policy.ends_at && now >= new Date(policy.ends_at).getTime())
     return "ended";
   if (policy.starts_at && new Date(policy.starts_at).getTime() > now)
@@ -67,8 +67,10 @@ export function describeWindow(
   return "Vale a partir de agora e até alguém desligar.";
 }
 
+export type MaintenanceMode = "off" | "restricted" | "full";
+
 export type MaintenanceDraft = {
-  enabled: boolean;
+  mode: MaintenanceMode;
   startsAt: string;
   endsAt: string;
   publicMessage: string;
@@ -76,13 +78,20 @@ export type MaintenanceDraft = {
 };
 
 type Saved = PolicyTimes & {
+  mode: MaintenanceMode;
   public_message: string | null;
   internal_note: string | null;
 };
 
+const MODE_LABEL: Record<MaintenanceMode, string> = {
+  off: "Disponível",
+  restricted: "Em preparação",
+  full: "Em manutenção",
+};
+
 export type DraftChange = {
   field:
-    "enabled" | "starts_at" | "ends_at" | "public_message" | "internal_note";
+    "mode" | "starts_at" | "ends_at" | "public_message" | "internal_note";
   label: string;
   from: string;
   to: string;
@@ -101,10 +110,10 @@ export function draftChanges(saved: Saved, draft: MaintenanceDraft) {
     if (from !== to) changes.push({ field, label, from, to });
   };
   push(
-    "enabled",
-    "Acesso público",
-    saved.enabled ? "Suspenso" : "Disponível",
-    draft.enabled ? "Suspenso" : "Disponível",
+    "mode",
+    "Modo",
+    MODE_LABEL[saved.mode] ?? saved.mode,
+    MODE_LABEL[draft.mode] ?? draft.mode,
   );
   push("starts_at", "Início", localValue(saved.starts_at), draft.startsAt);
   push("ends_at", "Término", localValue(saved.ends_at), draft.endsAt);

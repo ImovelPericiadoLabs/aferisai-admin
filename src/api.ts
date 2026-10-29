@@ -1015,7 +1015,9 @@ export const createSitePreviewGrant = (
   method: "POST",
   body: JSON.stringify({ email, challenge_id: challengeId, credential }),
 });
+export type MaintenanceMode = "off" | "restricted" | "full";
 export type SiteMaintenancePolicy = {
+  mode: MaintenanceMode;
   enabled: boolean;
   active: boolean;
   version: number;
@@ -1028,7 +1030,7 @@ export type SiteMaintenancePolicy = {
 };
 export type SiteMaintenanceChange = {
   expected_version: number;
-  enabled: boolean;
+  mode: MaintenanceMode;
   starts_at: string | null;
   ends_at: string | null;
   public_message: string | null;
