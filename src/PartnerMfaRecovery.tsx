@@ -13,6 +13,8 @@ type RecoveryStep = "credentials" | "email-code" | "authenticator" | "done";
 function recoveryMessage(cause: unknown): string {
   if (!(cause instanceof ApiError))
     return "Não foi possível concluir a recuperação. Tente novamente.";
+  if (cause.status === 503)
+    return "O serviço está em manutenção. Tente novamente em instantes.";
   if (cause.code === "partner.invitation_conflict")
     return "Este acesso tem um convite ativo ou outra operação em andamento. Aguarde a confirmação do convite antes de recuperar o autenticador.";
   if (cause.code.includes("recovery") && cause.status === 409)
