@@ -162,6 +162,7 @@ export function SiteMaintenance({
         {
           expected_version: policy.version,
           mode: draft.mode,
+          enabled: draft.mode !== "off",
           starts_at: isoValue(draft.startsAt),
           ends_at: isoValue(draft.endsAt),
           public_message: draft.publicMessage.trim() || null,

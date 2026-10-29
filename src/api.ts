@@ -1031,6 +1031,7 @@ export type SiteMaintenancePolicy = {
 export type SiteMaintenanceChange = {
   expected_version: number;
   mode: MaintenanceMode;
+  enabled: boolean;
   starts_at: string | null;
   ends_at: string | null;
   public_message: string | null;
