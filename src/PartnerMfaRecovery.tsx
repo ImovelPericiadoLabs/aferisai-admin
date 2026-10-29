@@ -60,7 +60,7 @@ export function PartnerMfaRecovery({ onBack }: { onBack: () => void }) {
       const result = await requestPartnerMfaRecovery(email.trim(), password);
       if (!result.challenge_id) {
         setError(
-          "Não foi possível iniciar a recuperação. Confira seus dados e tente novamente.",
+          "Não foi possível iniciar a recuperação. Use a senha da conta de parceiro (a mesma criada no convite). Por segurança, o sistema não informa se o e-mail existe e não envia código quando os dados não conferem.",
         );
         return;
       }

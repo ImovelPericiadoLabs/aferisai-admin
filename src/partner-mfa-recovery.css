@@ -44,19 +44,21 @@
 }
 .pp-recovery-steps {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-2);
   margin: 0;
   padding: 0;
   list-style: none;
+  min-width: 0;
 }
 .pp-recovery-steps li {
   display: flex;
+  min-width: 0;
   gap: 6px;
   align-items: center;
   color: var(--text-subtle);
   font-size: var(--text-caption);
-  white-space: nowrap;
+  line-height: 1.25;
 }
 .pp-recovery-steps li span {
   display: grid;
@@ -172,10 +174,16 @@
   }
 }
 @media (max-width: 420px) {
+  .pp-recovery-steps {
+    gap: 4px;
+  }
   .pp-recovery-steps li {
     font-size: 10px;
     white-space: normal;
-    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+    align-items: center;
+    text-align: center;
   }
   .pp-qr-panel {
     grid-template-columns: 1fr;
