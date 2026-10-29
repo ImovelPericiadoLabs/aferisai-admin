@@ -99,7 +99,9 @@ function Invitation() {
     } catch (cause) {
       setError(
         cause instanceof ApiError
-          ? cause.detail
+          ? cause.status === 503
+            ? "O serviço está em manutenção. Tente novamente em instantes."
+            : cause.detail
           : "Não foi possível aceitar o convite.",
       );
       setBusy(false);
@@ -117,7 +119,9 @@ function Invitation() {
     } catch (cause) {
       setError(
         cause instanceof ApiError
-          ? cause.detail
+          ? cause.status === 503
+            ? "O serviço está em manutenção. Tente novamente em instantes."
+            : cause.detail
           : "Não foi possível preparar o acesso. Confira o convite e tente novamente.",
       );
     } finally {
@@ -138,7 +142,9 @@ function Invitation() {
     } catch (cause) {
       setError(
         cause instanceof ApiError
-          ? cause.detail
+          ? cause.status === 503
+            ? "O serviço está em manutenção. Tente novamente em instantes."
+            : cause.detail
           : "Não foi possível confirmar o autenticador.",
       );
     } finally {
