@@ -65,6 +65,21 @@
   justify-items: start;
 }
 
+.app-profile-form {
+  display: grid;
+  gap: var(--space-4);
+  max-width: 760px;
+}
+
+.app-profile-field {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.app-profile-form > .btn {
+  justify-self: start;
+}
+
 @media (max-width: 720px) {
   .appws-head {
     flex-direction: column;

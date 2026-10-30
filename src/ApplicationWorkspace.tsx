@@ -11,6 +11,7 @@ import { ConfirmDialog } from "./ConfirmDialog";
 import { FieldAction } from "./FieldAction";
 import { CredentialManagement } from "./CredentialManagement";
 import { RedirectUriManagement } from "./RedirectUriManagement";
+import { ApplicationProfileManagement } from "./ApplicationProfileManagement";
 import { WebhookEndpointManagement } from "./WebhookEndpointManagement";
 import { WebhookDeliveries } from "./WebhookDeliveries";
 import { applicationPermissionLabel } from "./display-labels";
@@ -25,7 +26,7 @@ type Application = {
 };
 type Permission = { code: string; description: string };
 export type IntegrationTab =
-  "overview" | "webhooks" | "deliveries" | "credentials" | "access" | "audit";
+  "overview" | "profile" | "webhooks" | "deliveries" | "credentials" | "access" | "audit";
 type Tab = IntegrationTab;
 
 type Props = {
@@ -57,6 +58,7 @@ type Props = {
 
 const tabIcons: Record<Tab, string> = {
   overview: "grid",
+  profile: "edit",
   webhooks: "webhook",
   deliveries: "activity",
   credentials: "key",
@@ -66,6 +68,7 @@ const tabIcons: Record<Tab, string> = {
 
 const tabs: { id: Tab; label: string }[] = [
   { id: "overview", label: "Visão geral" },
+  { id: "profile", label: "Perfil público" },
   { id: "webhooks", label: "Webhooks" },
   { id: "deliveries", label: "Entregas" },
   { id: "credentials", label: "Credenciais" },
@@ -99,7 +102,7 @@ export function ApplicationWorkspace({
   // The audit trail is a team-only route (manager and administrator).
   const canAudit = canManage && channel === "team";
   const visibleTabs = canManage
-    ? tabs.filter((item) => item.id !== "audit" || canAudit)
+    ? tabs.filter((item) => (item.id !== "audit" || canAudit) && (item.id !== "profile" || channel === "team"))
     : tabs.filter((item) => item.id === "overview" || item.id === "access");
   const activeTab = visibleTabs.some((item) => item.id === tab)
     ? tab
@@ -356,6 +359,15 @@ export function ApplicationWorkspace({
               </button>
             </div>
           ))}
+        {activeTab === "profile" && channel === "team" && (
+          <ApplicationProfileManagement
+            key={application.id}
+            applicationId={application.id}
+            csrfToken={csrfToken}
+            canEdit={editable}
+            onUnauthorized={onUnauthorized}
+          />
+        )}
         {activeTab === "webhooks" && canManage && (
           <WebhookEndpointManagement
             key={application.id}

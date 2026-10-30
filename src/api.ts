@@ -1597,6 +1597,38 @@ export const replaceApplicationRedirectUris = (
     },
   );
 
+export type ApplicationProfile = {
+  application_id: string;
+  description: string | null;
+  logo_url: string | null;
+  website_url: string | null;
+  privacy_url: string | null;
+  terms_url: string | null;
+  support_url: string | null;
+  version: number;
+};
+
+export const getApplicationProfile = (applicationId: string) =>
+  request<ApplicationProfile>(
+    `/v1/team/applications/${encodeURIComponent(applicationId)}/profile`,
+    { method: "GET" },
+  );
+
+export const replaceApplicationProfile = (
+  applicationId: string,
+  profile: Omit<ApplicationProfile, "application_id" | "version">,
+  expectedVersion: number,
+  csrfToken: string,
+) =>
+  request<ApplicationProfile>(
+    `/v1/team/applications/${encodeURIComponent(applicationId)}/profile`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
+      body: JSON.stringify({ ...profile, expected_version: expectedVersion }),
+    },
+  );
+
 export function listPartnerCredentials(
   applicationId: string,
   cursor?: string,
