@@ -10,6 +10,7 @@ import { stepStates } from "./account-model";
 import {
   ApiError,
   createRegistrySupplierAccount,
+  rotateRegistrySupplierStateAuth,
   type RegistrySupplierAccount,
 } from "./api";
 import {
@@ -54,6 +55,13 @@ export function SupplierCredentialRenewal({
   const [submitted, setSubmitted] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [stateAuthOpen, setStateAuthOpen] = useState(false);
+  const [stateAuthCpf, setStateAuthCpf] = useState("");
+  const [stateAuthPassword, setStateAuthPassword] = useState("");
+  const [stateAuthCert, setStateAuthCert] = useState("");
+  const [stateAuthCertPassword, setStateAuthCertPassword] = useState("");
+  const [stateAuthReason, setStateAuthReason] = useState("");
+  const [stateAuthError, setStateAuthError] = useState("");
   const check = validateSupplierForm(form);
   const states = stepStates(credentialSteps(form));
   const set = <K extends keyof SupplierForm>(key: K, value: SupplierForm[K]) =>
@@ -104,6 +112,77 @@ export function SupplierCredentialRenewal({
     }
   }
 
+  async function submitStateAuth(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const cpf = stateAuthCpf.trim();
+    const password = stateAuthPassword;
+    const cert = stateAuthCert.trim();
+    const certPassword = stateAuthCertPassword;
+    const reason = stateAuthReason.trim();
+    const loginMode = cpf !== "" || password !== "";
+    const certMode = cert !== "" || certPassword !== "";
+    if (loginMode && (!/^\d{11}$/.test(cpf) || password === "")) {
+      setStateAuthError("Informe CPF de 11 dígitos e a nova senha gov.br.");
+      return;
+    }
+    if (certMode && (cert === "" || certPassword === "")) {
+      setStateAuthError("Informe o certificado PKCS#12 e sua senha.");
+      return;
+    }
+    if (loginMode && certMode) {
+      setStateAuthError("Escolha login gov.br ou PKCS#12, não os dois.");
+      return;
+    }
+    if (!loginMode && !certMode) {
+      setStateAuthError("Informe a nova autenticação estadual.");
+      return;
+    }
+    if (reason.length < 10 || reason.length > 500) {
+      setStateAuthError("Informe um motivo entre 10 e 500 caracteres.");
+      return;
+    }
+    if (busy) return;
+    setBusy(true);
+    setStateAuthError("");
+    try {
+      await rotateRegistrySupplierStateAuth(
+        account.id,
+        {
+          state_login_cpf: loginMode ? cpf : null,
+          state_login_password: loginMode ? password : null,
+          state_pkcs12_cert: certMode ? cert : null,
+          state_pkcs12_password: certMode ? certPassword : null,
+          reason,
+        },
+        csrf,
+      );
+      setStateAuthPassword("");
+      setStateAuthCert("");
+      setStateAuthCertPassword("");
+      setStateAuthReason("");
+      setStateAuthError("");
+      setStateAuthOpen(false);
+      onToast(
+        "Nova autenticação estadual criada em rascunho. A conta atual continua intacta.",
+        "success",
+      );
+      onCreated();
+    } catch (cause) {
+      setStateAuthPassword("");
+      setStateAuthCert("");
+      setStateAuthCertPassword("");
+      if (cause instanceof ApiError && cause.status === 401) onUnauthorized();
+      else
+        setStateAuthError(
+          cause instanceof ApiError
+            ? cause.detail
+            : "Não foi possível criar a nova autenticação estadual.",
+        );
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const dateTime = new Intl.DateTimeFormat("pt-BR", {
     dateStyle: "short",
     timeStyle: "short",
@@ -111,6 +190,122 @@ export function SupplierCredentialRenewal({
 
   return (
     <>
+      {account.provider === "infosimples" && (
+        <SettingCard
+          title="Alterar somente autenticação estadual"
+          help="Use esta operação quando a senha gov.br mudou. A senha, o token da InfoSimples e o vínculo RI Digital são reutilizados dentro do cofre; não é necessário redigitá-los."
+          actions={
+            <button
+              type="button"
+              className="btn btn-secondary btn-md"
+              onClick={() => {
+                setStateAuthError("");
+                setStateAuthOpen(true);
+              }}
+              disabled={busy}
+            >
+              Alterar senha gov.br
+            </button>
+          }
+        >
+          {stateAuthOpen && (
+            <form
+              className="sup-composer-form"
+              onSubmit={(event) => void submitStateAuth(event)}
+              noValidate
+            >
+              {stateAuthError && (
+                <div className="alert alert-danger" role="alert">
+                  {stateAuthError}
+                </div>
+              )}
+              <p className="sup-muted">
+                Isso cria uma nova credencial em rascunho. A atual continua
+                ativa até você conferir e ativar a nova na lista.
+              </p>
+              <label>
+                CPF do login gov.br
+                <input
+                  className="input"
+                  inputMode="numeric"
+                  maxLength={11}
+                  value={stateAuthCpf}
+                  disabled={busy}
+                  onChange={(event) =>
+                    setStateAuthCpf(event.target.value.replace(/\D/g, ""))
+                  }
+                />
+              </label>
+              <label>
+                Nova senha do login gov.br
+                <input
+                  className="input"
+                  type="password"
+                  autoComplete="new-password"
+                  value={stateAuthPassword}
+                  disabled={busy}
+                  onChange={(event) => setStateAuthPassword(event.target.value)}
+                />
+              </label>
+              <p className="sup-muted">
+                Ou substitua pelo certificado PKCS#12:
+              </p>
+              <label>
+                Certificado PKCS#12
+                <textarea
+                  className="input"
+                  rows={3}
+                  value={stateAuthCert}
+                  disabled={busy}
+                  onChange={(event) => setStateAuthCert(event.target.value)}
+                />
+              </label>
+              <label>
+                Senha do certificado
+                <input
+                  className="input"
+                  type="password"
+                  autoComplete="new-password"
+                  value={stateAuthCertPassword}
+                  disabled={busy}
+                  onChange={(event) =>
+                    setStateAuthCertPassword(event.target.value)
+                  }
+                />
+              </label>
+              <label>
+                Motivo da alteração
+                <textarea
+                  className="input"
+                  rows={2}
+                  minLength={10}
+                  maxLength={500}
+                  value={stateAuthReason}
+                  disabled={busy}
+                  onChange={(event) => setStateAuthReason(event.target.value)}
+                />
+              </label>
+              <div className="sup-card-actions">
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-md"
+                  disabled={busy}
+                  onClick={() => setStateAuthOpen(false)}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="btn btn-primary btn-md"
+                  disabled={busy}
+                >
+                  {busy ? "Salvando…" : "Criar nova autenticação"}
+                </button>
+              </div>
+            </form>
+          )}
+        </SettingCard>
+      )}
       <SettingCard
         title="Credencial em uso"
         help={

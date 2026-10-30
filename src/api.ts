@@ -1011,10 +1011,14 @@ export const createSitePreviewGrant = (
   email: string,
   challengeId: string,
   credential: Record<string, unknown>,
-) => request<{ grant: string; site_origin: string }>("/v1/team/passkeys/authentication/site-preview", {
-  method: "POST",
-  body: JSON.stringify({ email, challenge_id: challengeId, credential }),
-});
+) =>
+  request<{ grant: string; site_origin: string }>(
+    "/v1/team/passkeys/authentication/site-preview",
+    {
+      method: "POST",
+      body: JSON.stringify({ email, challenge_id: challengeId, credential }),
+    },
+  );
 export type MaintenanceMode = "off" | "restricted" | "full";
 export type SiteMaintenancePolicy = {
   mode: MaintenanceMode;
@@ -1040,11 +1044,17 @@ export type SiteMaintenanceChange = {
 };
 export const getSiteMaintenancePolicy = (csrfToken: string) =>
   request<SiteMaintenancePolicy>("/v1/team/site-maintenance", {
-    method: "GET", headers: { "X-CSRF-Token": csrfToken },
+    method: "GET",
+    headers: { "X-CSRF-Token": csrfToken },
   });
-export const updateSiteMaintenancePolicy = (body: SiteMaintenanceChange, csrfToken: string) =>
+export const updateSiteMaintenancePolicy = (
+  body: SiteMaintenanceChange,
+  csrfToken: string,
+) =>
   request<SiteMaintenancePolicy>("/v1/team/site-maintenance", {
-    method: "PUT", headers: { "X-CSRF-Token": csrfToken }, body: JSON.stringify(body),
+    method: "PUT",
+    headers: { "X-CSRF-Token": csrfToken },
+    body: JSON.stringify(body),
   });
 export const listPasskeys = () =>
   request<PasskeyList>("/v1/team/passkeys", { method: "GET" });
@@ -1623,7 +1633,11 @@ export const replaceApplicationProfile = (
   request<ApplicationProfile>(
     `/v1/team/applications/${encodeURIComponent(applicationId)}/profile`,
     {
-      method: "PUT", headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRF-Token": csrfToken,
+      },
       body: JSON.stringify({ ...profile, expected_version: expectedVersion }),
     },
   );
@@ -2511,6 +2525,14 @@ export type RegistrySupplierCreate = {
   reason: string;
 };
 
+export type RegistrySupplierStateAuth = {
+  state_login_cpf: string | null;
+  state_login_password: string | null;
+  state_pkcs12_cert: string | null;
+  state_pkcs12_password: string | null;
+  reason: string;
+};
+
 export const listRegistrySupplierAccounts = (cursor?: string) =>
   request<RegistrySupplierPage>(
     `/v1/team/registry-supplier-accounts?limit=20${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`,
@@ -2526,6 +2548,20 @@ export const createRegistrySupplierAccount = (
     headers: { "X-CSRF-Token": csrfToken },
     body: JSON.stringify(body),
   });
+
+export const rotateRegistrySupplierStateAuth = (
+  id: string,
+  body: RegistrySupplierStateAuth,
+  csrfToken: string,
+) =>
+  request<RegistrySupplierAccount>(
+    `/v1/team/registry-supplier-accounts/${encodeURIComponent(id)}/rotate-state-auth`,
+    {
+      method: "POST",
+      headers: { "X-CSRF-Token": csrfToken },
+      body: JSON.stringify(body),
+    },
+  );
 
 const supplierDecision = (
   id: string,
