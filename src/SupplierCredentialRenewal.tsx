@@ -44,6 +44,10 @@ export function SupplierCredentialRenewal({
     password: "",
     token: "",
     portalDigest: "",
+    stateLoginCpf: "",
+    stateLoginPassword: "",
+    statePkcs12Cert: "",
+    statePkcs12Password: "",
     reason: "",
   });
   const [open, setOpen] = useState(false);
@@ -64,7 +68,14 @@ export function SupplierCredentialRenewal({
     setError("");
     try {
       await createRegistrySupplierAccount(supplierBody(form), csrf);
-      setForm((current) => ({ ...current, password: "", token: "" }));
+      setForm((current) => ({
+        ...current,
+        password: "",
+        token: "",
+        stateLoginPassword: "",
+        statePkcs12Cert: "",
+        statePkcs12Password: "",
+      }));
       setSubmitted(false);
       onToast(
         "Nova credencial criada em rascunho. Confira antes de trocar a conta ativa.",
@@ -73,7 +84,14 @@ export function SupplierCredentialRenewal({
       setOpen(false);
       onCreated();
     } catch (cause) {
-      setForm((current) => ({ ...current, password: "", token: "" }));
+      setForm((current) => ({
+        ...current,
+        password: "",
+        token: "",
+        stateLoginPassword: "",
+        statePkcs12Cert: "",
+        statePkcs12Password: "",
+      }));
       if (cause instanceof ApiError && cause.status === 401) onUnauthorized();
       else
         setError(
@@ -159,6 +177,15 @@ export function SupplierCredentialRenewal({
                 ...(account.provider === "infosimples"
                   ? [
                       { label: "Token", value: form.token ? "Definido" : "—" },
+                      {
+                        label: "Autenticação estadual MG",
+                        value:
+                          form.stateLoginCpf && form.stateLoginPassword
+                            ? "Login gov.br definido"
+                            : form.statePkcs12Cert && form.statePkcs12Password
+                              ? "PKCS#12 definido"
+                              : "Não configurada",
+                      },
                       {
                         label: "Conta RI Digital",
                         value:
@@ -325,6 +352,85 @@ export function SupplierCredentialRenewal({
                       </small>
                     )}
                   </label>
+                  <fieldset className="sup-state-auth sup-span">
+                    <legend>Autenticação estadual para MG (opcional)</legend>
+                    <small>
+                      O token da InfoSimples não substitui a autenticação
+                      exigida pelo portal de MG. Preencha apenas login gov.br ou
+                      PKCS#12. Os segredos são cifrados no cofre e não voltam a
+                      aparecer.
+                    </small>
+                    <label>
+                      CPF do login gov.br
+                      <input
+                        className="input"
+                        inputMode="numeric"
+                        autoComplete="off"
+                        maxLength={11}
+                        value={form.stateLoginCpf}
+                        disabled={busy}
+                        aria-invalid={submitted && !!check.errors.stateLoginCpf}
+                        onChange={(event) =>
+                          set(
+                            "stateLoginCpf",
+                            event.target.value.replace(/\D/g, ""),
+                          )
+                        }
+                      />
+                      {submitted && check.errors.stateLoginCpf && (
+                        <small role="alert" className="sup-error">
+                          {check.errors.stateLoginCpf}
+                        </small>
+                      )}
+                    </label>
+                    <label>
+                      Senha do login gov.br
+                      <input
+                        className="input"
+                        type="password"
+                        autoComplete="new-password"
+                        value={form.stateLoginPassword}
+                        disabled={busy}
+                        onChange={(event) =>
+                          set("stateLoginPassword", event.target.value)
+                        }
+                      />
+                    </label>
+                    <label>
+                      Certificado PKCS#12
+                      <textarea
+                        className="input"
+                        rows={3}
+                        autoComplete="off"
+                        value={form.statePkcs12Cert}
+                        disabled={busy}
+                        aria-invalid={
+                          submitted && !!check.errors.statePkcs12Cert
+                        }
+                        onChange={(event) =>
+                          set("statePkcs12Cert", event.target.value)
+                        }
+                      />
+                      {submitted && check.errors.statePkcs12Cert && (
+                        <small role="alert" className="sup-error">
+                          {check.errors.statePkcs12Cert}
+                        </small>
+                      )}
+                    </label>
+                    <label>
+                      Senha do certificado
+                      <input
+                        className="input"
+                        type="password"
+                        autoComplete="new-password"
+                        value={form.statePkcs12Password}
+                        disabled={busy}
+                        onChange={(event) =>
+                          set("statePkcs12Password", event.target.value)
+                        }
+                      />
+                    </label>
+                  </fieldset>
                 </>
               )}
             </ComposerSection>

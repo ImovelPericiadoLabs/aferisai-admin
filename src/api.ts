@@ -1623,8 +1623,7 @@ export const replaceApplicationProfile = (
   request<ApplicationProfile>(
     `/v1/team/applications/${encodeURIComponent(applicationId)}/profile`,
     {
-      method: "PUT",
-      headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
+      method: "PUT", headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
       body: JSON.stringify({ ...profile, expected_version: expectedVersion }),
     },
   );
@@ -2505,6 +2504,10 @@ export type RegistrySupplierCreate = {
   password: string;
   token: string | null;
   portal_account_sha256: string | null;
+  state_login_cpf?: string | null;
+  state_login_password?: string | null;
+  state_pkcs12_cert?: string | null;
+  state_pkcs12_password?: string | null;
   reason: string;
 };
 

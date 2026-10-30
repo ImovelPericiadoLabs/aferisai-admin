@@ -19,6 +19,10 @@ const form = (o: Partial<SupplierForm> = {}): SupplierForm => ({
   password: "senha-de-teste",
   token: "",
   portalDigest: "",
+  stateLoginCpf: "",
+  stateLoginPassword: "",
+  statePkcs12Cert: "",
+  statePkcs12Password: "",
   reason: "Reutiliza a conta do Imovel, conforme decisão do produto.",
   ...o,
 });
@@ -111,6 +115,10 @@ describe("supplierBody", () => {
       password: " p ",
       token: null,
       portal_account_sha256: null,
+      state_login_cpf: null,
+      state_login_password: null,
+      state_pkcs12_cert: null,
+      state_pkcs12_password: null,
       reason: "Motivo suficiente aqui",
     });
   });
@@ -133,6 +141,21 @@ describe("supplierBody", () => {
     );
     expect(onr.token).toBeNull();
     expect(onr.portal_account_sha256).toBeNull();
+  });
+  it("sends one complete MG authentication mode to the vault", () => {
+    const body = supplierBody(
+      form({
+        provider: "infosimples",
+        token: "tk",
+        portalDigest: "a".repeat(64),
+        stateLoginCpf: "16275421673",
+        stateLoginPassword: "gov-secret",
+      }),
+    );
+    expect(body.state_login_cpf).toBe("16275421673");
+    expect(body.state_login_password).toBe("gov-secret");
+    expect(body.state_pkcs12_cert).toBeNull();
+    expect(body.state_pkcs12_password).toBeNull();
   });
 });
 
@@ -188,6 +211,10 @@ describe("credentialSteps", () => {
     password: "senha-de-teste",
     token: "",
     portalDigest: "",
+    stateLoginCpf: "",
+    stateLoginPassword: "",
+    statePkcs12Cert: "",
+    statePkcs12Password: "",
     reason: "Troca por rotação de senha do portal.",
     ...o,
   });
@@ -228,6 +255,10 @@ describe("credentialProblems", () => {
       password: "",
       token: "",
       portalDigest: "",
+      stateLoginCpf: "",
+      stateLoginPassword: "",
+      statePkcs12Cert: "",
+      statePkcs12Password: "",
       reason: "x",
     });
     expect(problems).toEqual([
@@ -248,6 +279,10 @@ describe("credentialProblems", () => {
         password: "x",
         token: "",
         portalDigest: "",
+        stateLoginCpf: "",
+        stateLoginPassword: "",
+        statePkcs12Cert: "",
+        statePkcs12Password: "",
         reason: "Troca por rotação de senha.",
       }),
     ).toEqual([]);

@@ -12,12 +12,25 @@ export type SupplierForm = {
   password: string;
   token: string;
   portalDigest: string;
+  stateLoginCpf: string;
+  stateLoginPassword: string;
+  statePkcs12Cert: string;
+  statePkcs12Password: string;
   reason: string;
 };
 
 export type SupplierErrors = Partial<
   Record<
-    "label" | "email" | "password" | "token" | "portalDigest" | "reason",
+    | "label"
+    | "email"
+    | "password"
+    | "token"
+    | "portalDigest"
+    | "stateLoginCpf"
+    | "stateLoginPassword"
+    | "statePkcs12Cert"
+    | "statePkcs12Password"
+    | "reason",
     string
   >
 >;
@@ -61,6 +74,23 @@ export function validateSupplierForm(form: SupplierForm): {
     else if (!/^[0-9a-f]{64}$/i.test(digest))
       errors.portalDigest =
         "O digest da conta do portal tem 64 caracteres hexadecimais.";
+    const loginCpf = form.stateLoginCpf.trim();
+    const loginPassword = form.stateLoginPassword;
+    const certificate = form.statePkcs12Cert.trim();
+    const certificatePassword = form.statePkcs12Password;
+    const loginComplete = loginCpf !== "" || loginPassword !== "";
+    const certificateComplete =
+      certificate !== "" || certificatePassword !== "";
+    if (loginComplete && (!/^\d{11}$/.test(loginCpf) || loginPassword === ""))
+      errors.stateLoginCpf = "Informe CPF de 11 dígitos e a senha estadual.";
+    if (
+      certificateComplete &&
+      (certificate === "" || certificatePassword === "")
+    )
+      errors.statePkcs12Cert = "Informe o certificado PKCS#12 e sua senha.";
+    if (loginComplete && certificateComplete)
+      errors.statePkcs12Cert =
+        "Escolha login gov.br ou certificado PKCS#12, não os dois.";
   }
   const reason = validateReason(form.reason, 10, 500);
   if (!reason.ok) errors.reason = reason.message;
@@ -77,6 +107,22 @@ export function supplierBody(form: SupplierForm): RegistrySupplierCreate {
     password: form.password,
     token: infosimples ? form.token : null,
     portal_account_sha256: infosimples && digest !== "" ? digest : null,
+    state_login_cpf:
+      infosimples && form.stateLoginCpf.trim() !== ""
+        ? form.stateLoginCpf.trim()
+        : null,
+    state_login_password:
+      infosimples && form.stateLoginPassword !== ""
+        ? form.stateLoginPassword
+        : null,
+    state_pkcs12_cert:
+      infosimples && form.statePkcs12Cert.trim() !== ""
+        ? form.statePkcs12Cert.trim()
+        : null,
+    state_pkcs12_password:
+      infosimples && form.statePkcs12Password !== ""
+        ? form.statePkcs12Password
+        : null,
     reason: form.reason.trim(),
   };
 }
@@ -119,6 +165,8 @@ export function credentialProblems(form: SupplierForm): string[] {
   if (errors.password) problems.push("a senha");
   if (errors.token) problems.push("o token da InfoSimples");
   if (errors.portalDigest) problems.push("a conta RI Digital vinculada");
+  if (errors.stateLoginCpf) problems.push("a autenticação estadual gov.br");
+  if (errors.statePkcs12Cert) problems.push("a autenticação estadual PKCS#12");
   if (errors.reason) problems.push("o motivo (mínimo 10 caracteres)");
   return problems;
 }
