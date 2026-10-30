@@ -36,6 +36,7 @@ import { memberAccess, roleLabel } from "./partner-roles";
 import { ToastStack } from "./ToastStack";
 import { useToast } from "./useToast";
 import { PartnerMfaRecovery } from "./PartnerMfaRecovery";
+import { PartnerDocumentation } from "./PartnerDocumentation";
 import "./partner-portal.css";
 
 type PartnerSession = { member: PartnerMember; csrf: string };
@@ -672,6 +673,8 @@ export function PartnerPortal() {
               />
             ) : section === "statement" ? (
               <PartnerStatement onUnauthorized={unauthorize} />
+            ) : section === "documentation" ? (
+              <PartnerDocumentation />
             ) : section === null ? (
               <div className="empty-state" role="status">
                 <strong>Seu papel não tem telas disponíveis</strong>
