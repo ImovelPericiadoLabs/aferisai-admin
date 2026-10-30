@@ -56,7 +56,6 @@ export function SupplierCredentialRenewal({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [stateAuthOpen, setStateAuthOpen] = useState(false);
-  const [stateAuthCpf, setStateAuthCpf] = useState("");
   const [stateAuthPassword, setStateAuthPassword] = useState("");
   const [stateAuthCert, setStateAuthCert] = useState("");
   const [stateAuthCertPassword, setStateAuthCertPassword] = useState("");
@@ -114,15 +113,14 @@ export function SupplierCredentialRenewal({
 
   async function submitStateAuth(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const cpf = stateAuthCpf.trim();
     const password = stateAuthPassword;
     const cert = stateAuthCert.trim();
     const certPassword = stateAuthCertPassword;
     const reason = stateAuthReason.trim();
-    const loginMode = cpf !== "" || password !== "";
+    const loginMode = password !== "";
     const certMode = cert !== "" || certPassword !== "";
-    if (loginMode && (!/^\d{11}$/.test(cpf) || password === "")) {
-      setStateAuthError("Informe CPF de 11 dígitos e a nova senha gov.br.");
+    if (loginMode && password === "") {
+      setStateAuthError("Informe a nova senha gov.br.");
       return;
     }
     if (certMode && (cert === "" || certPassword === "")) {
@@ -148,7 +146,7 @@ export function SupplierCredentialRenewal({
       await rotateRegistrySupplierStateAuth(
         account.id,
         {
-          state_login_cpf: loginMode ? cpf : null,
+          state_login_cpf: null,
           state_login_password: loginMode ? password : null,
           state_pkcs12_cert: certMode ? cert : null,
           state_pkcs12_password: certMode ? certPassword : null,
@@ -223,19 +221,6 @@ export function SupplierCredentialRenewal({
                 Isso cria uma nova credencial em rascunho. A atual continua
                 ativa até você conferir e ativar a nova na lista.
               </p>
-              <label>
-                CPF do login gov.br
-                <input
-                  className="input"
-                  inputMode="numeric"
-                  maxLength={11}
-                  value={stateAuthCpf}
-                  disabled={busy}
-                  onChange={(event) =>
-                    setStateAuthCpf(event.target.value.replace(/\D/g, ""))
-                  }
-                />
-              </label>
               <label>
                 Nova senha do login gov.br
                 <input
