@@ -10,16 +10,28 @@ type DocTopic = {
 
 const TOPICS: DocTopic[] = [
   {
-    id: "primeiros-passos",
-    label: "Primeiros passos",
-    summary: "O caminho mínimo para colocar a integração em funcionamento.",
-    body: "A Aferis cadastra a organização, a aplicação, os redirects, as permissões e o usuário do painel. O parceiro guarda as credenciais no backend, configura o webhook e inicia o fluxo OAuth quando precisar operar em nome de um titular.",
+    id: "organizacao-e-sessao",
+    label: "Organização e sessão",
+    summary: "Troque de empresa e entenda o contexto ativo do painel.",
+    body: "O topo do painel mostra a empresa ativa, o usuário conectado e o papel da sessão. Quando uma pessoa participa de mais de uma empresa, o seletor permite trocar a organização; todas as aplicações, métricas, pessoas e extratos são revalidados para a empresa selecionada.",
+  },
+  {
+    id: "aplicacoes",
+    label: "Aplicações e visão geral",
+    summary: "Consulte o estado e abra cada integração da organização.",
+    body: "Em Integrações, o parceiro visualiza as aplicações da organização, seu nome e estado (ativa ou suspensa). Ao abrir uma aplicação, a Visão geral reúne a identidade da integração, atividade recente e os sinais operacionais disponíveis para a sessão.",
+  },
+  {
+    id: "credenciais",
+    label: "Credenciais",
+    summary: "Emita, consulte e revogue credenciais da aplicação.",
+    body: "A aba Credenciais permite ao proprietário ou desenvolvedor administrar credenciais da aplicação, conferir estado, validade e escopos e revogar uma chave. O segredo é apresentado somente no momento permitido; armazene-o no backend e nunca no navegador, repositório ou log.",
   },
   {
     id: "oauth",
     label: "OAuth e PKCE",
-    summary: "Autentique o titular sem expor segredos no navegador.",
-    body: "Gere state, code_verifier e code_challenge no backend. Redirecione o navegador para a Aferis. Depois da aprovação, confira o state e troque o code por um token delegado somente no servidor.",
+    summary: "Use a aplicação para autenticar o titular com segurança.",
+    body: "O painel fornece o contexto da integração; o fluxo OAuth acontece no produto do parceiro. Gere state, code_verifier e code_challenge no backend. Redirecione o navegador para a Aferis, confira o state no retorno e troque o code por um token delegado somente no servidor.",
     code: `API_URL="https://api.aferis.ai"
 curl --get "$API_URL/oauth/authorize" \\
   --data-urlencode "response_type=code" \\
@@ -38,9 +50,27 @@ curl --request POST "$API_URL/oauth/token" \\
   --data-urlencode "code_verifier=$VERIFIER"`,
   },
   {
+    id: "acessos",
+    label: "Acessos e escopos",
+    summary: "Veja as permissões concedidas à aplicação.",
+    body: "A aba Acessos mostra a matriz de escopos, a descrição de cada permissão e a quantidade concedida. No painel parceiro a consulta é somente leitura: a equipe Aferis concede ou revoga escopos, e o servidor revalida papel, organização, aplicação e consentimento em cada operação.",
+  },
+  {
+    id: "webhooks",
+    label: "Webhooks",
+    summary: "Configure o destino HTTPS e os eventos da integração.",
+    body: "Na aba Webhooks, o proprietário ou desenvolvedor cadastra o endpoint HTTPS, escolhe os eventos disponíveis, prepara a rotação da chave, testa a assinatura e ativa, suspende ou remove o destino conforme o fluxo exibido no painel.",
+  },
+  {
+    id: "entregas",
+    label: "Entregas de eventos",
+    summary: "Acompanhe cada tentativa de entrega do webhook.",
+    body: "Entregas lista eventos enviados, estado, status HTTP, duração, endpoint e horário. Use os filtros por estado e tipo, abra o detalhe para investigar a resposta e reconcilie pelo GET da operação quando houver estado local incerto. Reenvie somente quando a ação estiver autorizada e auditada.",
+  },
+  {
     id: "ordens",
-    label: "Criar e acompanhar ordens",
-    summary: "Crie uma solicitação e acompanhe pelo ID retornado.",
+    label: "Operação pela API",
+    summary: "Crie e acompanhe pedidos autorizados pelo produto do parceiro.",
     body: "O POST cria a intenção. Use UUIDv7 novo na idempotência, guarde o operation_id e acompanhe por GET ou webhook. Timeout, 502 e resposta incompleta não autorizam repetir o POST externo.",
     code: `curl --request POST "$API_URL/v1/partner/registry-requests/number" \\
   --header "Authorization: Bearer $ACCESS_TOKEN" \\
@@ -56,22 +86,34 @@ curl "$API_URL/v1/partner/registry-requests/<OPERATION_ID>" \\
   --header "Authorization: Bearer $ACCESS_TOKEN"`,
   },
   {
-    id: "webhooks",
-    label: "Webhooks",
-    summary: "Receba eventos e reconcilie estados com segurança.",
-    body: "Cadastre o endpoint HTTPS no painel, escolha os eventos e faça o teste assinado. No recebimento, valide assinatura, event_id e timestamp; use GET para reconciliar quando o estado local estiver incerto.",
+    id: "metricas",
+    label: "Métricas",
+    summary: "Consulte volume, sucesso, latência e conexões.",
+    body: "Em Métricas, selecione a aplicação e o período para acompanhar análises enviadas e concluídas, pedidos registrais, conexões ativas, tentativas, entregas, latência mediana e p95, além dos indicadores comerciais exibidos para a organização.",
+  },
+  {
+    id: "extrato",
+    label: "Extrato e repasses",
+    summary: "Consulte lançamentos e estados financeiros permitidos.",
+    body: "Em Extrato, o proprietário e o financeiro em leitura consultam itens, origem, estado do repasse e valor. O papel financeiro não concede leitura jurídica, gestão de pessoas, credenciais ou webhooks.",
+  },
+  {
+    id: "pessoas",
+    label: "Pessoas e papéis",
+    summary: "Convide pessoas e mantenha o acesso da organização.",
+    body: "Somente o proprietário administra pessoas: envia convites, acompanha o estado, altera papéis e consulta o histórico. Os papéis são proprietário, desenvolvedor e financeiro (leitura); o último proprietário ativo não pode ser removido ou rebaixado sem proteção do sistema.",
   },
   {
     id: "permissoes",
-    label: "Permissões e papéis",
-    summary: "Entenda o que cada pessoa e aplicação pode fazer.",
-    body: "Owner gerencia pessoas e integrações. Developer gerencia credenciais e webhooks e vê métricas. Financial reader vê extrato e métricas. Escopos da aplicação e consentimento do titular são gates independentes do papel humano.",
+    label: "Matriz de acesso",
+    summary: "Confira quais áreas cada papel pode abrir.",
+    body: "Proprietário: integrações, métricas, extrato, pessoas e documentação. Desenvolvedor: integrações, métricas e documentação; opera credenciais, webhooks e entregas dentro da aplicação. Financeiro (leitura): métricas, extrato e documentação. A API continua sendo a autoridade e pode responder 403 quando o papel não permitir a operação.",
   },
   {
-    id: "erros",
+    id: "seguranca",
     label: "Erros e segurança",
-    summary: "Como tratar respostas sem duplicar efeitos externos.",
-    body: "401: renove o token. 403: confira origem, escopo e consentimento. 409: leia o estado atual. 422: corrija os dados. 429: respeite Retry-After. 503: informe indisponibilidade sem afirmar queda de fornecedor. Nunca registre client_secret, token, code_verifier ou code.",
+    summary: "Trate falhas sem duplicar efeitos externos.",
+    body: "401: renove o token. 403: confira origem, papel, escopo e consentimento. 409: leia o estado atual. 422: corrija os dados. 429: respeite Retry-After. 503: informe indisponibilidade sem afirmar queda de fornecedor. Nunca registre client_secret, token, code_verifier ou code.",
   },
 ];
 
