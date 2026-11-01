@@ -6,32 +6,10 @@ import {
   type TeamConnection,
 } from "./api";
 import type { ToastKind } from "./useToast";
-import { scopeLabel } from "./display-labels";
 import { ConfirmDialog } from "./ConfirmDialog";
-import { EntityPicker } from "./EntityPicker";
-import {
-  resolveApplication,
-  resolveOrganization,
-  searchApplications,
-  searchOrganizations,
-} from "./lookups";
-
-function ScopeBadge({ scope }: { scope: string }) {
-  const isAnalysis = scope.startsWith("analysis:");
-  return (
-    <span className={`badge ${isAnalysis ? "badge-blue" : "badge-gray"}`}>
-      {scopeLabel(scope)}
-    </span>
-  );
-}
-
-function formatDate(iso: string) {
-  return new Intl.DateTimeFormat("pt-BR", {
-    dateStyle: "short",
-    timeStyle: "short",
-    timeZone: "America/Sao_Paulo",
-  }).format(new Date(iso));
-}
+import { ConnectionsFilter } from "./ConnectionsFilter";
+import { ConnectionsTable } from "./ConnectionsTable";
+import { resolveApplication, searchApplications } from "./lookups";
 
 export function Connections({
   canRead,
@@ -180,77 +158,27 @@ export function Connections({
         </button>
       </header>
 
-      <form
-        onSubmit={submitFilter}
-        style={{
-          display: "flex",
-          gap: "0.6rem",
-          marginBottom: "1.5rem",
-          flexWrap: "wrap",
-          alignItems: "flex-start",
+      <ConnectionsFilter
+        orgFilter={orgFilter}
+        appFilter={appFilter}
+        activeFilter={activeFilter}
+        loading={loading}
+        applicationsSearch={applicationsSearch}
+        applicationResolver={applicationResolver}
+        onUnauthorized={onUnauthorized}
+        onOrganizationChange={(id) => {
+          setOrgFilter(id);
+          setAppFilter("");
         }}
-      >
-        <div style={{ flex: "1 1 240px", maxWidth: "320px" }}>
-          <EntityPicker
-            onUnauthorized={onUnauthorized}
-            id="org-filter"
-            label="Organização"
-            hint="Escolha a organização para listar as aplicações dela."
-            placeholder="Buscar organização"
-            value={orgFilter}
-            search={searchOrganizations}
-            resolve={resolveOrganization}
-            onChange={(id) => {
-              setOrgFilter(id);
-              setAppFilter("");
-            }}
-          />
-        </div>
-        <div style={{ flex: "1 1 240px", maxWidth: "320px" }}>
-          <EntityPicker
-            onUnauthorized={onUnauthorized}
-            id="app-filter"
-            label="Aplicação"
-            placeholder={
-              orgFilter ? "Buscar aplicação" : "Escolha a organização primeiro"
-            }
-            disabled={!orgFilter}
-            value={appFilter}
-            search={applicationsSearch}
-            resolve={applicationResolver}
-            cacheKey={orgFilter}
-            onChange={setAppFilter}
-          />
-        </div>
-        <div style={{ display: "flex", flexDirection: "column" }}>
-          <div className="picker" aria-hidden="true">
-            <label className="form-field-label">&nbsp;</label>
-          </div>
-          <div style={{ display: "flex", gap: "0.6rem" }}>
-            <button
-              type="submit"
-              className="btn btn-secondary btn-md"
-              disabled={loading || !appFilter}
-            >
-              Filtrar
-            </button>
-            {activeFilter && (
-              <button
-                type="button"
-                className="btn btn-secondary btn-md"
-                onClick={() => {
-                  setAppFilter("");
-                  setOrgFilter("");
-                  setActiveFilter("");
-                  void load(undefined, "");
-                }}
-              >
-                Limpar filtro
-              </button>
-            )}
-          </div>
-        </div>
-      </form>
+        onApplicationChange={setAppFilter}
+        onSubmit={submitFilter}
+        onClear={() => {
+          setAppFilter("");
+          setOrgFilter("");
+          setActiveFilter("");
+          void load(undefined, "");
+        }}
+      />
 
       {error && (
         <p className="error" role="alert">
@@ -293,71 +221,12 @@ export function Connections({
           </p>
         </div>
       ) : (
-        <div style={{ overflowX: "auto" }}>
-          <table className="data-table" aria-label="Conexões ativas">
-            <thead>
-              <tr>
-                <th>ID da conexão</th>
-                <th>ID do titular</th>
-                <th>ID da aplicação</th>
-                <th>Escopos</th>
-                <th>Versão</th>
-                <th>Conectado em</th>
-                {canRevoke && <th>Ações</th>}
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((item) => (
-                <tr key={item.id}>
-                  <td>
-                    <code className="code-id">{item.id}</code>
-                  </td>
-                  <td>
-                    <code className="code-id">{item.user_id}</code>
-                  </td>
-                  <td>
-                    <code className="code-id">{item.application_id}</code>
-                  </td>
-                  <td>
-                    <div
-                      style={{
-                        display: "flex",
-                        gap: "0.3rem",
-                        flexWrap: "wrap",
-                      }}
-                    >
-                      {item.scopes.map((s) => (
-                        <ScopeBadge key={s} scope={s} />
-                      ))}
-                    </div>
-                  </td>
-                  <td>{item.grant_version}</td>
-                  <td style={{ whiteSpace: "nowrap" }}>
-                    {formatDate(item.granted_at)}
-                  </td>
-                  {canRevoke && (
-                    <td>
-                      <button
-                        type="button"
-                        className="button secondary"
-                        style={{
-                          fontSize: "0.75rem",
-                          padding: "0.3rem 0.7rem",
-                        }}
-                        disabled={revokingId !== null}
-                        onClick={() => {
-                          setConfirmId(item.id);
-                        }}
-                      >
-                        Revogar
-                      </button>
-                    </td>
-                  )}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <ConnectionsTable
+          items={items}
+          canRevoke={canRevoke}
+          revoking={revokingId !== null}
+          onRevoke={setConfirmId}
+        />
       )}
 
       <ConfirmDialog

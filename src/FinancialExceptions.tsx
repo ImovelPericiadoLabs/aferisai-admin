@@ -6,27 +6,18 @@ import {
   confirmPaymentException,
   executePaymentException,
   listPaymentExceptions,
-  listTeamMembers,
   proposePaymentException,
   reassignPaymentException,
   type PaymentExceptionCase,
   type TeamMember,
 } from "./api";
-import {
-  dueState,
-  filterCases,
-  sortByUrgency,
-  stageLabel,
-  stageOf,
-  type CaseFilter,
-} from "./exception-model";
-import {
-  ExceptionPanel,
-  outcomeLabel,
-  type ExecuteAction,
-} from "./ExceptionPanel";
-import { stageTone } from "./status-tones";
+import { filterCases, sortByUrgency, type CaseFilter } from "./exception-model";
+import { ExceptionPanel, type ExecuteAction } from "./ExceptionPanel";
+import { errorMessage } from "./financial-exceptions-format";
+import { FinancialExceptionsList } from "./FinancialExceptionsList";
+import { FinancialExceptionsToolbar } from "./FinancialExceptionsToolbar";
 import { useDialogFocus } from "./useDialogFocus";
+import { useTeamNames } from "./useTeamNames";
 import "./commercial-rules.css";
 import "./FinancialExceptions.css";
 
@@ -36,23 +27,6 @@ type Props = {
   role: TeamMember["role"];
   onUnauthorized: () => void;
 };
-
-const money = (cents: number) =>
-  new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(
-    cents / 100,
-  );
-
-const tabs: { value: CaseFilter; label: string }[] = [
-  { value: "all", label: "Abertos" },
-  { value: "overdue", label: "Atrasados" },
-  { value: "mine", label: "Meus" },
-  { value: "executing", label: "Em execução" },
-  { value: "done", label: "Concluídos" },
-];
-
-function errorMessage(cause: unknown, fallback: string): string {
-  return cause instanceof ApiError ? cause.detail : fallback;
-}
 
 export function FinancialExceptions({
   csrf,
@@ -73,7 +47,6 @@ export function FinancialExceptions({
   const [error, setError] = useState("");
   const [panelError, setPanelError] = useState("");
   const [notice, setNotice] = useState("");
-  const [names, setNames] = useState<Record<string, string>>({});
   const panelRef = useRef<HTMLElement>(null);
   const pagesLoaded = useRef(1);
 
@@ -117,28 +90,7 @@ export function FinancialExceptions({
     };
   }, [load]);
 
-  useEffect(() => {
-    if (role !== "administrator") return;
-    let live = true;
-    void (async () => {
-      const found: Record<string, string> = {};
-      let cursor: string | undefined;
-      try {
-        for (let pageCount = 0; pageCount < 10; pageCount += 1) {
-          const page = await listTeamMembers(cursor);
-          for (const member of page.items) found[member.id] = member.email;
-          if (!page.next_cursor) break;
-          cursor = page.next_cursor;
-        }
-      } catch {
-        /* names are a convenience; the list still works without them */
-      }
-      if (live) setNames(found);
-    })();
-    return () => {
-      live = false;
-    };
-  }, [role]);
+  const names = useTeamNames(role);
 
   const person = useCallback(
     (id: string | null) => {
@@ -305,166 +257,34 @@ export function FinancialExceptions({
         </div>
       </header>
 
-      {error && !open && (
-        <div className="alert alert-danger rules-alert" role="alert">
-          {error}
-          {loadFailed && (
-            <>
-              {" "}
-              <button
-                className="btn btn-secondary btn-sm"
-                type="button"
-                onClick={() => {
-                  setLoading(true);
-                  void load();
-                }}
-              >
-                Tentar novamente
-              </button>
-            </>
-          )}
-        </div>
-      )}
-      {notice && !open && (
-        <div className="alert alert-success rules-alert" role="status">
-          {notice}
-        </div>
-      )}
+      <FinancialExceptionsToolbar
+        error={error}
+        loadFailed={loadFailed}
+        notice={notice}
+        open={open}
+        filter={filter}
+        scope={scope}
+        counts={counts}
+        onRetry={() => {
+          setLoading(true);
+          void load();
+        }}
+        onFilter={changeFilter}
+      />
 
-      <div className="rules-toolbar">
-        <div className="rules-tabs" role="group" aria-label="Filtrar casos">
-          {tabs.map((tab) => (
-            <button
-              key={tab.value}
-              type="button"
-              className="rules-tab"
-              aria-pressed={filter === tab.value}
-              onClick={() => changeFilter(tab.value)}
-            >
-              {tab.label}
-              {(tab.value === "done") === (scope === "done") && (
-                <span className="rules-tab-count">{counts[tab.value]}</span>
-              )}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {loading && cases.length === 0 ? (
-        <div className="rules-skeleton" role="status" aria-label="Carregando">
-          {Array.from({ length: 4 }, (_, index) => (
-            <span className="skeleton" key={index} />
-          ))}
-        </div>
-      ) : visible.length === 0 && !loadFailed ? (
-        <div className="empty-state" role="status">
-          <strong>
-            {filter === "all"
-              ? "Nenhum caso financeiro aberto"
-              : "Nenhum caso neste filtro"}
-          </strong>
-          <span>
-            {filter === "all"
-              ? "Quando um pagamento ficar sem entrega, o caso aparece aqui com prazo para decidir. Os resolvidos ficam em Concluídos."
-              : "Escolha outro filtro para ver os demais casos."}
-          </span>
-          {filter !== "all" && (
-            <button
-              className="btn btn-secondary btn-sm"
-              type="button"
-              onClick={() => changeFilter("all")}
-            >
-              Limpar filtro
-            </button>
-          )}
-        </div>
-      ) : (
-        visible.length > 0 && (
-          <div className="data-table-wrap">
-            <table className="data-table" aria-label="Casos financeiros">
-              <thead>
-                <tr>
-                  <th scope="col">Caso</th>
-                  <th scope="col">Valor</th>
-                  <th scope="col">Prazo</th>
-                  <th scope="col">Etapa</th>
-                  <th scope="col">Responsáveis</th>
-                </tr>
-              </thead>
-              <tbody>
-                {visible.map((item) => {
-                  const stage = stageOf(item);
-                  const due = dueState(item.due_at, now);
-                  return (
-                    <tr
-                      key={item.id}
-                      data-clickable
-                      className={
-                        item.id === selectedId && open ? "selected" : undefined
-                      }
-                      onClick={() => openCase(item.id)}
-                    >
-                      <td data-label="Caso">
-                        <button
-                          className="rules-cell-button"
-                          data-row-id={item.id}
-                          type="button"
-                          aria-haspopup="dialog"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            openCase(item.id);
-                          }}
-                        >
-                          <strong>Caso {item.id.slice(0, 8)}</strong>
-                          <small>Trabalho {item.work_id}</small>
-                        </button>
-                      </td>
-                      <td data-label="Valor">{money(item.amount_cents)}</td>
-                      <td data-label="Prazo">
-                        {stage === "done" ? (
-                          <span className="rules-cell-sub">Encerrado</span>
-                        ) : (
-                          <span
-                            className={`badge badge-${due.tone === "neutral" ? "neutral" : due.tone}`}
-                          >
-                            {due.label}
-                          </span>
-                        )}
-                      </td>
-                      <td data-label="Etapa">
-                        <span className="rules-cell-stack">
-                          <span>
-                            <span className={`badge ${stageTone(stage)}`}>
-                              {stageLabel[stage]}
-                            </span>
-                          </span>
-                          {(item.resolution ?? item.proposed_resolution) && (
-                            <small className="rules-cell-sub">
-                              {outcomeLabel(
-                                item.resolution ?? item.proposed_resolution,
-                              )}
-                            </small>
-                          )}
-                        </span>
-                      </td>
-                      <td data-label="Responsáveis">
-                        <span className="exc-people">
-                          <small className="rules-cell-sub">
-                            Gestor: {person(item.manager_assignee_id)}
-                          </small>
-                          <small className="rules-cell-sub">
-                            Financeiro: {person(item.financial_assignee_id)}
-                          </small>
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )
-      )}
+      <FinancialExceptionsList
+        cases={cases}
+        visible={visible}
+        loading={loading}
+        loadFailed={loadFailed}
+        filter={filter}
+        now={now}
+        selectedId={selectedId}
+        open={open}
+        person={person}
+        onOpen={openCase}
+        onFilter={changeFilter}
+      />
 
       {nextCursor && (
         <footer className="rules-footer">

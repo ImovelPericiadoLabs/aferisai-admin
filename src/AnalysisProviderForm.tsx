@@ -5,37 +5,12 @@ import {
   type AnalysisProviderKind,
 } from "./api";
 import { kindLabels } from "./AnalysisProviderPanel";
-import { FileDropzone } from "./FileDropzone";
-import { FilePreview } from "./FilePreview";
-import { SERVICE_ACCOUNT_RULE } from "./file-rules";
+import { AnalysisProviderCredentialFieldset } from "./AnalysisProviderCredentialFieldset";
+import { AnalysisProviderLimitsFieldset } from "./AnalysisProviderLimitsFieldset";
+import { initialLimits, poolExamples } from "./analysis-provider-form-model";
 import { summarizeServiceAccount } from "./file-preview-model";
-import { formToLimits, limitsToForm, type LimitsForm } from "./provider-model";
+import { formToLimits, type LimitsForm } from "./provider-model";
 import { validateReason } from "./reason";
-
-const poolExamples: Record<AnalysisProviderKind, string> = {
-  vertex_service_account: "gcp:ID_DO_PROJETO",
-  gemini_api_key: "gcp:ID_DO_PROJETO",
-  openai_api_key: "openai:CONTA",
-  openai_compatible: "custom:SERVICO",
-};
-
-const initialLimits: LimitsForm = limitsToForm({
-  max_concurrent: 1,
-  daily_limit: 100,
-  rpm: 10,
-  tpm: 10000,
-  daily_cost_cents: 1000,
-  priority: 100,
-});
-
-const limitFields: { key: keyof LimitsForm; label: string; step: string }[] = [
-  { key: "maxConcurrent", label: "Chamadas simultâneas", step: "1" },
-  { key: "dailyLimit", label: "Chamadas por dia", step: "1" },
-  { key: "rpm", label: "Requisições por minuto", step: "1" },
-  { key: "tpm", label: "Tokens por minuto", step: "1" },
-  { key: "dailyCostReais", label: "Teto diário (R$)", step: "0.01" },
-  { key: "priority", label: "Prioridade (menor vem primeiro)", step: "1" },
-];
 
 export function AnalysisProviderForm({
   csrf,
@@ -206,20 +181,29 @@ export function AnalysisProviderForm({
               onChange={(event) => {
                 const next = event.target.value as AnalysisProviderKind;
                 setKind(next);
-                setModel(next === "vertex_service_account" ? "gemini-3.5-flash-lite" : "");
+                setModel(
+                  next === "vertex_service_account"
+                    ? "gemini-3.5-flash-lite"
+                    : "",
+                );
                 setLocation("global");
                 setPoolKey("");
                 setCredential("");
                 setCredentialFile(null);
               }}
             >
-              {(["vertex_service_account", "openai_api_key"] as const).map((value) => (
-                <option value={value} key={value}>
-                  {kindLabels[value]}
-                </option>
-              ))}
+              {(["vertex_service_account", "openai_api_key"] as const).map(
+                (value) => (
+                  <option value={value} key={value}>
+                    {kindLabels[value]}
+                  </option>
+                ),
+              )}
             </select>
-            <span className="form-hint">Contas Gemini por chave e APIs compatíveis ainda não têm adaptador de análise aprovado.</span>
+            <span className="form-hint">
+              Contas Gemini por chave e APIs compatíveis ainda não têm adaptador
+              de análise aprovado.
+            </span>
           </div>
           <div className="form-row">
             <div className="form-field">
@@ -292,66 +276,16 @@ export function AnalysisProviderForm({
           )}
         </fieldset>
 
-        <fieldset className="form-section">
-          <legend className="form-section-title">Credencial</legend>
-          {kind === "vertex_service_account" ? (
-            <div className="form-field">
-              <FileDropzone
-                id="prov-file"
-                label="Arquivo JSON da conta de serviço"
-                rule={SERVICE_ACCOUNT_RULE}
-                file={credentialFile}
-                onFile={(next) => void chooseFile(next)}
-                disabled={busy}
-                hint="JSON"
-              />
-              {credentialFile && <FilePreview file={credentialFile} />}
-            </div>
-          ) : (
-            <div className="form-field">
-              <label className="form-field-label" htmlFor="prov-secret">
-                Chave ou token
-              </label>
-              <input
-                id="prov-secret"
-                className="input"
-                type="password"
-                value={credential}
-                required
-                onChange={(event) => setCredential(event.target.value)}
-              />
-            </div>
-          )}
-          <span className="form-hint">
-            O segredo é enviado uma vez e não aparece depois. Não o inclua no
-            nome, no modelo nem no motivo.
-          </span>
-        </fieldset>
+        <AnalysisProviderCredentialFieldset
+          kind={kind}
+          credential={credential}
+          credentialFile={credentialFile}
+          busy={busy}
+          onCredential={setCredential}
+          onFile={(next) => void chooseFile(next)}
+        />
 
-        <fieldset className="form-section">
-          <legend className="form-section-title">Limites</legend>
-          <div className="form-row">
-            {limitFields.map(({ key, label: text, step }) => (
-              <div className="form-field" key={key}>
-                <label className="form-field-label" htmlFor={`new-${key}`}>
-                  {text}
-                </label>
-                <input
-                  id={`new-${key}`}
-                  className="input"
-                  type="number"
-                  step={step}
-                  min="0"
-                  required
-                  value={limits[key]}
-                  onChange={(event) =>
-                    setLimits({ ...limits, [key]: event.target.value })
-                  }
-                />
-              </div>
-            ))}
-          </div>
-        </fieldset>
+        <AnalysisProviderLimitsFieldset limits={limits} onChange={setLimits} />
 
         <fieldset className="form-section">
           <legend className="form-section-title">Justificativa</legend>

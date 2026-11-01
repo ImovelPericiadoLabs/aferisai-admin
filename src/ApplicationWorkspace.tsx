@@ -1,5 +1,4 @@
-import { useId, useState, type ReactNode } from "react";
-import { AccessMatrix } from "./AccessMatrix";
+import { useId, useState } from "react";
 import { ApplicationAudit } from "./ApplicationAudit";
 import { TabBar } from "./TabBar";
 import { ApplicationHero } from "./ApplicationHero";
@@ -7,74 +6,27 @@ import { tabBadges } from "./application-overview-model";
 import { ApplicationOverview } from "./ApplicationOverview";
 import { useApplicationSnapshot } from "./useApplicationSnapshot";
 import { ApplicationDeletion } from "./ApplicationDeletion";
-import { ConfirmDialog } from "./ConfirmDialog";
-import { FieldAction } from "./FieldAction";
+import { ApplicationAccessTab } from "./ApplicationAccessTab";
+import { ApplicationDirectory } from "./ApplicationDirectory";
+import {
+  ApplicationPermissionDialog,
+  type PermissionReview,
+} from "./ApplicationPermissionDialog";
+import { ApplicationSwitcher } from "./ApplicationSwitcher";
 import { CredentialManagement } from "./CredentialManagement";
-import { RedirectUriManagement } from "./RedirectUriManagement";
 import { ApplicationProfileManagement } from "./ApplicationProfileManagement";
 import { WebhookEndpointManagement } from "./WebhookEndpointManagement";
 import { WebhookDeliveries } from "./WebhookDeliveries";
-import { applicationPermissionLabel } from "./display-labels";
+import {
+  tabIcons,
+  tabs,
+  type Props,
+  type Tab,
+} from "./application-workspace-model";
 import "./application-workspace.css";
 import "./integration-insights.css";
 
-type Application = {
-  id: string;
-  name: string;
-  status: string;
-  permissions: string[];
-};
-type Permission = { code: string; description: string };
-export type IntegrationTab =
-  "overview" | "profile" | "webhooks" | "deliveries" | "credentials" | "access" | "audit";
-type Tab = IntegrationTab;
-
-type Props = {
-  applications: Application[];
-  permissions: Permission[];
-  selectedApplicationId: string | null;
-  onSelectApplication: (id: string) => void;
-  csrfToken: string;
-  canManage: boolean;
-  canEdit: boolean;
-  onUnauthorized: () => void;
-  permissionBusy: boolean;
-  onTogglePermission: (
-    applicationId: string,
-    code: string,
-    granted: boolean,
-    reason?: string,
-  ) => void;
-  channel?: "team" | "partner";
-  selectedTab?: IntegrationTab;
-  onTabChange?: (tab: IntegrationTab) => void;
-  additionalApplication: ReactNode;
-  onLoadMoreApplications?: () => void;
-  hasMoreApplications?: boolean;
-  loadingMoreApplications?: boolean;
-  /** Administrator-only terminal deletion of the open application (team channel). */
-  onDeleteApplication?: (applicationId: string) => void;
-};
-
-const tabIcons: Record<Tab, string> = {
-  overview: "grid",
-  profile: "edit",
-  webhooks: "webhook",
-  deliveries: "activity",
-  credentials: "key",
-  access: "shield",
-  audit: "history",
-};
-
-const tabs: { id: Tab; label: string }[] = [
-  { id: "overview", label: "Visão geral" },
-  { id: "profile", label: "Perfil público" },
-  { id: "webhooks", label: "Webhooks" },
-  { id: "deliveries", label: "Entregas" },
-  { id: "credentials", label: "Credenciais" },
-  { id: "access", label: "Acessos" },
-  { id: "audit", label: "Auditoria" },
-];
+export type { IntegrationTab } from "./application-workspace-model";
 
 export function ApplicationWorkspace({
   applications,
@@ -102,7 +54,11 @@ export function ApplicationWorkspace({
   // The audit trail is a team-only route (manager and administrator).
   const canAudit = canManage && channel === "team";
   const visibleTabs = canManage
-    ? tabs.filter((item) => (item.id !== "audit" || canAudit) && (item.id !== "profile" || channel === "team"))
+    ? tabs.filter(
+        (item) =>
+          (item.id !== "audit" || canAudit) &&
+          (item.id !== "profile" || channel === "team"),
+      )
     : tabs.filter((item) => item.id === "overview" || item.id === "access");
   const activeTab = visibleTabs.some((item) => item.id === tab)
     ? tab
@@ -113,10 +69,8 @@ export function ApplicationWorkspace({
     onTabChange?.(next);
   };
   const [showCreate, setShowCreate] = useState(false);
-  const [permissionToReview, setPermissionToReview] = useState<{
-    code: string;
-    granted: boolean;
-  } | null>(null);
+  const [permissionToReview, setPermissionToReview] =
+    useState<PermissionReview | null>(null);
   const application =
     applications.find((item) => item.id === selectedApplicationId) ??
     (applications.length === 1 ? applications[0] : undefined);
@@ -134,92 +88,19 @@ export function ApplicationWorkspace({
 
   if (!application && applications.length > 1) {
     return (
-      <section className="appws" aria-labelledby="appws-directory-title">
-        <header className="appws-head">
-          <div>
-            <h2 className="appws-title" id="appws-directory-title">
-              Aplicações
-            </h2>
-            <p className="page-subtitle">
-              Escolha a integração que deseja consultar ou configurar.
-            </p>
-          </div>
-        </header>
-        <div className="data-table-wrap">
-          <table className="data-table" aria-label="Aplicações">
-            <thead>
-              <tr>
-                <th scope="col">Aplicação</th>
-                <th scope="col">Estado</th>
-                <th scope="col">
-                  <span className="sr-only">Ações</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {applications.map((item) => (
-                <tr key={item.id}>
-                  <td data-label="Aplicação">
-                    <button
-                      type="button"
-                      className="rules-cell-button"
-                      onClick={() => {
-                        onSelectApplication(item.id);
-                        setTab("overview");
-                      }}
-                    >
-                      <strong>{item.name}</strong>
-                    </button>
-                  </td>
-                  <td data-label="Estado">
-                    <span
-                      className={`badge ${item.status === "active" ? "badge-success" : "badge-warning"}`}
-                    >
-                      {item.status === "active" ? "Ativa" : "Suspensa"}
-                    </span>
-                  </td>
-                  <td className="appws-open">
-                    <button
-                      type="button"
-                      className="btn btn-secondary btn-sm"
-                      onClick={() => {
-                        onSelectApplication(item.id);
-                        setTab("overview");
-                      }}
-                    >
-                      Abrir
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        {hasMoreApplications && onLoadMoreApplications && (
-          <button
-            type="button"
-            className="btn btn-secondary btn-md appws-more"
-            disabled={loadingMoreApplications}
-            onClick={onLoadMoreApplications}
-          >
-            {loadingMoreApplications
-              ? "Carregando…"
-              : "Carregar mais aplicações"}
-          </button>
-        )}
-        {additionalApplication && (
-          <div className="appws-additional">
-            <button
-              type="button"
-              className="btn btn-secondary btn-md"
-              onClick={() => setShowCreate((value) => !value)}
-            >
-              {showCreate ? "Fechar cadastro" : "Nova aplicação"}
-            </button>
-            {showCreate && additionalApplication}
-          </div>
-        )}
-      </section>
+      <ApplicationDirectory
+        applications={applications}
+        hasMoreApplications={hasMoreApplications}
+        loadingMoreApplications={loadingMoreApplications}
+        additionalApplication={additionalApplication}
+        showCreate={showCreate}
+        onOpen={(id) => {
+          onSelectApplication(id);
+          setTab("overview");
+        }}
+        onLoadMoreApplications={onLoadMoreApplications}
+        onToggleCreate={() => setShowCreate((value) => !value)}
+      />
     );
   }
   if (!application) {
@@ -266,44 +147,18 @@ export function ApplicationWorkspace({
         canManage={canManage}
         switcher={
           applications.length > 1 ? (
-            <div className="appws-switch">
-              <FieldAction
-                id="appws-switch-select"
-                label="Trocar aplicação"
-                action={
-                  hasMoreApplications && onLoadMoreApplications ? (
-                    <button
-                      type="button"
-                      className="btn btn-secondary btn-md"
-                      disabled={loadingMoreApplications}
-                      onClick={onLoadMoreApplications}
-                    >
-                      {loadingMoreApplications
-                        ? "Carregando…"
-                        : "Carregar mais aplicações"}
-                    </button>
-                  ) : null
-                }
-              >
-                <select
-                  id="appws-switch-select"
-                  className="input"
-                  value={application.id}
-                  onChange={(event) => {
-                    onSelectApplication(event.target.value);
-                    setPermissionToReview(null);
-                    setTab("overview");
-                  }}
-                >
-                  {applications.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.name} ·{" "}
-                      {item.status === "active" ? "Ativa" : "Suspensa"}
-                    </option>
-                  ))}
-                </select>
-              </FieldAction>
-            </div>
+            <ApplicationSwitcher
+              applications={applications}
+              activeId={application.id}
+              hasMoreApplications={hasMoreApplications}
+              loadingMoreApplications={loadingMoreApplications}
+              onLoadMoreApplications={onLoadMoreApplications}
+              onSwitch={(id) => {
+                onSelectApplication(id);
+                setPermissionToReview(null);
+                setTab("overview");
+              }}
+            />
           ) : null
         }
       />
@@ -416,40 +271,19 @@ export function ApplicationWorkspace({
           />
         )}
         {activeTab === "access" && (
-          <div className="appws-access">
-            <section aria-labelledby="appws-permissions-title">
-              <h3 className="appws-section-title" id="appws-permissions-title">
-                Permissões da aplicação
-              </h3>
-              <AccessMatrix
-                permissions={permissions}
-                granted={application.permissions}
-                canChange={canManage && channel === "team" && editable}
-                busy={permissionBusy}
-                readOnlyHint={
-                  channel === "partner"
-                    ? "Somente leitura: a equipe da Aferis gerencia estes acessos."
-                    : "Somente leitura: seu perfil não pode alterar estes acessos, ou a aplicação está suspensa."
-                }
-                onRequest={(code, granted) =>
-                  setPermissionToReview({ code, granted })
-                }
-              />
-            </section>
-            {canManage && channel === "team" && (
-              <section aria-labelledby="appws-oauth-title">
-                <h3 className="appws-section-title" id="appws-oauth-title">
-                  Autorização OAuth
-                </h3>
-                <RedirectUriManagement
-                  applicationId={application.id}
-                  csrfToken={csrfToken}
-                  canEdit={editable}
-                  onUnauthorized={onUnauthorized}
-                />
-              </section>
-            )}
-          </div>
+          <ApplicationAccessTab
+            application={application}
+            permissions={permissions}
+            canManage={canManage}
+            channel={channel}
+            editable={editable}
+            permissionBusy={permissionBusy}
+            csrfToken={csrfToken}
+            onUnauthorized={onUnauthorized}
+            onRequestPermission={(code, granted) =>
+              setPermissionToReview({ code, granted })
+            }
+          />
         )}
       </div>
       {canManage && applications.length > 0 && additionalApplication && (
@@ -474,41 +308,10 @@ export function ApplicationWorkspace({
           onUnauthorized={onUnauthorized}
         />
       )}
-      <ConfirmDialog
-        open={permissionToReview !== null}
-        tone={permissionToReview?.granted ? "danger" : "primary"}
-        title={
-          permissionToReview?.granted
-            ? "Revogar esta permissão?"
-            : "Conceder esta permissão?"
-        }
-        description={
-          permissionToReview?.granted
-            ? "As credenciais desta aplicação perdem a permissão imediatamente."
-            : "As credenciais desta aplicação poderão usar a permissão após a alteração."
-        }
-        details={
-          permissionToReview
-            ? [
-                { label: "Aplicação", value: application.name },
-                {
-                  label: "Permissão",
-                  value: applicationPermissionLabel(permissionToReview.code),
-                },
-              ]
-            : []
-        }
-        confirmLabel={
-          permissionToReview?.granted
-            ? "Confirmar revogação"
-            : "Confirmar concessão"
-        }
+      <ApplicationPermissionDialog
+        application={application}
+        permissionToReview={permissionToReview}
         busy={permissionBusy}
-        reason={{
-          label: "Motivo (fica na trilha de auditoria)",
-          min: 3,
-          max: 500,
-        }}
         onConfirm={(reason) => {
           if (!permissionToReview) return;
           onTogglePermission(

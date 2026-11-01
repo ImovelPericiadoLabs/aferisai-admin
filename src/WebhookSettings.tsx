@@ -13,20 +13,16 @@ import {
   type WebhookTestResult,
 } from "./api";
 import { ConfirmDialog } from "./ConfirmDialog";
-import { Checkbox } from "./controls";
-import { relativeTime } from "./integration-insights-model";
+import { EVENT_LABELS } from "./webhook-event-labels";
 import {
   keyStage,
   selectableEvents,
   selectionChanged,
-  toggleEvent,
 } from "./webhook-settings-model";
+import { WebhookEventsSection } from "./WebhookEventsSection";
+import { WebhookKeySection } from "./WebhookKeySection";
+import { WebhookSimulateSection } from "./WebhookSimulateSection";
 import "./webhook-settings.css";
-
-const EVENT_LABELS: Record<string, string> = {
-  "analysis.created": "Análise criada",
-  "analysis.completed": "Análise concluída",
-};
 
 const reasonField = {
   label: "Motivo (fica na trilha de auditoria)",
@@ -202,177 +198,36 @@ export function WebhookSettings({
         </div>
       )}
 
-      <div className="wh-block">
-        <h5>Eventos entregues</h5>
-        <p className="form-hint">
-          Sem nenhum evento marcado, as novas entregas ficam pausadas. Mudar a
-          seleção não recria eventos antigos.
-        </p>
-        {catalog === null && !catalogFailed ? (
-          <div
-            className="rules-skeleton"
-            role="status"
-            aria-label="Carregando eventos"
-          >
-            <span className="skeleton" />
-          </div>
-        ) : catalogFailed ? (
-          <div className="alert alert-warning" role="alert">
-            Não foi possível carregar o catálogo de eventos.
-          </div>
-        ) : (
-          <>
-            <div className="wh-events">
-              {events.map((item) => (
-                <Checkbox
-                  key={item.type}
-                  id={`wh-event-${item.type}`}
-                  label={EVENT_LABELS[item.type] ?? item.type}
-                  description={`${item.type} · versão ${item.version}`}
-                  checked={selected.includes(item.type)}
-                  disabled={busy}
-                  onChange={() =>
-                    setSelected((now) => toggleEvent(now, item.type, order))
-                  }
-                />
-              ))}
-            </div>
-            <div>
-              <button
-                type="button"
-                className="btn btn-primary btn-md"
-                disabled={busy || !dirty}
-                onClick={() => setPending("events")}
-              >
-                Salvar seleção
-              </button>
-            </div>
-          </>
-        )}
-      </div>
+      <WebhookEventsSection
+        catalog={catalog}
+        catalogFailed={catalogFailed}
+        events={events}
+        order={order}
+        selected={selected}
+        busy={busy}
+        dirty={dirty}
+        setSelected={setSelected}
+        onSave={() => setPending("events")}
+      />
 
-      <div className="wh-block">
-        <h5>Simular evento</h5>
-        <p className="form-hint">
-          Envia dados fictícios (marcados como sintéticos) ao destino. Não cria
-          análise nem cobrança; limite de dez por hora.
-        </p>
-        <div className="wh-actions">
-          <select
-            className="input"
-            aria-label="Evento a simular"
-            value={simType}
-            disabled={busy}
-            onChange={(event) => setSimType(event.target.value)}
-          >
-            <option value="webhook.test">Evento de teste</option>
-            {events.map((item) => (
-              <option key={item.type} value={item.type}>
-                {EVENT_LABELS[item.type] ?? item.type}
-              </option>
-            ))}
-          </select>
-          <button
-            type="button"
-            className="btn btn-secondary btn-md"
-            disabled={busy}
-            onClick={() => void simulate()}
-          >
-            Enviar simulação
-          </button>
-        </div>
-        {simResult && (
-          <div
-            className={`alert ${simResult.status === "delivered" ? "alert-success" : "alert-warning"}`}
-            role="status"
-          >
-            {simResult.status === "delivered"
-              ? `O destino respondeu HTTP ${simResult.http_status}.`
-              : "Sem confirmação de entrega. Veja a aba Entregas."}
-          </div>
-        )}
-      </div>
+      <WebhookSimulateSection
+        events={events}
+        simType={simType}
+        simResult={simResult}
+        busy={busy}
+        onSimType={setSimType}
+        onSimulate={() => void simulate()}
+      />
 
-      <div className="wh-block">
-        <h5>
-          Chave de assinatura{" "}
-          <span className="badge badge-neutral">
-            versão {endpoint.key_version ?? 1}
-          </span>
-        </h5>
-        {stage === "none" && (
-          <>
-            <p className="form-hint">
-              Gire a chave sem derrubar o receptor: prepare a nova, cadastre-a
-              no servidor, teste e só então ative. Os eventos reais continuam
-              assinados pela chave atual até a ativação.
-            </p>
-            <div>
-              <button
-                type="button"
-                className="btn btn-secondary btn-md"
-                disabled={busy}
-                onClick={() => setPending("prepare")}
-              >
-                Preparar nova chave
-              </button>
-            </div>
-          </>
-        )}
-        {stage !== "none" && (
-          <>
-            <p className="form-hint">
-              Nova chave (versão {endpoint.pending_key_version}) preparada
-              {endpoint.pending_key_prepared_at
-                ? ` ${relativeTime(endpoint.pending_key_prepared_at)}`
-                : ""}
-              . O teste usa só a chave nova e envia o cabeçalho
-              X-Aferis-Key-Version.
-            </p>
-            {keyTest && (
-              <div
-                className={`alert ${keyTest.status === "delivered" ? "alert-success" : "alert-warning"}`}
-                role="status"
-              >
-                {keyTest.status === "delivered"
-                  ? "O destino aceitou o teste com a chave nova."
-                  : "O teste não foi confirmado. Confira o receptor e tente de novo."}
-              </div>
-            )}
-            <div className="wh-actions">
-              <button
-                type="button"
-                className="btn btn-secondary btn-md"
-                disabled={busy}
-                onClick={() => void sendKeyTest()}
-              >
-                {busy ? "Enviando…" : "Testar nova chave"}
-              </button>
-              <button
-                type="button"
-                className="btn btn-primary btn-md"
-                disabled={busy || stage !== "tested"}
-                onClick={() => setPending("activate")}
-              >
-                Ativar nova chave
-              </button>
-              <button
-                type="button"
-                className="btn btn-ghost btn-md"
-                disabled={busy}
-                onClick={() => setPending("prepare")}
-              >
-                Gerar outra
-              </button>
-            </div>
-            {stage === "prepared" && (
-              <small className="form-hint">
-                A ativação libera depois de um teste confirmado.
-              </small>
-            )}
-          </>
-        )}
-      </div>
+      <WebhookKeySection
+        endpoint={endpoint}
+        stage={stage}
+        keyTest={keyTest}
+        busy={busy}
+        onPrepare={() => setPending("prepare")}
+        onTest={() => void sendKeyTest()}
+        onActivate={() => setPending("activate")}
+      />
 
       <ConfirmDialog
         open={pending === "events"}

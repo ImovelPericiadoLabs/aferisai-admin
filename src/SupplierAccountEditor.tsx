@@ -1,23 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import {
-  ApiError,
-  getOnrEndpoint,
-  resetOnrEndpoint,
-  setOnrEndpoint,
-  type OnrEndpoint,
-  type RegistrySupplierAccount,
-} from "./api";
+import { OFFICIAL_ORIGIN, changeSummary } from "./onr-endpoint-model";
 import { ConfirmDialog } from "./ConfirmDialog";
-import {
-  OFFICIAL_ORIGIN,
-  WORKER_EXAMPLE,
-  changeSummary,
-  endpointView,
-  validateEndpointForm,
-  validateProxyOrigin,
-} from "./onr-endpoint-model";
-import { RolePicker } from "./RolePicker";
 import { RegistryVisualizationTariffs } from "./RegistryVisualizationTariffs";
 import { AccountOverview } from "./AccountOverview";
 import { AccountActivity } from "./AccountActivity";
@@ -25,45 +9,17 @@ import { PriceComposition } from "./PriceComposition";
 import { readiness } from "./account-model";
 import { useAccountSnapshot } from "./useAccountSnapshot";
 import { useNow } from "./useNow";
-import { RegistryCommercialTerms } from "./RegistryCommercialTerms";
 import { RegistryOptionalTariffs } from "./RegistryOptionalTariffs";
 import { SupplierCredentialRenewal } from "./SupplierCredentialRenewal";
-import { InlinePanel, Metrics, SettingCard } from "./SupplierUi";
-import { supplierLabel, supplierStatusView } from "./supplier-model";
+import { SupplierCommercialTab } from "./SupplierCommercialTab";
+import { SupplierConnectionTab } from "./SupplierConnectionTab";
+import { SupplierEditorHeader } from "./SupplierEditorHeader";
+import { editorNavGroups, type EditorTab } from "./supplier-editor-model";
+import { useOnrConnection } from "./useOnrConnection";
+import type { RegistrySupplierAccount } from "./api";
 import type { ToastKind } from "./useToast";
 import { useDialogFocus } from "./useDialogFocus";
 import "./supplier-editor.css";
-
-type Mode = "official" | "proxy";
-
-const MODES = [
-  {
-    value: "official" as const,
-    label: "Portal original",
-    summary: "Consulta direto em ridigital.org.br.",
-  },
-  {
-    value: "proxy" as const,
-    label: "Proxy protegido",
-    summary: "Passa por um Worker que exige uma chave.",
-  },
-];
-
-function message(cause: unknown): string {
-  if (cause instanceof ApiError) {
-    if (cause.status === 409)
-      return "A conexão mudou enquanto você editava. Os dados foram recarregados; revise e tente de novo.";
-    if (cause.status === 422)
-      return `${cause.detail} Confirme que o Worker nega acesso sem a chave em todas as rotas.`;
-    return cause.detail;
-  }
-  return "Não foi possível consultar a API. Tente novamente.";
-}
-
-const dateTime = new Intl.DateTimeFormat("pt-BR", {
-  dateStyle: "short",
-  timeStyle: "short",
-});
 
 export function SupplierAccountEditor({
   account,
@@ -91,31 +47,13 @@ export function SupplierAccountEditor({
 }) {
   const open = account !== null;
   const panelRef = useRef<HTMLElement>(null);
-  const [endpoint, setEndpoint] = useState<OnrEndpoint | null>(null);
-  const [mode, setMode] = useState<Mode>("official");
-  const [origin, setOrigin] = useState("");
-  const [key, setKey] = useState("");
-  const [replaceKey, setReplaceKey] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const [submitted, setSubmitted] = useState(false);
-  const [confirming, setConfirming] = useState(false);
-  const [connectionOpen, setConnectionOpen] = useState(false);
-  const [tab, setTab] = useState<
-    | "overview"
-    | "activity"
-    | "credentials"
-    | "connection"
-    | "tariffs"
-    | "commercial"
-    | "composition"
-  >("overview");
+  const [tab, setTab] = useState<EditorTab>("overview");
 
   const accountId = account?.id ?? null;
   const accountProvider = account?.provider ?? null;
   const activeOnrAccount = accounts.find(
-    (candidate) => candidate.provider === "onr" && candidate.status === "active",
+    (candidate) =>
+      candidate.provider === "onr" && candidate.status === "active",
   );
   const now = useNow();
   const {
@@ -128,44 +66,28 @@ export function SupplierAccountEditor({
     if (accountId) reloadSnapshot();
   }, [tab, accountId, reloadSnapshot]);
 
-  const apply = useCallback((current: OnrEndpoint) => {
-    setEndpoint(current);
-    setMode(current.mode);
-    setOrigin(current.mode === "proxy" ? current.origin : "");
-    setKey("");
-    setReplaceKey(false);
-    setSubmitted(false);
-  }, []);
-
-  const load = useCallback(async () => {
-    if (!accountId || accountProvider !== "onr") return;
-    setLoading(true);
-    try {
-      apply(await getOnrEndpoint(accountId));
-      setError("");
-    } catch (cause) {
-      if (cause instanceof ApiError && cause.status === 401) onUnauthorized();
-      else setError(message(cause));
-    } finally {
-      setLoading(false);
-    }
-  }, [accountId, accountProvider, apply, onUnauthorized]);
-
-  useEffect(() => {
-    if (!accountId) {
-      queueMicrotask(() => {
-        setEndpoint(null);
-        setError("");
-        setConfirming(false);
-      });
-      return;
-    }
-    queueMicrotask(() => void load());
-  }, [accountId, load]);
+  const conn = useOnrConnection({
+    accountId,
+    accountProvider,
+    csrf,
+    onUnauthorized,
+    onToast,
+  });
+  const {
+    busy,
+    confirming,
+    endpoint,
+    restoring,
+    target,
+    keyNeeded,
+    keyConfigured,
+    commit,
+    setConfirming,
+  } = conn;
 
   function close() {
     if (busy) return;
-    setKey("");
+    conn.setKey("");
     setTab("overview");
     onClose();
   }
@@ -174,142 +96,7 @@ export function SupplierAccountEditor({
 
   const ready = account ? readiness(account, snapshot, now) : [];
   const readyState = (id: string) => ready.find((row) => row.id === id)?.state;
-  const groups: {
-    title: string;
-    items: { id: typeof tab; label: string; hint: string; dot?: string }[];
-  }[] = account
-    ? [
-        {
-          title: "Geral",
-          items: [
-            {
-              id: "overview",
-              label: "Visão geral",
-              hint: "Prontidão e uso",
-            },
-            { id: "activity", label: "Atividade", hint: "Quem mudou o quê" },
-          ],
-        },
-        {
-          title: "Conta",
-          items: [
-            {
-              id: "credentials",
-              label: "Credenciais",
-              hint: "Login e vínculo",
-              dot: readyState("credential"),
-            },
-            ...(account.provider === "onr"
-              ? [
-                  {
-                    id: "connection" as const,
-                    label: "Conexão",
-                    hint: "Origem das consultas",
-                    dot: readyState("connection"),
-                  },
-                ]
-              : []),
-          ],
-        },
-        {
-          title: "Preços",
-          items: [
-            {
-              id: "tariffs",
-              label: "Tarifas da API",
-              hint: "Custo do fornecedor",
-              dot: readyState("tariff"),
-            },
-            {
-              id: "commercial" as const,
-              label: "Condições comerciais",
-              hint: account.provider === "onr" ? "Margens e impostos" : "Reserva de IA compartilhada",
-              dot: readyState("terms"),
-            },
-            ...(account.provider === "onr"
-              ? [
-                  {
-                    id: "composition" as const,
-                    label: "Composição do preço",
-                    hint: "Do custo cru ao preço",
-                  },
-                ]
-              : []),
-          ],
-        },
-      ]
-    : [];
-
-  const keyConfigured = endpoint?.proxy_key_configured ?? false;
-  const view = endpoint ? endpointView(endpoint) : null;
-  const check = validateEndpointForm({
-    origin,
-    key,
-    keyConfigured,
-    replaceKey,
-  });
-  const normalized = validateProxyOrigin(origin);
-  const target = normalized.ok ? normalized.origin : origin.trim();
-  const changed =
-    endpoint !== null &&
-    (mode === "official"
-      ? endpoint.mode === "proxy"
-      : endpoint.mode !== "proxy" || replaceKey || target !== endpoint.origin);
-  const restoring = mode === "official";
-  const keyNeeded = !keyConfigured || replaceKey;
-
-  function review() {
-    setSubmitted(true);
-    if (!changed) return;
-    if (!restoring && !check.ok) return;
-    setConfirming(true);
-  }
-
-  async function commit(reason: string) {
-    if (!accountId || !endpoint) return;
-    setBusy(true);
-    try {
-      const updated = restoring
-        ? await resetOnrEndpoint(accountId, endpoint.version, reason, csrf)
-        : await setOnrEndpoint(
-            accountId,
-            target,
-            keyNeeded ? key : null,
-            endpoint.version,
-            reason,
-            csrf,
-          );
-      apply(updated);
-      setConfirming(false);
-      setConnectionOpen(false);
-      setError("");
-      onToast(
-        restoring
-          ? "Origem oficial restaurada para novas execuções."
-          : "Conexão atualizada para novas execuções.",
-        "success",
-      );
-    } catch (cause) {
-      setKey("");
-      setConfirming(false);
-      if (cause instanceof ApiError && cause.status === 401) onUnauthorized();
-      else {
-        setError(message(cause));
-        if (cause instanceof ApiError && cause.status === 409) await load();
-      }
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  const status = account ? supplierStatusView(account.status) : null;
-  const initials = account
-    ? account.label
-        .split(/\s+/)
-        .slice(0, 2)
-        .map((word) => word[0]?.toUpperCase() ?? "")
-        .join("")
-    : "";
+  const groups = editorNavGroups(account, readyState);
 
   return (
     <>
@@ -324,54 +111,14 @@ export function SupplierAccountEditor({
             aria-labelledby="supplier-editor-title"
             aria-hidden={!open}
           >
-            {account && status && (
+            {account && (
               <div className="sup-ed-shell">
-                <header className="sup-ed-header">
-                  <span className="sup-ed-avatar" aria-hidden="true">
-                    {initials}
-                  </span>
-                  <div className="sup-ed-heading">
-                    <h2 id="supplier-editor-title" className="sup-clip">
-                      {account.label}
-                    </h2>
-                    <p className="sup-clip">
-                      {supplierLabel(account.provider)} · versão{" "}
-                      {account.version} · atualizada em{" "}
-                      {dateTime.format(new Date(account.updated_at))}
-                    </p>
-                  </div>
-                  <span className={`badge badge-${status.tone}`}>
-                    {status.label}
-                  </span>
-                  {account.status !== "active" ? (
-                    <button
-                      type="button"
-                      className="btn btn-primary btn-md"
-                      aria-haspopup="dialog"
-                      onClick={() => onStatusAction("activate", account)}
-                    >
-                      Ativar
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      className="btn btn-ghost-danger btn-md"
-                      aria-haspopup="dialog"
-                      onClick={() => onStatusAction("suspend", account)}
-                    >
-                      Suspender
-                    </button>
-                  )}
-                  <button
-                    className="btn btn-ghost btn-sm"
-                    type="button"
-                    aria-label="Fechar"
-                    disabled={busy}
-                    onClick={close}
-                  >
-                    ✕
-                  </button>
-                </header>
+                <SupplierEditorHeader
+                  account={account}
+                  busy={busy}
+                  onClose={close}
+                  onStatusAction={onStatusAction}
+                />
 
                 <div className="sup-ed-layout">
                   <nav
@@ -436,257 +183,7 @@ export function SupplierAccountEditor({
                     )}
 
                     {tab === "connection" && account.provider === "onr" && (
-                      <>
-                        <SettingCard
-                          title="Conexão com o portal"
-                          help="Define por onde as consultas desta conta chegam ao RI Digital. A troca vale para execuções iniciadas depois de salvar; compras com resultado incerto continuam indo para conciliação, sem reenvio automático."
-                          badge={
-                            view && (
-                              <span className={`badge badge-${view.tone}`}>
-                                {view.title}
-                              </span>
-                            )
-                          }
-                          actions={
-                            <>
-                              <button
-                                type="button"
-                                className="btn btn-ghost btn-md"
-                                disabled={loading || busy}
-                                onClick={() => void load()}
-                              >
-                                {loading ? "Atualizando…" : "Atualizar"}
-                              </button>
-                              <button
-                                type="button"
-                                className="btn btn-primary btn-md"
-                                aria-haspopup="dialog"
-                                disabled={!endpoint}
-                                onClick={() => {
-                                  setSubmitted(false);
-                                  setConnectionOpen(true);
-                                }}
-                              >
-                                Alterar conexão
-                              </button>
-                            </>
-                          }
-                        >
-                          {error && !connectionOpen && (
-                            <div className="alert alert-danger" role="alert">
-                              {error}
-                            </div>
-                          )}
-                          {loading && !endpoint ? (
-                            <div
-                              className="sup-ed-skeleton"
-                              role="status"
-                              aria-label="Carregando conexão"
-                            >
-                              <span className="skeleton" />
-                              <span className="skeleton" />
-                            </div>
-                          ) : endpoint && view ? (
-                            <>
-                              <Metrics
-                                items={[
-                                  { label: "Origem", value: view.title },
-                                  { label: "Chave do proxy", value: view.key },
-                                  { label: "Versão", value: endpoint.version },
-                                ]}
-                              />
-                              <p className="sup-muted sup-clip">
-                                Endereço <code>{endpoint.origin}</code>
-                              </p>
-                            </>
-                          ) : null}
-                        </SettingCard>
-                        <InlinePanel
-                          open={connectionOpen && endpoint !== null}
-                          title="Alterar conexão"
-                          onClose={() => !busy && setConnectionOpen(false)}
-                          footer={
-                            <>
-                              <button
-                                type="button"
-                                className="btn btn-ghost btn-md"
-                                disabled={busy}
-                                onClick={() => setConnectionOpen(false)}
-                              >
-                                Cancelar
-                              </button>
-                              <button
-                                type="submit"
-                                form="onr-connection-form"
-                                className="btn btn-primary btn-md"
-                                disabled={busy || !changed}
-                              >
-                                {restoring
-                                  ? "Revisar restauração"
-                                  : "Revisar e salvar"}
-                              </button>
-                            </>
-                          }
-                        >
-                          {error && (
-                            <div className="alert alert-danger" role="alert">
-                              {error}
-                            </div>
-                          )}
-                          {endpoint && (
-                            <form
-                              id="onr-connection-form"
-                              noValidate
-                              autoComplete="off"
-                              className="sup-form-grid"
-                              onSubmit={(event) => {
-                                event.preventDefault();
-                                review();
-                              }}
-                            >
-                              <div className="sup-span">
-                                <RolePicker<Mode>
-                                  label="Origem das consultas"
-                                  value={mode}
-                                  options={MODES}
-                                  disabled={busy}
-                                  onChange={(next) => {
-                                    setMode(next);
-                                    setSubmitted(false);
-                                  }}
-                                />
-                              </div>
-                              {mode === "proxy" ? (
-                                <>
-                                  <div className="form-field sup-span">
-                                    <label
-                                      className="form-field-label"
-                                      htmlFor="onr-origin"
-                                    >
-                                      URL raiz do Worker
-                                    </label>
-                                    <input
-                                      id="onr-origin"
-                                      className="input"
-                                      type="url"
-                                      inputMode="url"
-                                      autoComplete="off"
-                                      spellCheck={false}
-                                      maxLength={255}
-                                      placeholder={WORKER_EXAMPLE}
-                                      value={origin}
-                                      disabled={busy}
-                                      aria-invalid={
-                                        submitted && check.errors.origin
-                                          ? true
-                                          : undefined
-                                      }
-                                      onChange={(event) =>
-                                        setOrigin(event.target.value)
-                                      }
-                                    />
-                                    {submitted && check.errors.origin ? (
-                                      <span
-                                        className="form-hint sup-error"
-                                        role="alert"
-                                      >
-                                        {check.errors.origin}
-                                      </span>
-                                    ) : (
-                                      <span className="form-hint">
-                                        HTTPS em um Worker
-                                        sec-devchamps.workers.dev, sem caminho.
-                                      </span>
-                                    )}
-                                  </div>
-                                  <div className="form-field sup-span">
-                                    <label
-                                      className="form-field-label"
-                                      htmlFor="onr-key"
-                                    >
-                                      Chave do Worker
-                                    </label>
-                                    {keyConfigured && !replaceKey ? (
-                                      <div className="sup-ed-keep">
-                                        <span>
-                                          <span aria-hidden="true">
-                                            ●●●●●●●●●●●●
-                                          </span>{" "}
-                                          Guardada no cofre
-                                        </span>
-                                        <button
-                                          type="button"
-                                          className="btn btn-secondary btn-sm"
-                                          disabled={busy}
-                                          onClick={() => setReplaceKey(true)}
-                                        >
-                                          Trocar chave
-                                        </button>
-                                      </div>
-                                    ) : (
-                                      <>
-                                        <input
-                                          id="onr-key"
-                                          className="input"
-                                          type="password"
-                                          autoComplete="off"
-                                          spellCheck={false}
-                                          maxLength={256}
-                                          value={key}
-                                          disabled={busy}
-                                          aria-invalid={
-                                            submitted && check.errors.key
-                                              ? true
-                                              : undefined
-                                          }
-                                          onChange={(event) =>
-                                            setKey(event.target.value)
-                                          }
-                                        />
-                                        {submitted && check.errors.key ? (
-                                          <span
-                                            className="form-hint sup-error"
-                                            role="alert"
-                                          >
-                                            {check.errors.key}
-                                          </span>
-                                        ) : (
-                                          <span className="form-hint">
-                                            Enviada uma vez, cifrada e nunca
-                                            mostrada de novo.
-                                          </span>
-                                        )}
-                                        {keyConfigured && (
-                                          <button
-                                            type="button"
-                                            className="btn btn-ghost btn-sm sup-ed-link"
-                                            disabled={busy}
-                                            onClick={() => {
-                                              setReplaceKey(false);
-                                              setKey("");
-                                            }}
-                                          >
-                                            Manter a chave atual
-                                          </button>
-                                        )}
-                                      </>
-                                    )}
-                                  </div>
-                                </>
-                              ) : endpoint.mode === "proxy" ? (
-                                <p className="alert alert-warning sup-span">
-                                  Voltar para <code>{OFFICIAL_ORIGIN}</code>{" "}
-                                  remove a chave do proxy do cofre.
-                                </p>
-                              ) : (
-                                <p className="sup-muted sup-span">
-                                  Esta conta já consulta o portal original.
-                                </p>
-                              )}
-                            </form>
-                          )}
-                        </InlinePanel>
-                      </>
+                      <SupplierConnectionTab conn={conn} />
                     )}
 
                     {tab === "tariffs" && (
@@ -710,28 +207,14 @@ export function SupplierAccountEditor({
                       </>
                     )}
 
-                    {tab === "commercial" && (account.provider === "onr" || activeOnrAccount) && (
-                      <>
-                        {account.provider !== "onr" && (
-                          <p className="sup-muted">
-                            A reserva de IA é a mesma para visualização InfoSimples e pedidos RI Digital.
-                            A versão comercial pertence à conta RI Digital ativa e vale somente para novas cotações.
-                          </p>
-                        )}
-                        <RegistryCommercialTerms
-                          key={account.provider === "onr" ? account.id : activeOnrAccount?.id}
-                          accountId={account.provider === "onr" ? account.id : activeOnrAccount!.id}
-                          active={account.provider === "onr" ? account.status === "active" : !!activeOnrAccount}
-                          csrf={csrf}
-                          onUnauthorized={onUnauthorized}
-                          onToast={onToast}
-                        />
-                      </>
-                    )}
-                    {tab === "commercial" && account.provider !== "onr" && !activeOnrAccount && (
-                      <p className="alert alert-warning" role="status">
-                        Ative uma conta RI Digital para publicar a reserva de IA compartilhada.
-                      </p>
+                    {tab === "commercial" && (
+                      <SupplierCommercialTab
+                        account={account}
+                        activeOnrAccount={activeOnrAccount}
+                        csrf={csrf}
+                        onUnauthorized={onUnauthorized}
+                        onToast={onToast}
+                      />
                     )}
 
                     {tab === "composition" && account.provider === "onr" && (

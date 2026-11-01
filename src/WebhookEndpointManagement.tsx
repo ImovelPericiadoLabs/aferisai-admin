@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { createPortal } from "react-dom";
 import { useDialogFocus } from "./useDialogFocus";
 import {
   ApiError,
@@ -11,55 +10,24 @@ import {
   type WebhookEndpoint,
   type WebhookTestResult,
 } from "./api";
-import { ConfirmDialog } from "./ConfirmDialog";
-import { Checkbox } from "./controls";
 import { SecretReveal } from "./SecretReveal";
 import { webhookStep } from "./webhook-setup-model";
-import { eventsSummary } from "./webhook-settings-model";
-import { IntegrationIcon } from "./IntegrationIcon";
-import { webhookHost } from "./application-overview-model";
+import {
+  validUrl,
+  type WebhookEndpointManagementProps as Props,
+} from "./webhook-endpoint-model";
+import { WebhookConfirmDialogs } from "./WebhookConfirmDialogs";
+import { WebhookConfigPanel } from "./WebhookConfigPanel";
+import { WebhookDestination } from "./WebhookDestination";
+import { WebhookDrawer } from "./WebhookDrawer";
 import { WebhookFlow } from "./WebhookFlow";
+import { WebhookHeader } from "./WebhookHeader";
+import { WebhookOnboardingCard } from "./WebhookOnboardingCard";
 import { WebhookPayloads } from "./WebhookPayloads";
 import { WebhookSettings } from "./WebhookSettings";
+import { WebhookSetupPanel } from "./WebhookSetupPanel";
+import { WebhookTestResultAlert } from "./WebhookTestResultAlert";
 import "./partner-onboarding.css";
-
-type Props = {
-  applicationId: string;
-  csrfToken: string;
-  canManage: boolean;
-  canEdit: boolean;
-  onUnauthorized: () => void;
-  channel?: "team" | "partner";
-  onChanged?: () => void;
-};
-
-function validUrl(value: string): boolean {
-  try {
-    const parsed = new URL(value);
-    return (
-      parsed.protocol === "https:" &&
-      Boolean(parsed.hostname) &&
-      (!parsed.port || ["443", "8443"].includes(parsed.port)) &&
-      !parsed.username &&
-      !parsed.password
-    );
-  } catch {
-    return false;
-  }
-}
-
-const nextStepTitle = [
-  "Informe o endereço",
-  "Confirme a verificação da assinatura",
-  "Envie um teste assinado",
-  "Ative o webhook",
-];
-const nextStepText = [
-  "Cadastre o endereço HTTPS que recebe os eventos.",
-  "Guarde a chave no seu servidor e confirme que ele verifica a assinatura.",
-  "O teste usa um evento fictício assinado e não cria análise nem cobrança.",
-  "O destino confirmou o teste. Ative para receber eventos reais.",
-];
 
 export function WebhookEndpointManagement({
   applicationId,
@@ -255,57 +223,18 @@ export function WebhookEndpointManagement({
     configured,
     testDelivered: test?.status === "delivered",
   });
-  const testResult = test && (
-    <div
-      className={`alert ${test.status === "delivered" ? "alert-success" : "alert-warning"}`}
-      role="status"
-    >
-      <strong>
-        {test.status === "delivered"
-          ? "Teste recebido pelo destino"
-          : "Teste sem confirmação de entrega"}
-      </strong>
-      <div>
-        {test.http_status
-          ? `HTTP ${test.http_status}`
-          : "Sem resposta HTTP confirmada"}
-        {test.duration_ms != null ? ` · ${test.duration_ms} ms` : ""}
-      </div>
-    </div>
-  );
+  const testResult = test && <WebhookTestResultAlert test={test} />;
 
   return (
     <section className="cred" aria-labelledby="webhook-title">
-      <header className="cred-head">
-        <div>
-          <h3 className="appws-section-title" id="webhook-title">
-            Webhook
-          </h3>
-          <p className="form-hint">
-            Receba um aviso assinado quando a análise for concluída.
-          </p>
-        </div>
-        {endpoint?.status === "active" && canManage && canEdit && (
-          <div className="appdir-actions">
-            <button
-              type="button"
-              className="btn btn-secondary btn-sm"
-              disabled={busy}
-              onClick={() => void sendTest()}
-            >
-              {busy ? "Enviando…" : "Enviar teste assinado"}
-            </button>
-            <button
-              type="button"
-              className="btn btn-secondary btn-sm"
-              disabled={busy}
-              onClick={() => setConfirmSuspend(true)}
-            >
-              Suspender
-            </button>
-          </div>
-        )}
-      </header>
+      <WebhookHeader
+        endpoint={endpoint}
+        canManage={canManage}
+        canEdit={canEdit}
+        busy={busy}
+        onSendTest={() => void sendTest()}
+        onSuspend={() => setConfirmSuspend(true)}
+      />
       {error && (
         <div className="alert alert-danger" role="alert">
           {error}
@@ -319,103 +248,24 @@ export function WebhookEndpointManagement({
       />
 
       {!endpoint && !error && (
-        <div className="onb card">
-          <span className="onb-badge" aria-hidden="true">
-            <IntegrationIcon name="webhook" size={28} />
-          </span>
-          <h4>Conecte sua aplicação em 4 passos</h4>
-          <p className="onb-lead">
-            Receba um aviso assinado no seu servidor sempre que uma análise for
-            concluída.
-          </p>
-          <ul className="onb-perks">
-            <li>
-              <IntegrationIcon name="shield" size={16} /> Eventos assinados
-            </li>
-            <li>
-              <IntegrationIcon name="check" size={16} /> Teste antes de ativar
-            </li>
-            <li>
-              <IntegrationIcon name="lock" size={16} /> Nenhuma análise ou
-              cobrança no teste
-            </li>
-          </ul>
-          <button
-            className="btn btn-primary btn-lg onb-cta"
-            type="button"
-            disabled={!canManage || !canEdit || busy}
-            onClick={() => setDrawer("setup")}
-          >
-            Configurar webhook
-          </button>
-          <small className="onb-foot">
-            O cadastro só prepara a chave de assinatura. Nenhuma entrega real é
-            ativada ainda.
-          </small>
-        </div>
+        <WebhookOnboardingCard
+          disabled={!canManage || !canEdit || busy}
+          onStart={() => setDrawer("setup")}
+        />
       )}
 
       {endpoint && (
-        <>
-          <div className="card webhook-destination">
-            <div>
-              <small className="rules-cell-sub">Destino completo</small>
-              <strong className="rules-cell-main">{endpoint.url}</strong>
-              <small className="rules-cell-sub">
-                Eventos: {eventsSummary(endpoint.event_types)}
-              </small>
-            </div>
-            <span
-              className={`badge ${endpoint.status === "active" ? "badge-success" : endpoint.status === "draft" ? "badge-neutral" : "badge-warning"}`}
-            >
-              {endpoint.status === "active"
-                ? "Ativo"
-                : endpoint.status === "draft"
-                  ? "Em configuração"
-                  : "Suspenso"}
-            </span>
-          </div>
-          {endpoint.status === "active" && testResult}
-          {endpoint.status !== "active" && canManage && canEdit && (
-            <section className="card next-step" aria-label="Próximo passo">
-              <span className="next-step-mark" aria-hidden="true">
-                {step + 1}
-              </span>
-              <div>
-                <strong>
-                  {nextStepTitle[step] ?? "Continue a configuração"}
-                </strong>
-                <p className="form-hint">{nextStepText[step]}</p>
-                {endpoint.status === "suspended" && !test && (
-                  <p className="form-hint">
-                    O webhook está suspenso. Envie um novo teste antes de
-                    ativá-lo.
-                  </p>
-                )}
-                {testResult}
-              </div>
-              <button
-                type="button"
-                className="btn btn-primary btn-md"
-                disabled={busy}
-                onClick={() => setDrawer("config")}
-              >
-                Continuar configuração
-              </button>
-            </section>
-          )}
-          {canManage && canEdit && (
-            <div>
-              <button
-                type="button"
-                className="btn btn-ghost-danger btn-sm"
-                onClick={() => setConfirmRemove(true)}
-              >
-                Remover destino
-              </button>
-            </div>
-          )}
-        </>
+        <WebhookDestination
+          endpoint={endpoint}
+          step={step}
+          test={test}
+          testResult={testResult}
+          canManage={canManage}
+          canEdit={canEdit}
+          busy={busy}
+          onContinue={() => setDrawer("config")}
+          onRemove={() => setConfirmRemove(true)}
+        />
       )}
 
       {endpoint && endpoint.status !== "draft" && canManage && canEdit && (
@@ -433,230 +283,55 @@ export function WebhookEndpointManagement({
 
       <WebhookPayloads endpointUrl={endpoint?.url ?? null} />
 
-      {createPortal(
-        <>
-          {drawer && (
-            <div
-              className="detail-panel-overlay"
-              onClick={() => !busy && setDrawer(null)}
-            />
-          )}
-          <aside
-            ref={panelRef}
-            className={`detail-panel${drawer ? " open" : ""}`}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="webhook-drawer-title"
-            aria-hidden={!drawer}
-          >
-            {drawer === "setup" && (
-              <>
-                <div className="detail-panel-header">
-                  <div>
-                    <h2 className="rules-panel-title" id="webhook-drawer-title">
-                      Passo 1 · Endereço
-                    </h2>
-                    <p className="rules-panel-sub">
-                      Onde sua aplicação recebe os eventos.
-                    </p>
-                  </div>
-                  <button
-                    className="btn btn-ghost btn-sm"
-                    type="button"
-                    aria-label="Fechar"
-                    disabled={busy}
-                    onClick={() => setDrawer(null)}
-                  >
-                    ✕
-                  </button>
-                </div>
-                <form
-                  id="webhook-register-form"
-                  className="detail-panel-body"
-                  noValidate
-                  onSubmit={(event) => void register(event)}
-                >
-                  {error && (
-                    <div className="alert alert-danger form-alert" role="alert">
-                      {error}
-                    </div>
-                  )}
-                  <div className="form-field">
-                    <label
-                      className="form-field-label"
-                      htmlFor={`webhook-url-${applicationId}`}
-                    >
-                      URL do webhook
-                    </label>
-                    <input
-                      id={`webhook-url-${applicationId}`}
-                      className="input"
-                      type="url"
-                      inputMode="url"
-                      autoComplete="url"
-                      placeholder="https://api.suaempresa.com/webhooks/aferis"
-                      value={url}
-                      onChange={(event) => {
-                        setUrl(event.target.value);
-                        setUrlError("");
-                      }}
-                      aria-invalid={Boolean(urlError)}
-                      aria-describedby={`webhook-url-hint-${applicationId}`}
-                      disabled={busy || !canEdit}
-                      required
-                    />
-                    <span
-                      id={`webhook-url-hint-${applicationId}`}
-                      className={`form-hint${urlError ? " onboarding-error" : ""}`}
-                      role={urlError ? "alert" : undefined}
-                    >
-                      {urlError ||
-                        "Endereço público HTTPS sob controle da sua equipe. Um destino por aplicação. Porta padrão ou 8443."}
-                    </span>
-                  </div>
-                </form>
-                <div className="detail-panel-footer">
-                  <button
-                    className="btn btn-primary btn-md"
-                    type="submit"
-                    form="webhook-register-form"
-                    disabled={!canManage || !canEdit || busy || !url.trim()}
-                  >
-                    {busy ? "Preparando…" : "Registrar e continuar"}
-                  </button>
-                  <button
-                    className="btn btn-ghost btn-md"
-                    type="button"
-                    disabled={busy}
-                    onClick={() => setDrawer(null)}
-                  >
-                    Cancelar
-                  </button>
-                </div>
-              </>
-            )}
-            {drawer === "config" && endpoint && (
-              <>
-                <div className="detail-panel-header">
-                  <div>
-                    <h2 className="rules-panel-title" id="webhook-drawer-title">
-                      Passos 2 a 4 · Assinatura, teste e ativação
-                    </h2>
-                    <p className="rules-panel-sub">
-                      {webhookHost(endpoint.url)}
-                    </p>
-                  </div>
-                  <button
-                    className="btn btn-ghost btn-sm"
-                    type="button"
-                    aria-label="Fechar"
-                    disabled={busy}
-                    onClick={() => setDrawer(null)}
-                  >
-                    ✕
-                  </button>
-                </div>
-                <div className="detail-panel-body">
-                  {error && (
-                    <div className="alert alert-danger form-alert" role="alert">
-                      {error}
-                    </div>
-                  )}
-                  <section className="detail-panel-section">
-                    <h3 className="detail-panel-section-title">Assinatura</h3>
-                    {!secret && (
-                      <p className="form-hint">
-                        A chave de assinatura não aparece de novo. Use a cópia
-                        salva no seu servidor para verificar o teste.
-                      </p>
-                    )}
-                    <Checkbox
-                      id="webhook-configured"
-                      label="Configurei a verificação da assinatura no meu servidor."
-                      checked={configured}
-                      onChange={setConfigured}
-                    />
-                  </section>
-                  <section className="detail-panel-section">
-                    <h3 className="detail-panel-section-title">Teste</h3>
-                    <p className="form-hint">
-                      O teste usa um evento fictício assinado. Não cria análise
-                      nem cobrança.
-                    </p>
-                    <button
-                      type="button"
-                      className="btn btn-secondary btn-md"
-                      disabled={busy || !configured}
-                      onClick={() => void sendTest()}
-                    >
-                      {busy ? "Enviando…" : "Enviar teste assinado"}
-                    </button>
-                    {testResult}
-                  </section>
-                  <section className="detail-panel-section">
-                    <h3 className="detail-panel-section-title">Ativação</h3>
-                    <p className="form-hint">
-                      {test?.status === "delivered"
-                        ? "O destino confirmou o teste. Ative para receber eventos reais."
-                        : "A ativação libera depois de um teste recebido pelo destino."}
-                    </p>
-                  </section>
-                </div>
-                <div className="detail-panel-footer">
-                  <button
-                    type="button"
-                    className="btn btn-primary btn-md"
-                    disabled={busy || test?.status !== "delivered"}
-                    onClick={() => void setStatus("active")}
-                  >
-                    Ativar webhook
-                  </button>
-                  <button
-                    className="btn btn-ghost btn-md"
-                    type="button"
-                    disabled={busy}
-                    onClick={() => setDrawer(null)}
-                  >
-                    Fechar
-                  </button>
-                </div>
-              </>
-            )}
-          </aside>
-        </>,
-        document.body,
-      )}
+      <WebhookDrawer
+        open={drawer !== null}
+        panelRef={panelRef}
+        busy={busy}
+        onClose={() => setDrawer(null)}
+      >
+        {drawer === "setup" && (
+          <WebhookSetupPanel
+            applicationId={applicationId}
+            url={url}
+            urlError={urlError}
+            error={error}
+            busy={busy}
+            canManage={canManage}
+            canEdit={canEdit}
+            onUrlChange={(value) => {
+              setUrl(value);
+              setUrlError("");
+            }}
+            onSubmit={(event) => void register(event)}
+            onClose={() => setDrawer(null)}
+          />
+        )}
+        {drawer === "config" && endpoint && (
+          <WebhookConfigPanel
+            endpoint={endpoint}
+            error={error}
+            busy={busy}
+            hasSecret={Boolean(secret)}
+            configured={configured}
+            test={test}
+            testResult={testResult}
+            onConfiguredChange={setConfigured}
+            onSendTest={() => void sendTest()}
+            onActivate={() => void setStatus("active")}
+            onClose={() => setDrawer(null)}
+          />
+        )}
+      </WebhookDrawer>
 
-      <ConfirmDialog
-        open={confirmSuspend && endpoint?.status === "active"}
-        title="Suspender este destino?"
-        description="Eventos futuros não serão enviados até você reativar o webhook."
-        details={endpoint ? [{ label: "Destino", value: endpoint.url }] : []}
-        confirmLabel="Confirmar suspensão"
+      <WebhookConfirmDialogs
+        endpoint={endpoint}
+        confirmSuspend={confirmSuspend}
+        confirmRemove={confirmRemove}
         busy={busy}
-        reason={{
-          label: "Motivo (fica na trilha de auditoria)",
-          min: 3,
-          max: 500,
-        }}
-        onConfirm={(reason) => void setStatus("suspended", reason)}
-        onCancel={() => setConfirmSuspend(false)}
-      />
-      <ConfirmDialog
-        open={confirmRemove}
-        tone="danger"
-        title="Remover este destino?"
-        description="Remover interrompe as entregas futuras. A chave atual será descartada."
-        details={endpoint ? [{ label: "Destino", value: endpoint.url }] : []}
-        confirmLabel="Remover destino"
-        busy={busy}
-        reason={{
-          label: "Motivo (fica na trilha de auditoria)",
-          min: 3,
-          max: 500,
-        }}
-        onConfirm={(reason) => void remove(reason)}
-        onCancel={() => setConfirmRemove(false)}
+        onSuspend={(reason) => void setStatus("suspended", reason)}
+        onRemove={(reason) => void remove(reason)}
+        onCancelSuspend={() => setConfirmSuspend(false)}
+        onCancelRemove={() => setConfirmRemove(false)}
       />
       {secret && (
         <SecretReveal

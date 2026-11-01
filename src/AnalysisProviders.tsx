@@ -6,31 +6,16 @@ import {
   type AnalysisProviderAccount,
 } from "./api";
 import { AnalysisProviderForm } from "./AnalysisProviderForm";
-import { AnalysisProviderPanel, kindLabels } from "./AnalysisProviderPanel";
-import { statusLabel } from "./display-labels";
-import { formatCostPerDay } from "./provider-model";
-import { providerStatusTone } from "./status-tones";
+import { AnalysisProviderPanel } from "./AnalysisProviderPanel";
+import { AnalysisProvidersTable } from "./AnalysisProvidersTable";
+import {
+  errorText,
+  filters,
+  type Drawer,
+  type Filter,
+} from "./analysis-providers-model";
 import { useDialogFocus } from "./useDialogFocus";
 import "./analysis-providers.css";
-
-type Filter = "" | AnalysisProviderAccount["status"];
-type Drawer = "closed" | "view" | "create";
-
-const filters: { value: Filter; label: string }[] = [
-  { value: "", label: "Todas" },
-  { value: "draft", label: "Rascunho" },
-  { value: "active", label: "Ativas" },
-  { value: "suspended", label: "Suspensas" },
-];
-
-function errorText(cause: unknown): string {
-  if (cause instanceof ApiError) {
-    if (cause.status === 404 || cause.status === 501)
-      return "A gestão de provedores ainda não está disponível nesta API.";
-    return cause.detail;
-  }
-  return "Não foi possível consultar a API. Tente novamente.";
-}
 
 export function AnalysisProviders({
   csrf,
@@ -247,75 +232,16 @@ export function AnalysisProviders({
           </span>
         </div>
       ) : (
-        <div className="data-table-wrap">
-          <table
-            className="data-table prov-table"
-            aria-label="Contas de provedor"
-          >
-            <thead>
-              <tr>
-                <th scope="col">Conta</th>
-                <th scope="col">Modelo</th>
-                <th scope="col">Pool</th>
-                <th scope="col">Estado</th>
-                <th scope="col">Limites</th>
-              </tr>
-            </thead>
-            <tbody>
-              {visible.map((item) => (
-                <tr
-                  key={item.id}
-                  data-clickable
-                  className={
-                    item.id === selectedId && drawer === "view"
-                      ? "selected"
-                      : undefined
-                  }
-                  onClick={() => {
-                    lastOpened.current = item.id;
-                    setSelectedId(item.id);
-                    setDrawer("view");
-                  }}
-                >
-                  <td data-label="Conta">
-                    <button
-                      className="prov-name"
-                      type="button"
-                      data-row-id={item.id}
-                      aria-haspopup="dialog"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        lastOpened.current = item.id;
-                        setSelectedId(item.id);
-                        setDrawer("view");
-                      }}
-                    >
-                      <strong>{item.label}</strong>
-                      <small>{kindLabels[item.kind]}</small>
-                    </button>
-                  </td>
-                  <td data-label="Modelo">{item.model}</td>
-                  <td data-label="Pool">{item.pool_key}</td>
-                  <td data-label="Estado">
-                    <span
-                      className={`badge ${providerStatusTone(item.status)}`}
-                    >
-                      {statusLabel(item.status)}
-                    </span>
-                  </td>
-                  <td data-label="Limites">
-                    <span className="prov-limit">
-                      {formatCostPerDay(item.daily_cost_cents)}
-                    </span>
-                    <small className="prov-limit-sub">
-                      {item.rpm} req/min · prioridade {item.priority}
-                    </small>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <AnalysisProvidersTable
+          visible={visible}
+          selectedId={selectedId}
+          drawer={drawer}
+          onOpen={(id) => {
+            lastOpened.current = id;
+            setSelectedId(id);
+            setDrawer("view");
+          }}
+        />
       )}
 
       {cursor && (

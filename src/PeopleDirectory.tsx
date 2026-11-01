@@ -1,16 +1,15 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { createPortal } from "react-dom";
 import { useDialogFocus } from "./useDialogFocus";
 import { teamRoleLabel } from "./display-labels";
 import {
-  accountAge,
   filterPeople,
-  formatPersonDate,
   SEARCH_LOAD_CAP,
   shouldLoadMoreForSearch,
   type PeopleTab,
   type Person,
 } from "./people-model";
+import { PeopleDetailPanel } from "./PeopleDetailPanel";
+import { PeopleTable } from "./PeopleTable";
 import "./people-directory.css";
 
 type Props = {
@@ -32,20 +31,6 @@ type Props = {
   /** Extra control next to the refresh button (for example an invite). */
   headerAction?: ReactNode;
 };
-
-function StatusBadge({ status }: { status: Person["status"] }) {
-  return (
-    <span
-      className={`badge ${status === "active" ? "badge-success" : "badge-warning"}`}
-    >
-      {status === "active" ? "Ativo" : "Suspenso"}
-    </span>
-  );
-}
-
-function initials(email: string): string {
-  return email.slice(0, 2).toLocaleUpperCase("pt-BR");
-}
 
 export function PeopleDirectory({
   title,
@@ -268,63 +253,16 @@ export function PeopleDirectory({
           )}
         </div>
       ) : visible.length > 0 ? (
-        <div className="data-table-wrap">
-          <table className="data-table people-table" aria-label={title}>
-            <thead>
-              <tr>
-                <th scope="col">Conta</th>
-                {showRole && <th scope="col">Papel</th>}
-                <th scope="col">Estado</th>
-                <th scope="col">Criada em</th>
-              </tr>
-            </thead>
-            <tbody>
-              {visible.map((person) => (
-                <tr
-                  key={person.id}
-                  data-clickable
-                  className={person.id === selectedId ? "selected" : undefined}
-                  onClick={() => {
-                    lastOpened.current = person.id;
-                    setSelectedId(person.id);
-                  }}
-                >
-                  <td data-label="Conta">
-                    <button
-                      className="people-name"
-                      data-row-id={person.id}
-                      type="button"
-                      aria-haspopup="dialog"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        lastOpened.current = person.id;
-                        setSelectedId(person.id);
-                      }}
-                    >
-                      <span className="people-avatar" aria-hidden="true">
-                        {initials(person.email)}
-                      </span>
-                      <span>{person.email}</span>
-                    </button>
-                  </td>
-                  {showRole && (
-                    <td data-label="Papel">
-                      <span className="badge badge-info">
-                        {teamRoleLabel(person.role)}
-                      </span>
-                    </td>
-                  )}
-                  <td data-label="Estado">
-                    <StatusBadge status={person.status} />
-                  </td>
-                  <td data-label="Criada em" className="people-date">
-                    {formatPersonDate(person.created_at)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <PeopleTable
+          title={title}
+          visible={visible}
+          showRole={showRole}
+          selectedId={selectedId}
+          onOpen={(id) => {
+            lastOpened.current = id;
+            setSelectedId(id);
+          }}
+        />
       ) : null}
 
       {hasMore && (
@@ -341,115 +279,14 @@ export function PeopleDirectory({
         </footer>
       )}
 
-      {createPortal(
-        <>
-          {selected && (
-            <div
-              className="detail-panel-overlay"
-              onClick={() => setSelectedId(null)}
-            />
-          )}
-          <aside
-            className={`detail-panel${selected ? " open" : ""}`}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="people-detail-title"
-            aria-hidden={!selected}
-            ref={panelRef}
-          >
-            <div className="detail-panel-header">
-              <div className="people-detail-head">
-                <span className="people-avatar people-avatar-lg">
-                  {selected ? initials(selected.email) : ""}
-                </span>
-                <div>
-                  <h2 className="people-detail-title" id="people-detail-title">
-                    {selected?.email}
-                  </h2>
-                  <div className="people-detail-badges">
-                    {selected && <StatusBadge status={selected.status} />}
-                    {selected?.role && (
-                      <span className="badge badge-info">
-                        {teamRoleLabel(selected.role)}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-              <button
-                className="btn btn-ghost btn-sm"
-                type="button"
-                aria-label="Fechar detalhes"
-                onClick={() => setSelectedId(null)}
-              >
-                ✕
-              </button>
-            </div>
-            <div className="detail-panel-body">
-              {selected && (
-                <>
-                  <section className="detail-panel-section">
-                    <h3 className="detail-panel-section-title">Conta</h3>
-                    <dl className="detail-panel-field">
-                      <dt>E-mail</dt>
-                      <dd>{selected.email}</dd>
-                      <dt>Estado</dt>
-                      <dd>
-                        {selected.status === "active" ? "Ativo" : "Suspenso"}
-                      </dd>
-                      {selected.role && (
-                        <>
-                          <dt>Papel</dt>
-                          <dd>{teamRoleLabel(selected.role)}</dd>
-                        </>
-                      )}
-                      <dt>Criada em</dt>
-                      <dd>{formatPersonDate(selected.created_at)}</dd>
-                      <dt>Tempo de conta</dt>
-                      <dd>{accountAge(selected.created_at)}</dd>
-                    </dl>
-                  </section>
-                  <section className="detail-panel-section">
-                    <h3 className="detail-panel-section-title">
-                      Identificador
-                    </h3>
-                    <div className="people-id">
-                      <code>{selected.id}</code>
-                      <button
-                        className="btn btn-secondary btn-sm"
-                        type="button"
-                        onClick={() => void copyId(selected.id)}
-                      >
-                        {copied ? "Copiado" : "Copiar ID"}
-                      </button>
-                    </div>
-                  </section>
-                  <section className="detail-panel-section">
-                    <h3 className="detail-panel-section-title">Gestão</h3>
-                    {renderManagement ? (
-                      renderManagement(selected)
-                    ) : (
-                      <p className="people-note">
-                        Esta tela é somente de consulta.
-                      </p>
-                    )}
-                  </section>
-                </>
-              )}
-            </div>
-            <div className="detail-panel-footer">
-              <button
-                className="btn btn-secondary btn-md"
-                type="button"
-                onClick={() => setSelectedId(null)}
-              >
-                Fechar
-              </button>
-            </div>
-          </aside>
-        </>,
-        document.body,
-      )}
+      <PeopleDetailPanel
+        selected={selected}
+        panelRef={panelRef}
+        copied={copied}
+        onCopy={(id) => void copyId(id)}
+        onClose={() => setSelectedId(null)}
+        renderManagement={renderManagement}
+      />
     </section>
   );
 }

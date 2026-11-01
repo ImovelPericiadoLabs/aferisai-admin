@@ -3,7 +3,6 @@ import {
   ApiError,
   createOnrPreviewReview,
   getOnrOrdersInspection,
-  getOnrPreviewReviews,
   listOnrPreviewAttempts,
   type OnrPortalOrdersInspection,
   type OnrPreviewAttentionItem,
@@ -11,42 +10,18 @@ import {
 } from "./api";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { decisionLabel } from "./display-labels";
-import { OnrInspection } from "./OnrInspection";
-import { OnrVersionHistory } from "./OnrVersionHistory";
+import { OnrPreviewDetail } from "./OnrPreviewDetail";
+import { OnrPreviewQueue } from "./OnrPreviewQueue";
+import { problem } from "./onr-preview-format";
+import { loadHistory } from "./onr-preview-history";
 import {
-  DECISION_OPTIONS,
   latestReviewId,
   shortId,
   shortSha,
   type ReviewDecision,
 } from "./onr-review-model";
-import { RolePicker } from "./RolePicker";
 import type { ToastKind } from "./useToast";
 import "./onr-review.css";
-
-const dateTime = new Intl.DateTimeFormat("pt-BR", {
-  dateStyle: "short",
-  timeStyle: "short",
-});
-
-function problem(cause: unknown, fallback: string) {
-  return cause instanceof ApiError ? cause.detail : fallback;
-}
-
-/** Reads every page of the (ascending) version history of one attempt. */
-async function loadHistory(
-  attemptId: string,
-): Promise<OnrPreviewReviewHistory["items"]> {
-  const all: OnrPreviewReviewHistory["items"] = [];
-  let after = 0;
-  for (let guard = 0; guard < 20; guard += 1) {
-    const page = await getOnrPreviewReviews(attemptId, after);
-    all.push(...page.items);
-    if (page.next_version === null) break;
-    after = page.next_version;
-  }
-  return all;
-}
 
 export function OnrPreviewReview({
   csrf,
@@ -203,218 +178,31 @@ export function OnrPreviewReview({
       </header>
 
       <div className={`onr-rv-grid${selected ? " has-selection" : ""}`}>
-        <aside className="onr-rv-queue" aria-label="Fila de tentativas">
-          {listError && (
-            <div className="error-state" role="alert">
-              <strong>Não foi possível carregar a fila</strong>
-              <span>{listError}</span>
-              <button
-                className="btn btn-secondary btn-sm"
-                type="button"
-                onClick={() => void loadList()}
-              >
-                Tentar novamente
-              </button>
-            </div>
-          )}
-          {loading && items.length === 0 && !listError && (
-            <div
-              className="rules-skeleton"
-              role="status"
-              aria-label="Carregando fila"
-            >
-              <span className="skeleton" />
-              <span className="skeleton" />
-            </div>
-          )}
-          {!loading && items.length === 0 && !listError && (
-            <div className="empty-state" role="status">
-              <strong>Nenhuma prévia aguardando revisão</strong>
-              <span>
-                As tentativas incertas aparecem aqui assim que existirem.
-              </span>
-            </div>
-          )}
-          <ul className="onr-rv-cards">
-            {items.map((item) => (
-              <li key={item.attempt_id}>
-                <button
-                  type="button"
-                  className="onr-rv-card"
-                  aria-pressed={selected?.attempt_id === item.attempt_id}
-                  onClick={() => open(item)}
-                >
-                  <span className="onr-rv-card-top">
-                    <strong>
-                      {dateTime.format(new Date(item.started_at))}
-                    </strong>
-                    <span
-                      className={`badge ${item.latest_decision ? "badge-info" : "badge-warning"}`}
-                    >
-                      {item.latest_decision
-                        ? decisionLabel(item.latest_decision)
-                        : "Sem revisão"}
-                    </span>
-                  </span>
-                  <span className="onr-rv-card-sub">
-                    Tentativa <code>{shortId(item.attempt_id)}</code>
-                    {item.review_version
-                      ? ` · versão ${item.review_version}`
-                      : ""}
-                  </span>
-                  <span className="onr-rv-card-sub">
-                    Pedido <code>{shortId(item.operation_id)}</code>
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
-          {cursor && (
-            <button
-              type="button"
-              className="btn btn-secondary btn-md"
-              disabled={loading}
-              onClick={() => void loadList(cursor)}
-            >
-              Carregar mais
-            </button>
-          )}
-        </aside>
+        <OnrPreviewQueue
+          items={items}
+          selectedId={selected?.attempt_id ?? null}
+          cursor={cursor}
+          loading={loading}
+          listError={listError}
+          onRetry={() => void loadList()}
+          onOpen={open}
+          onMore={(next) => void loadList(next)}
+        />
 
-        <div className="onr-rv-detail">
-          {!selected ? (
-            <div className="empty-state" role="status">
-              <strong>Escolha uma tentativa</strong>
-              <span>
-                Selecione na fila para ver a listagem do portal e as revisões
-                anteriores.
-              </span>
-            </div>
-          ) : (
-            <>
-              <div className="onr-rv-detail-head">
-                <button
-                  type="button"
-                  className="btn btn-ghost btn-sm onr-rv-back"
-                  onClick={back}
-                >
-                  ← Voltar à fila
-                </button>
-                <h2 className="onr-rv-title">
-                  Tentativa <code>{shortId(selected.attempt_id)}</code>
-                </h2>
-                <p className="onr-rv-muted">
-                  Iniciada em {dateTime.format(new Date(selected.started_at))} ·
-                  pedido <code>{selected.operation_id}</code>
-                </p>
-              </div>
-
-              {inspectError && (
-                <div className="error-state" role="alert">
-                  <strong>Não foi possível ler o portal</strong>
-                  <span>{inspectError}</span>
-                  <button
-                    className="btn btn-secondary btn-sm"
-                    type="button"
-                    onClick={() => void inspect(selected)}
-                  >
-                    Tentar novamente
-                  </button>
-                </div>
-              )}
-              {!inspection && !inspectError && (
-                <div
-                  className="rules-skeleton"
-                  role="status"
-                  aria-label="Lendo o portal"
-                >
-                  <span className="skeleton" />
-                  <span className="skeleton" />
-                  <span className="skeleton" />
-                </div>
-              )}
-              {inspection && (
-                <OnrInspection
-                  key={inspection.listing_sha256}
-                  attemptId={selected.attempt_id}
-                  inspection={inspection}
-                  onStale={() => {
-                    onToast(
-                      "A listagem do portal mudou. A inspeção foi recarregada.",
-                      "error",
-                    );
-                    void inspect(selected);
-                  }}
-                  onCopy={(text) => {
-                    void navigator.clipboard?.writeText(text).then(
-                      () => onToast("SHA-256 copiado.", "success"),
-                      () => onToast("Não foi possível copiar.", "error"),
-                    );
-                  }}
-                />
-              )}
-
-              <section
-                className="onr-rv-block"
-                aria-labelledby="onr-history-title"
-              >
-                <h3 className="onr-rv-title" id="onr-history-title">
-                  Versões da revisão
-                </h3>
-                {history === null ? (
-                  <div
-                    className="rules-skeleton"
-                    role="status"
-                    aria-label="Carregando versões"
-                  >
-                    <span className="skeleton" />
-                  </div>
-                ) : (
-                  <OnrVersionHistory
-                    items={history}
-                    currentSha={inspection?.listing_sha256 ?? null}
-                  />
-                )}
-              </section>
-
-              {inspection && history !== null && (
-                <section
-                  className="onr-rv-block"
-                  aria-labelledby="onr-decide-title"
-                >
-                  <h3 className="onr-rv-title" id="onr-decide-title">
-                    {history.length
-                      ? "Corrigir a decisão"
-                      : "Registrar a decisão"}
-                  </h3>
-                  {saveError && (
-                    <p className="alert alert-danger" role="alert">
-                      {saveError}
-                    </p>
-                  )}
-                  <RolePicker<ReviewDecision>
-                    label="O que você viu no portal"
-                    value={decision}
-                    options={DECISION_OPTIONS}
-                    disabled={busy}
-                    onChange={setDecision}
-                  />
-                  <div className="onr-rv-actions">
-                    <button
-                      type="button"
-                      className="btn btn-primary btn-md"
-                      aria-haspopup="dialog"
-                      disabled={busy}
-                      onClick={() => setConfirming(true)}
-                    >
-                      Revisar e registrar
-                    </button>
-                  </div>
-                </section>
-              )}
-            </>
-          )}
-        </div>
+        <OnrPreviewDetail
+          selected={selected}
+          inspection={inspection}
+          history={history}
+          inspectError={inspectError}
+          decision={decision}
+          busy={busy}
+          saveError={saveError}
+          onBack={back}
+          onInspect={(item) => void inspect(item)}
+          onToast={onToast}
+          onDecision={setDecision}
+          onReview={() => setConfirming(true)}
+        />
       </div>
 
       <ConfirmDialog

@@ -1,0 +1,347 @@
+import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  ApiError,
+  applyApplicationBulkChange,
+  createOrganization,
+  currentMember,
+  deleteSession,
+  describeOrganizationPermission,
+  getOrganization,
+  grantApplicationPermission,
+  issuePartnerCredential,
+  listOrganizations,
+  listPartnerCredentials,
+  previewApplicationBulkChange,
+  mediaUrl,
+  replaceOrganizationProfile,
+  revokeApplicationPermission,
+  revokePartnerCredential,
+} from "./api";
+import { uuidv7 } from "./uuidv7";
+
+afterEach(() => vi.unstubAllGlobals());
+
+describe("cliente da API interna", () => {
+  it("gera identificador UUIDv7 para a tentativa de emissão", () => {
+    const value = uuidv7();
+    expect(value).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+    );
+  });
+
+  it("envia cookie e CSRF no cadastro sem armazenar o segredo", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          organization_id: "org",
+          application_id: "app",
+          client_id: "client",
+          client_secret: "one-time",
+        }),
+        { status: 201, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await createOrganization(
+      {
+        organization_slug: "parceiro",
+        organization_name: "Parceiro",
+        application_name: "API",
+      },
+      "csrf-test",
+    );
+
+    const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe("http://localhost:8000/v1/team/organizations");
+    expect(options.credentials).toBe("include");
+    expect(options.cache).toBe("no-store");
+    expect(options.headers).toMatchObject({ "X-CSRF-Token": "csrf-test" });
+    expect(result.client_secret).toBe("one-time");
+  });
+
+  it("não envia CSRF para a leitura da sessão e distingue o papel retornado", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          id: "member",
+          email: "equipe@example.com",
+          role: "viewer",
+        }),
+        { status: 200 },
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const member = await currentMember();
+    const [, options] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(options.method).toBe("GET");
+    expect(options.headers).not.toHaveProperty("X-CSRF-Token");
+    expect(member.role).toBe("viewer");
+  });
+
+  it("lê apenas a mensagem pública do contrato de erro", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            status: 403,
+            code: "team.csrf_invalid",
+            detail: "Confirmação inválida.",
+            internal: "hidden",
+          }),
+          { status: 403 },
+        ),
+      ),
+    );
+
+    await expect(deleteSession("invalid")).rejects.toMatchObject({
+      status: 403,
+      code: "team.csrf_invalid",
+      detail: "Confirmação inválida.",
+    } satisfies Partial<ApiError>);
+  });
+
+  it("aceita saída sem corpo de resposta", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(new Response(null, { status: 204 })),
+    );
+    await expect(deleteSession("csrf-test")).resolves.toBeUndefined();
+  });
+
+  it("busca organizações com filtro e cursor sem enviar CSRF", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ items: [], next_cursor: null }), {
+        status: 200,
+      }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    await listOrganizations("  cartório  ", "cursor-opaco", "active");
+    const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const parsed = new URL(url);
+    expect(parsed.pathname).toBe("/v1/team/organizations");
+    expect(parsed.searchParams.get("q")).toBe("cartório");
+    expect(parsed.searchParams.get("cursor")).toBe("cursor-opaco");
+    expect(parsed.searchParams.get("limit")).toBe("20");
+    expect(parsed.searchParams.get("status")).toBe("active");
+    expect(options.credentials).toBe("include");
+    expect(options.headers).not.toHaveProperty("X-CSRF-Token");
+  });
+
+  it("prepara e confirma alteração em massa com CSRF e chave de idempotência", async () => {
+    const preview = {
+      preview_id: uuidv7(),
+      organization_id: uuidv7(),
+      expires_at: new Date().toISOString(),
+      confirmation_hash: "hash-seguro",
+      selected_count: 2,
+      affected_count: 2,
+      state: "preview",
+      items: [],
+    };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify(preview), { status: 200 }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ ...preview, items: [] }), {
+          status: 200,
+        }),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+    const requestId = uuidv7();
+    const appIds = [uuidv7(), uuidv7()];
+    await previewApplicationBulkChange(
+      preview.organization_id,
+      appIds,
+      { status: "suspended" },
+      "csrf",
+      requestId,
+    );
+    await applyApplicationBulkChange(
+      preview.organization_id,
+      preview.preview_id,
+      preview.confirmation_hash,
+      "csrf",
+    );
+    const [previewUrl, previewInit] = fetchMock.mock.calls[0] as [
+      string,
+      RequestInit,
+    ];
+    const [applyUrl, applyInit] = fetchMock.mock.calls[1] as [
+      string,
+      RequestInit,
+    ];
+    expect(new URL(previewUrl).pathname).toBe(
+      `/v1/team/organizations/${preview.organization_id}/applications/bulk-previews`,
+    );
+    expect(previewInit.headers).toMatchObject({
+      "X-CSRF-Token": "csrf",
+      "Idempotency-Key": requestId,
+    });
+    expect(JSON.parse(previewInit.body as string)).toEqual({
+      application_ids: appIds,
+      changes: { status: "suspended" },
+    });
+    expect(new URL(applyUrl).pathname).toBe(
+      `/v1/team/organizations/${preview.organization_id}/applications/bulk-previews/${preview.preview_id}/apply`,
+    );
+    expect(applyInit.headers).toMatchObject({ "X-CSRF-Token": "csrf" });
+    expect(JSON.parse(applyInit.body as string)).toEqual({
+      confirmation_hash: "hash-seguro",
+    });
+  });
+
+  it("consulta detalhe por ID sem credencial de parceiro ou CSRF", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockImplementation(
+        async () =>
+          new Response(
+            JSON.stringify({ id: "org", applications: [], permissions: [] }),
+            { status: 200 },
+          ),
+      );
+    vi.stubGlobal("fetch", fetchMock);
+    await getOrganization("0199f6d9-3e75-7c71-9e2a-f74fd4ef60a0");
+    const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe(
+      "http://localhost:8000/v1/team/organizations/0199f6d9-3e75-7c71-9e2a-f74fd4ef60a0",
+    );
+    expect(options.credentials).toBe("include");
+    expect(options.headers).not.toHaveProperty("X-CSRF-Token");
+  });
+
+  it("aceita somente logo relativo à origem da API", () => {
+    expect(mediaUrl("/media/organizations/logo.webp")).toBe(
+      "http://localhost:8000/media/organizations/logo.webp",
+    );
+    expect(mediaUrl("https://fornecedor.example/logo.webp")).toBeNull();
+    expect(mediaUrl("//fornecedor.example/logo.webp")).toBeNull();
+    expect(mediaUrl(null)).toBeNull();
+  });
+
+  it("salva perfil com CSRF e sem alterar o slug", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          id: "org",
+          slug: "parceiro",
+          name: "Parceiro",
+          description: "Descrição",
+          status: "active",
+        }),
+        { status: 200 },
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    await replaceOrganizationProfile(
+      "org",
+      { name: "Parceiro", description: "Descrição" },
+      "csrf-test",
+    );
+    const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe("http://localhost:8000/v1/team/organizations/org/profile");
+    expect(options.method).toBe("PUT");
+    expect(options.credentials).toBe("include");
+    expect(options.headers).toMatchObject({ "X-CSRF-Token": "csrf-test" });
+    expect(JSON.parse(options.body as string)).toEqual({
+      name: "Parceiro",
+      description: "Descrição",
+    });
+  });
+
+  it("edita descrição e muda concessão somente por código do contrato", async () => {
+    const fetchMock = vi.fn().mockImplementation(
+      async () =>
+        new Response(
+          JSON.stringify({
+            code: "application:read",
+            description: "Consultar aplicação",
+          }),
+          { status: 200 },
+        ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    await describeOrganizationPermission(
+      "org",
+      "application:read",
+      "Consultar aplicação",
+      "csrf-test",
+    );
+    await grantApplicationPermission("app", "application:read", "csrf-test");
+    fetchMock.mockResolvedValueOnce(new Response(null, { status: 204 }));
+    await revokeApplicationPermission("app", "application:read", "csrf-test");
+    const calls = fetchMock.mock.calls as [string, RequestInit][];
+    expect(calls[0][0]).toContain(
+      "/organizations/org/permissions/application%3Aread",
+    );
+    expect(calls[0][1].method).toBe("PUT");
+    expect(JSON.parse(calls[0][1].body as string)).toEqual({
+      description: "Consultar aplicação",
+    });
+    expect(calls[1][0]).toContain(
+      "/applications/app/permissions/application%3Aread",
+    );
+    expect(calls[1][1].method).toBe("PUT");
+    expect(calls[2][1].method).toBe("DELETE");
+    for (const [, options] of calls)
+      expect(options.headers).toMatchObject({ "X-CSRF-Token": "csrf-test" });
+  });
+
+  it("lista metadados e emite uma credencial com chave UUIDv7 e CSRF", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ items: [], next_cursor: null }), {
+          status: 200,
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            id: "credential",
+            client_id: "client",
+            client_secret: "once",
+          }),
+          { status: 201 },
+        ),
+      )
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const key = "0199f6d9-3e75-7c71-9e2a-f74fd4ef60a0";
+    await listPartnerCredentials("app");
+    const issued = await issuePartnerCredential("app", key, "csrf-test", {
+      name: "Sistema de produção",
+      expires_in_days: 90,
+      scopes: ["application:read"],
+    });
+    await revokePartnerCredential("app", "credential", "csrf-test");
+
+    const calls = fetchMock.mock.calls as [string, RequestInit][];
+    expect(calls[0][0]).toContain("/applications/app/credentials?limit=20");
+    expect(calls[0][1].headers).not.toHaveProperty("X-CSRF-Token");
+    expect(calls[1][1].method).toBe("POST");
+    expect(calls[1][1].headers).toMatchObject({
+      "Idempotency-Key": key,
+      "X-CSRF-Token": "csrf-test",
+    });
+    expect(issued.client_secret).toBe("once");
+    expect(JSON.parse(String(calls[1][1].body))).toEqual({
+      name: "Sistema de produção",
+      expires_in_days: 90,
+      scopes: ["application:read"],
+    });
+    expect(calls[2][0]).toContain("/applications/app/credentials/credential");
+    expect(calls[2][1].method).toBe("DELETE");
+    expect(calls[2][1].headers).toMatchObject({ "X-CSRF-Token": "csrf-test" });
+    for (const [, options] of calls) {
+      expect(options.credentials).toBe("include");
+      expect(options.cache).toBe("no-store");
+    }
+  });
+});

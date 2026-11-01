@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { ApiError } from "./api";
 import { ConfirmDialog } from "./ConfirmDialog";
-import { Slider } from "./controls";
 import { FileDropzone } from "./FileDropzone";
 import { describeFile, formatBytes, type FileRule } from "./file-rules";
-import { clampZoom, computeCrop, fitWithin } from "./image-model";
+import { computeCrop, fitWithin } from "./image-model";
+import { FRAME, MAX_SIDE, toBlob } from "./image-framing";
+import { ImageFramingEditor } from "./ImageFramingEditor";
+import { ImagePreviews } from "./ImagePreviews";
+import { useObjectUrl } from "./useObjectUrl";
 
 type Props = {
   label: string;
@@ -19,28 +22,6 @@ type Props = {
   onRemove?: () => Promise<void>;
   onUnauthorized?: () => void;
 };
-
-const FRAME = 240;
-const MAX_SIDE = 1024;
-
-function useObjectUrl(blob: Blob | null): string | null {
-  const [state, setState] = useState<{ blob: Blob; url: string } | null>(null);
-  useEffect(() => {
-    if (!blob) return;
-    const url = URL.createObjectURL(blob);
-    setState({ blob, url });
-    return () => URL.revokeObjectURL(url);
-  }, [blob]);
-  return state && state.blob === blob ? state.url : null;
-}
-
-function toBlob(
-  canvas: HTMLCanvasElement,
-  type: string,
-  quality?: number,
-): Promise<Blob | null> {
-  return new Promise((resolve) => canvas.toBlob(resolve, type, quality));
-}
 
 export function ImageUploader({
   label,
@@ -257,84 +238,27 @@ export function ImageUploader({
           )}
 
           {best && previewUrl && (
-            <div className="iu-previews" aria-label="Como vai aparecer">
-              <p className="form-hint">
-                Como vai aparecer
-                {info ? ` · ${info.sizeLabel}` : ""}
-                {framed ? " · enquadramento aplicado" : ""}
-              </p>
-              <div className="iu-row">
-                <span className={`iu-avatar iu-circle iu-lg`}>
-                  <img src={previewUrl} alt="Prévia circular" />
-                </span>
-                <span className={`iu-avatar iu-square iu-lg`}>
-                  <img src={previewUrl} alt="Prévia quadrada" />
-                </span>
-                <span className="iu-avatar iu-square iu-lg iu-dark">
-                  <img src={previewUrl} alt="Prévia em fundo escuro" />
-                </span>
-              </div>
-            </div>
+            <ImagePreviews
+              previewUrl={previewUrl}
+              sizeLabel={info?.sizeLabel}
+              framed={framed !== null}
+            />
           )}
 
           {adjusting && (
-            <div className="iu-editor">
-              <canvas
-                ref={canvasRef}
-                width={FRAME}
-                height={FRAME}
-                className={`iu-canvas iu-${shape}`}
-                aria-label="Enquadramento da imagem"
-              />
-              <div className="iu-sliders" ref={zoomWrapRef}>
-                <Slider
-                  id="iu-zoom"
-                  label="Zoom"
-                  value={zoom}
-                  min={1}
-                  max={4}
-                  step={0.1}
-                  format={(value) => `${value.toFixed(1)}×`}
-                  onChange={(value) => setZoom(clampZoom(value))}
-                />
-                <Slider
-                  id="iu-x"
-                  label="Posição horizontal"
-                  value={offsetX}
-                  min={-1}
-                  max={1}
-                  step={0.05}
-                  format={(value) => `${Math.round(value * 100)}%`}
-                  onChange={setOffsetX}
-                />
-                <Slider
-                  id="iu-y"
-                  label="Posição vertical"
-                  value={offsetY}
-                  min={-1}
-                  max={1}
-                  step={0.05}
-                  format={(value) => `${Math.round(value * 100)}%`}
-                  onChange={setOffsetY}
-                />
-                <div className="iu-actions">
-                  <button
-                    className="btn btn-primary btn-sm"
-                    type="button"
-                    onClick={() => void applyFraming()}
-                  >
-                    Aplicar ajuste
-                  </button>
-                  <button
-                    className="btn btn-ghost btn-sm"
-                    type="button"
-                    onClick={() => setAdjusting(false)}
-                  >
-                    Cancelar
-                  </button>
-                </div>
-              </div>
-            </div>
+            <ImageFramingEditor
+              shape={shape}
+              zoom={zoom}
+              offsetX={offsetX}
+              offsetY={offsetY}
+              canvasRef={canvasRef}
+              zoomWrapRef={zoomWrapRef}
+              onZoomChange={setZoom}
+              onOffsetXChange={setOffsetX}
+              onOffsetYChange={setOffsetY}
+              onApply={() => void applyFraming()}
+              onCancel={() => setAdjusting(false)}
+            />
           )}
 
           {file && !adjusting && status !== "done" && (

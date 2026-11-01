@@ -1,25 +1,13 @@
-import { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { useRef } from "react";
 import { useDialogFocus } from "./useDialogFocus";
-import {
-  ApiError,
-  issuePartnerCredential,
-  listPartnerCredentials,
-  revokePartnerCredential,
-  type IssuedPartnerCredential,
-  type PartnerCredential,
-} from "./api";
 import { ConfirmDialog } from "./ConfirmDialog";
-import { Checkbox } from "./controls";
 import { IntegrationIcon } from "./IntegrationIcon";
-import { PermissionIcon } from "./PermissionIcon";
 import { SecretReveal } from "./SecretReveal";
-import { credentialState, expiryNote } from "./credential-model";
-import { uuidv7 } from "./uuidv7";
-import {
-  applicationPermissionDescription,
-  applicationPermissionLabel,
-} from "./display-labels";
+import { isExpired } from "./credential-dates";
+import { CredentialDetailPanel } from "./CredentialDetailPanel";
+import { CredentialIssuePanel } from "./CredentialIssuePanel";
+import { CredentialList } from "./CredentialList";
+import { useCredentialManagement } from "./useCredentialManagement";
 
 type Props = {
   applicationId: string;
@@ -32,20 +20,6 @@ type Props = {
   onChanged?: () => void;
 };
 
-function dateLabel(value: string): string {
-  const date = new Date(value);
-  return Number.isNaN(date.getTime())
-    ? "Data indisponível"
-    : new Intl.DateTimeFormat("pt-BR", {
-        dateStyle: "short",
-        timeStyle: "short",
-      }).format(date);
-}
-
-function isExpired(value: string | null | undefined): boolean {
-  return Boolean(value && new Date(value).getTime() <= Date.now());
-}
-
 export function CredentialManagement({
   applicationId,
   csrfToken,
@@ -56,201 +30,54 @@ export function CredentialManagement({
   onUnauthorized,
   onChanged,
 }: Props) {
-  const [items, setItems] = useState<PartnerCredential[]>([]);
-  const [cursor, setCursor] = useState<string | null>(null);
-  const [loaded, setLoaded] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const [listError, setListError] = useState(false);
-  const [notice, setNotice] = useState("");
-  const [issued, setIssued] = useState<IssuedPartnerCredential | null>(null);
-  const [uncertain, setUncertain] = useState<string | null>(null);
-  const [reconciled, setReconciled] = useState(false);
-  const [confirmRecovery, setConfirmRecovery] = useState(false);
-  const [confirmIssue, setConfirmIssue] = useState(false);
-  const [detailId, setDetailId] = useState<string | null>(null);
-  const [issueReason, setIssueReason] = useState("");
-  const [copied, setCopied] = useState(false);
+  const {
+    busy,
+    closeIssue,
+    confirmIssue,
+    confirmRecovery,
+    confirmRevoke,
+    copied,
+    copyClientId,
+    cursor,
+    detailId,
+    error,
+    expiresInDays,
+    formError,
+    issue,
+    issueReason,
+    issued,
+    items,
+    listError,
+    loadMore,
+    loaded,
+    name,
+    notice,
+    openIssue,
+    reconciled,
+    refresh,
+    revoke,
+    selectedScopes,
+    setConfirmRecovery,
+    setConfirmRevoke,
+    setDetailId,
+    setExpiresInDays,
+    setFormError,
+    setIssueReason,
+    setIssued,
+    setName,
+    setReconciled,
+    setSelectedScopes,
+    setUncertain,
+    uncertain,
+  } = useCredentialManagement({
+    applicationId,
+    csrfToken,
+    availableScopes,
+    channel,
+    onUnauthorized,
+    onChanged,
+  });
   const detailRef = useRef<HTMLElement>(null);
-  const [confirmRevoke, setConfirmRevoke] = useState<string | null>(null);
-  const [name, setName] = useState("");
-  const [expiresInDays, setExpiresInDays] = useState(90);
-  const [selectedScopes, setSelectedScopes] = useState<string[]>([
-    "application:read",
-  ]);
-  const [formError, setFormError] = useState("");
-
-  useEffect(() => {
-    let live = true;
-    listPartnerCredentials(applicationId, undefined, channel)
-      .then((result) => {
-        if (!live) return;
-        setItems(result.items);
-        setCursor(result.next_cursor);
-        setListError(false);
-      })
-      .catch((cause: unknown) => {
-        if (!live) return;
-        if (cause instanceof ApiError && cause.status === 401) onUnauthorized();
-        else {
-          setListError(true);
-          setError("Não foi possível consultar as credenciais.");
-        }
-      })
-      .finally(() => {
-        if (live) setLoaded(true);
-      });
-    return () => {
-      live = false;
-    };
-  }, [applicationId, onUnauthorized, channel]);
-
-  async function refresh() {
-    setBusy(true);
-    setError("");
-    try {
-      const result = await listPartnerCredentials(
-        applicationId,
-        undefined,
-        channel,
-      );
-      setItems(result.items);
-      setCursor(result.next_cursor);
-      setLoaded(true);
-      setListError(false);
-      if (uncertain) setReconciled(true);
-      onChanged?.();
-    } catch (cause) {
-      if (cause instanceof ApiError && cause.status === 401) onUnauthorized();
-      else {
-        setListError(true);
-        setError("Não foi possível atualizar a lista de credenciais.");
-      }
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function loadMore() {
-    if (!cursor) return;
-    setBusy(true);
-    setError("");
-    try {
-      const result = await listPartnerCredentials(
-        applicationId,
-        cursor,
-        channel,
-      );
-      setItems((current) => [...current, ...result.items]);
-      setCursor(result.next_cursor);
-      if (uncertain) setReconciled(true);
-    } catch (cause) {
-      if (cause instanceof ApiError && cause.status === 401) onUnauthorized();
-      else setError("Não foi possível carregar mais credenciais.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function issue() {
-    if (!name.trim()) {
-      setFormError("Dê um nome para identificar o sistema.");
-      return;
-    }
-    if (
-      selectedScopes.length === 0 ||
-      selectedScopes.some((scope) => !availableScopes.includes(scope))
-    ) {
-      setFormError("Selecione pelo menos uma permissão disponível.");
-      return;
-    }
-    if (!Number.isInteger(expiresInDays) || expiresInDays < 1) {
-      setFormError("Escolha uma validade.");
-      return;
-    }
-    const issueRequestId = uuidv7();
-    setBusy(true);
-    setError("");
-    setNotice("");
-    try {
-      const result = await issuePartnerCredential(
-        applicationId,
-        issueRequestId,
-        csrfToken,
-        {
-          name: name.trim(),
-          expires_in_days: expiresInDays,
-          scopes: selectedScopes,
-        },
-        channel,
-        issueReason,
-      );
-      setIssued(result);
-      setConfirmIssue(false);
-      setName("");
-      setIssueReason("");
-      await refresh();
-    } catch (cause) {
-      if (cause instanceof ApiError && cause.status === 401) {
-        onUnauthorized();
-      } else if (
-        !(cause instanceof ApiError) ||
-        cause.status >= 500 ||
-        cause.code === "integration.credential_issue_repeated"
-      ) {
-        setConfirmIssue(false);
-        setUncertain(issueRequestId);
-        setReconciled(false);
-        setError(
-          "Não foi possível confirmar a emissão. Atualize a lista e procure a tentativa antes de qualquer nova emissão.",
-        );
-      } else {
-        setError(cause.detail);
-      }
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function revoke(credentialId: string, reason: string) {
-    setBusy(true);
-    setError("");
-    setNotice("");
-    try {
-      await revokePartnerCredential(
-        applicationId,
-        credentialId,
-        csrfToken,
-        channel,
-        reason,
-      );
-      setConfirmRevoke(null);
-      setDetailId(null);
-      if (
-        items.find((item) => item.id === credentialId)?.issue_request_id ===
-        uncertain
-      ) {
-        setUncertain(null);
-        setReconciled(false);
-      }
-      setNotice(
-        "Credencial revogada. Tokens emitidos com ela deixam de funcionar.",
-      );
-      await refresh();
-    } catch (cause) {
-      setConfirmRevoke(null);
-      if (cause instanceof ApiError && cause.status === 401) onUnauthorized();
-      else
-        setError(
-          cause instanceof ApiError
-            ? cause.detail
-            : "Não foi possível confirmar a revogação. Atualize a lista antes de repetir.",
-        );
-    } finally {
-      setBusy(false);
-    }
-  }
-
   const activeCount = items.filter(
     (item) => item.status === "active" && !isExpired(item.expires_at),
   ).length;
@@ -264,35 +91,6 @@ export function CredentialManagement({
     returnFocus: () =>
       document.querySelector<HTMLElement>(`[data-credential-id="${detailId}"]`),
   });
-
-  async function copyClientId(value: string) {
-    try {
-      await navigator.clipboard.writeText(value);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1800);
-    } catch {
-      setError(
-        "Não foi possível copiar. Selecione o identificador e copie manualmente.",
-      );
-    }
-  }
-
-  function openIssue() {
-    setSelectedScopes(
-      availableScopes.includes("application:read")
-        ? ["application:read"]
-        : availableScopes.slice(0, 1),
-    );
-    setFormError("");
-    setError("");
-    setConfirmIssue(true);
-  }
-
-  function closeIssue() {
-    if (busy) return;
-    setConfirmIssue(false);
-    setFormError("");
-  }
 
   const canOpenIssue =
     loaded && !listError && canIssue && !uncertain && !issued;
@@ -401,41 +199,7 @@ export function CredentialManagement({
         </div>
       )}
       {items.length > 0 && (
-        <ul className="cred-list" aria-label="Credenciais">
-          {items.map((credential) => {
-            const state = credentialState(credential);
-            const scopes = credential.scopes ?? [];
-            return (
-              <li key={credential.id}>
-                <button
-                  type="button"
-                  className="cred-row"
-                  data-state={state.key}
-                  data-credential-id={credential.id}
-                  aria-haspopup="dialog"
-                  onClick={() => setDetailId(credential.id)}
-                >
-                  <span className="cred-key" aria-hidden="true">
-                    <IntegrationIcon name="key" size={16} />
-                  </span>
-                  <span className="cred-main">
-                    <strong>{credential.name || "Credencial sem nome"}</strong>
-                    <code>{credential.client_id}</code>
-                  </span>
-                  <span className="cred-scopes-count">
-                    {scopes.length
-                      ? `${scopes.length} permiss${scopes.length === 1 ? "ão" : "ões"}`
-                      : "—"}
-                  </span>
-                  <span className="cred-expiry">{expiryNote(credential)}</span>
-                  <span className={`badge badge-${state.tone}`}>
-                    {state.label}
-                  </span>
-                </button>
-              </li>
-            );
-          })}
-        </ul>
+        <CredentialList items={items} onOpen={setDetailId} />
       )}
       {cursor && (
         <button
@@ -460,316 +224,37 @@ export function CredentialManagement({
         </div>
       )}
 
-      {createPortal(
-        <>
-          {detail && (
-            <div
-              className="detail-panel-overlay"
-              onClick={() => setDetailId(null)}
-            />
-          )}
-          <aside
-            ref={detailRef}
-            className={`detail-panel${detail ? " open" : ""}`}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="cred-detail-title"
-            aria-hidden={!detail}
-          >
-            {detail && (
-              <>
-                <div className="detail-panel-header">
-                  <div>
-                    <h2 className="rules-panel-title" id="cred-detail-title">
-                      {detail.name || "Credencial sem nome"}
-                    </h2>
-                    <div className="rules-panel-badges">
-                      <span
-                        className={`badge badge-${credentialState(detail).tone}`}
-                      >
-                        {credentialState(detail).label}
-                      </span>
-                      <span className="rules-panel-sub">
-                        {expiryNote(detail)}
-                      </span>
-                    </div>
-                  </div>
-                  <button
-                    className="btn btn-ghost btn-sm"
-                    type="button"
-                    aria-label="Fechar"
-                    onClick={() => setDetailId(null)}
-                  >
-                    ✕
-                  </button>
-                </div>
-                <div className="detail-panel-body">
-                  <section className="detail-panel-section">
-                    <h3 className="detail-panel-section-title">
-                      Identificação
-                    </h3>
-                    <div className="cred-id-row">
-                      <code>{detail.client_id}</code>
-                      <button
-                        type="button"
-                        className="btn btn-secondary btn-sm"
-                        onClick={() => void copyClientId(detail.client_id)}
-                      >
-                        {copied ? "Copiado" : "Copiar"}
-                      </button>
-                    </div>
-                    <p className="form-hint">
-                      O segredo não pode ser consultado de novo. Se foi perdido,
-                      emita uma nova credencial e revogue esta.
-                    </p>
-                  </section>
-                  <section className="detail-panel-section">
-                    <h3 className="detail-panel-section-title">
-                      Ciclo de vida
-                    </h3>
-                    <dl className="detail-panel-field">
-                      <dt>Emitida em</dt>
-                      <dd>{dateLabel(detail.created_at)}</dd>
-                      <dt>Vencimento</dt>
-                      <dd>
-                        {detail.expires_at
-                          ? dateLabel(detail.expires_at)
-                          : "Sem prazo definido"}
-                      </dd>
-                      {detail.revoked_at && (
-                        <>
-                          <dt>Revogada em</dt>
-                          <dd>{dateLabel(detail.revoked_at)}</dd>
-                        </>
-                      )}
-                    </dl>
-                  </section>
-                  <section className="detail-panel-section">
-                    <h3 className="detail-panel-section-title">Permissões</h3>
-                    {detail.scopes?.length ? (
-                      <ul className="cred-scope-chips">
-                        {detail.scopes.map((scope) => (
-                          <li key={scope}>
-                            <PermissionIcon code={scope} />
-                            <span>
-                              <strong>
-                                {applicationPermissionLabel(scope)}
-                              </strong>
-                              <small>
-                                {applicationPermissionDescription(
-                                  scope,
-                                  permissionDescriptions[scope],
-                                )}
-                              </small>
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <p className="form-hint">
-                        Esta credencial não informa permissões.
-                      </p>
-                    )}
-                  </section>
-                  {detail.issue_request_id && (
-                    <section className="detail-panel-section">
-                      <h3 className="detail-panel-section-title">Técnico</h3>
-                      <dl className="detail-panel-field">
-                        <dt>Emissão</dt>
-                        <dd>
-                          <code>{detail.issue_request_id}</code>
-                        </dd>
-                      </dl>
-                    </section>
-                  )}
-                </div>
-                {detail.status === "active" && (
-                  <div className="detail-panel-footer">
-                    <button
-                      type="button"
-                      className="btn btn-danger btn-md"
-                      disabled={busy}
-                      onClick={() => setConfirmRevoke(detail.id)}
-                    >
-                      Revogar credencial
-                    </button>
-                  </div>
-                )}
-              </>
-            )}
-          </aside>
-        </>,
-        document.body,
-      )}
+      <CredentialDetailPanel
+        detail={detail}
+        panelRef={detailRef}
+        busy={busy}
+        copied={copied}
+        permissionDescriptions={permissionDescriptions}
+        onClose={() => setDetailId(null)}
+        onCopy={(value) => void copyClientId(value)}
+        onRevoke={setConfirmRevoke}
+      />
 
-      {createPortal(
-        <>
-          {confirmIssue && (
-            <div className="detail-panel-overlay" onClick={closeIssue} />
-          )}
-          <aside
-            ref={panelRef}
-            className={`detail-panel${confirmIssue ? " open" : ""}`}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="cred-form-title"
-            aria-hidden={!confirmIssue}
-          >
-            {confirmIssue && (
-              <>
-                <div className="detail-panel-header">
-                  <div>
-                    <h2 className="rules-panel-title" id="cred-form-title">
-                      Emitir credencial
-                    </h2>
-                    <p className="rules-panel-sub">
-                      O segredo completo aparece uma única vez.
-                    </p>
-                  </div>
-                  <button
-                    className="btn btn-ghost btn-sm"
-                    type="button"
-                    aria-label="Fechar"
-                    onClick={closeIssue}
-                  >
-                    ✕
-                  </button>
-                </div>
-                <form
-                  id="cred-issue-form"
-                  className="detail-panel-body"
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    void issue();
-                  }}
-                >
-                  {(formError || error) && (
-                    <div className="alert alert-danger form-alert" role="alert">
-                      {formError || error}
-                    </div>
-                  )}
-                  <fieldset className="form-section">
-                    <legend className="form-section-title">
-                      Identificação
-                    </legend>
-                    <div className="form-field">
-                      <label
-                        className="form-field-label"
-                        htmlFor="credential-name"
-                      >
-                        Nome da credencial
-                      </label>
-                      <input
-                        id="credential-name"
-                        className="input"
-                        value={name}
-                        maxLength={80}
-                        placeholder="Ex.: Sistema de produção"
-                        onChange={(event) => {
-                          setName(event.target.value);
-                          setFormError("");
-                        }}
-                        required
-                      />
-                      <span className="form-hint">
-                        Identifique o sistema que vai usar esta credencial.
-                      </span>
-                    </div>
-                    <div className="form-field">
-                      <label
-                        className="form-field-label"
-                        htmlFor="credential-expiry"
-                      >
-                        Validade
-                      </label>
-                      <select
-                        id="credential-expiry"
-                        className="input"
-                        value={expiresInDays}
-                        onChange={(event) =>
-                          setExpiresInDays(Number(event.target.value))
-                        }
-                      >
-                        <option value={30}>30 dias</option>
-                        <option value={90}>90 dias</option>
-                        <option value={180}>180 dias</option>
-                      </select>
-                    </div>
-                  </fieldset>
-                  <fieldset className="form-section">
-                    <legend className="form-section-title">Permissões</legend>
-                    {availableScopes.map((scope) => (
-                      <Checkbox
-                        key={scope}
-                        id={`cred-scope-${scope}`}
-                        label={applicationPermissionLabel(scope)}
-                        description={applicationPermissionDescription(
-                          scope,
-                          permissionDescriptions[scope],
-                        )}
-                        checked={selectedScopes.includes(scope)}
-                        onChange={(checked) => {
-                          setSelectedScopes((current) =>
-                            checked
-                              ? [...current, scope]
-                              : current.filter((item) => item !== scope),
-                          );
-                          setFormError("");
-                        }}
-                      />
-                    ))}
-                  </fieldset>
-                  <fieldset className="form-section">
-                    <legend className="form-section-title">Motivo</legend>
-                    <div className="form-field">
-                      <label
-                        className="form-field-label"
-                        htmlFor="credential-reason"
-                      >
-                        Motivo da emissão (opcional)
-                      </label>
-                      <textarea
-                        id="credential-reason"
-                        className="input"
-                        rows={3}
-                        maxLength={500}
-                        value={issueReason}
-                        placeholder="Ex.: Sistema de produção do ERP"
-                        onChange={(event) => setIssueReason(event.target.value)}
-                      />
-                      <span className="form-hint">
-                        Fica na trilha de auditoria. Sem motivo, o registro usa
-                        a finalidade padrão.
-                      </span>
-                    </div>
-                  </fieldset>
-                </form>
-                <div className="detail-panel-footer">
-                  <button
-                    className="btn btn-primary btn-md"
-                    type="submit"
-                    form="cred-issue-form"
-                    disabled={
-                      busy || !name.trim() || selectedScopes.length === 0
-                    }
-                  >
-                    {busy ? "Emitindo…" : "Emitir credencial"}
-                  </button>
-                  <button
-                    className="btn btn-ghost btn-md"
-                    type="button"
-                    disabled={busy}
-                    onClick={closeIssue}
-                  >
-                    Cancelar
-                  </button>
-                </div>
-              </>
-            )}
-          </aside>
-        </>,
-        document.body,
-      )}
+      <CredentialIssuePanel
+        open={confirmIssue}
+        panelRef={panelRef}
+        busy={busy}
+        error={error}
+        formError={formError}
+        name={name}
+        expiresInDays={expiresInDays}
+        issueReason={issueReason}
+        availableScopes={availableScopes}
+        selectedScopes={selectedScopes}
+        permissionDescriptions={permissionDescriptions}
+        onName={setName}
+        onExpiresInDays={setExpiresInDays}
+        onIssueReason={setIssueReason}
+        onSelectedScopes={setSelectedScopes}
+        onFormError={setFormError}
+        onSubmit={() => void issue()}
+        onClose={closeIssue}
+      />
       <ConfirmDialog
         open={confirmRevoke !== null}
         tone="danger"

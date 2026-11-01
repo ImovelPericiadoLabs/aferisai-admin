@@ -1,8 +1,5 @@
 import { useMemo, useRef, useState } from "react";
-import type { PaymentExceptionCase, TeamMember } from "./api";
-import { ConfirmDialog } from "./ConfirmDialog";
-import { Disclosure, RadioGroup } from "./controls";
-import { statusLabel } from "./display-labels";
+import type { PaymentExceptionCase } from "./api";
 import {
   affectedItemRows,
   canViewOriginals,
@@ -13,16 +10,25 @@ import {
   stageLabel,
   stageOf,
 } from "./exception-model";
-import { EntityPicker } from "./EntityPicker";
+import {
+  dateTime,
+  exceptionSteps,
+  money,
+  outcomeLabel,
+  type Asking,
+  type ExecuteAction,
+  type Role,
+} from "./exception-panel-model";
+import { ExceptionDialogs } from "./ExceptionDialogs";
+import { ExceptionNextStep } from "./ExceptionNextStep";
+import { ExceptionReassign } from "./ExceptionReassign";
 import { searchTeamMembers } from "./lookups";
 import { OriginalViewer, type OriginalTarget } from "./OriginalViewer";
 import { resolveRequestId } from "./original-lookup";
 import { stageTone } from "./status-tones";
 
-type Role = TeamMember["role"];
-type Asking = null | "propose" | "confirm" | "refund" | "reassign";
-export type ExecuteAction =
-  "refund-attempts" | "refund-reconciliations" | "correction-verifications";
+export { outcomeLabel };
+export type { ExecuteAction };
 
 type Props = {
   item: PaymentExceptionCase;
@@ -49,24 +55,6 @@ type Props = {
   ) => Promise<boolean>;
   onExecute: (action: ExecuteAction) => void;
 };
-
-export const outcomeLabel = (value: "correct" | "refund" | null) =>
-  value === "correct"
-    ? "Corrigir entrega"
-    : value === "refund"
-      ? "Reembolsar"
-      : "A decidir";
-
-const money = (cents: number) =>
-  new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(
-    cents / 100,
-  );
-
-const dateTime = new Intl.DateTimeFormat("pt-BR", {
-  dateStyle: "short",
-  timeStyle: "short",
-  timeZone: "America/Sao_Paulo",
-});
 
 export function ExceptionPanel({
   item,
@@ -132,48 +120,7 @@ export function ExceptionPanel({
     });
   }
 
-  const steps = [
-    {
-      title: "Bloqueio aberto",
-      detail: dateTime.format(new Date(item.opened_at)),
-      state: "done",
-    },
-    {
-      title: "Proposta do gestor",
-      detail: item.latest_proposal_id
-        ? `${outcomeLabel(item.proposed_resolution)} · ${person(item.proposal_actor_id)}${item.proposal_at ? ` · ${dateTime.format(new Date(item.proposal_at))}` : ""}`
-        : "Aguardando proposta",
-      note: item.proposal_reason,
-      state: item.latest_proposal_id ? "done" : "current",
-    },
-    {
-      title: "Decisão do financeiro",
-      detail: item.financial_decision_id
-        ? outcomeLabel(item.resolution)
-        : item.latest_proposal_id
-          ? "Aguardando confirmação"
-          : "Depois da proposta",
-      state: item.financial_decision_id
-        ? "done"
-        : item.latest_proposal_id
-          ? "current"
-          : "pending",
-    },
-    {
-      title: "Execução",
-      detail: item.financial_decision_id
-        ? item.execution_status
-          ? statusLabel(item.execution_status)
-          : "A iniciar"
-        : "Depois da decisão",
-      state:
-        item.execution_status === "done"
-          ? "done"
-          : item.financial_decision_id
-            ? "current"
-            : "pending",
-    },
-  ] as const;
+  const steps = exceptionSteps(item, person);
 
   async function finish(run: () => Promise<boolean>) {
     if (await run()) setAsking(null);
@@ -304,259 +251,50 @@ export function ExceptionPanel({
             ))}
           </ol>
         </section>
-        <section className="detail-panel-section">
-          <h3 className="detail-panel-section-title">Próximo passo</h3>
-          {action.kind === "wait" && (
-            <p className="form-hint">{action.reason}</p>
-          )}
-          {action.kind === "none" && (
-            <p className="form-hint">Este caso está concluído.</p>
-          )}
-          {action.kind === "claim" && (
-            <button
-              className="btn btn-primary btn-md"
-              type="button"
-              disabled={busy}
-              onClick={onClaim}
-            >
-              {role === "administrator" && item.latest_proposal_id
-                ? "Assumir decisão financeira"
-                : "Assumir este caso"}
-            </button>
-          )}
-          {action.kind === "propose" && (
-            <div className="exc-stack">
-              <RadioGroup
-                name="exc-resolution"
-                legend="Encaminhamento"
-                value={resolution}
-                onChange={(value) =>
-                  setResolution(value as "correct" | "refund")
-                }
-                options={[
-                  {
-                    value: "correct",
-                    label: "Corrigir entrega",
-                    description: "O titular recebe o que pagou.",
-                  },
-                  {
-                    value: "refund",
-                    label: "Reembolsar",
-                    description: "Devolver o valor pago.",
-                  },
-                ]}
-              />
-              <button
-                className="btn btn-primary btn-md"
-                type="button"
-                disabled={busy}
-                onClick={() => setAsking("propose")}
-              >
-                Registrar proposta
-              </button>
-            </div>
-          )}
-          {canReviseProposal && action.kind !== "propose" && (
-            <Disclosure title="Alterar proposta antes da confirmação">
-              <div className="exc-stack">
-                <RadioGroup
-                  name="exc-revise-resolution"
-                  legend="Novo encaminhamento"
-                  value={resolution}
-                  onChange={(value) =>
-                    setResolution(value as "correct" | "refund")
-                  }
-                  options={[
-                    { value: "correct", label: "Corrigir entrega" },
-                    { value: "refund", label: "Reembolsar" },
-                  ]}
-                />
-                <button
-                  className="btn btn-secondary btn-md"
-                  type="button"
-                  disabled={busy}
-                  onClick={() => setAsking("propose")}
-                >
-                  Registrar nova proposta
-                </button>
-              </div>
-            </Disclosure>
-          )}
-          {action.kind === "confirm" && (
-            <button
-              className="btn btn-primary btn-md"
-              type="button"
-              disabled={busy}
-              onClick={() => setAsking("confirm")}
-            >
-              Confirmar decisão financeira
-            </button>
-          )}
-          {action.kind === "start-refund" && (
-            <button
-              className="btn btn-danger btn-md"
-              type="button"
-              disabled={busy}
-              onClick={() => setAsking("refund")}
-            >
-              {item.funding_source === "credits"
-                ? "Devolver créditos"
-                : "Iniciar estorno integral"}
-            </button>
-          )}
-          {action.kind === "reconcile-refund" && (
-            <button
-              className="btn btn-secondary btn-md"
-              type="button"
-              disabled={busy}
-              onClick={() => onExecute("refund-reconciliations")}
-            >
-              Conciliar estorno
-            </button>
-          )}
-          {action.kind === "verify-correction" && (
-            <button
-              className="btn btn-secondary btn-md"
-              type="button"
-              disabled={busy}
-              onClick={() => onExecute("correction-verifications")}
-            >
-              Verificar entrega corrigida
-            </button>
-          )}
-          <div className="alert exc-note" role="note">
-            {item.funding_source === "credits"
-              ? "A devolução integral retorna ao saldo de créditos usado nesta compra e fica registrada no extrato."
-              : "O estorno PIX exige confirmação e conciliação no Asaas antes de comunicar o encerramento ao titular."}
-          </div>
-        </section>
+        <ExceptionNextStep
+          item={item}
+          role={role}
+          action={action}
+          busy={busy}
+          resolution={resolution}
+          setResolution={setResolution}
+          canReviseProposal={canReviseProposal}
+          setAsking={setAsking}
+          onClaim={onClaim}
+          onExecute={onExecute}
+        />
         {role === "administrator" && stage !== "done" && (
           <section className="detail-panel-section">
-            <Disclosure title="Substituir responsável indisponível">
-              <div className="exc-stack">
-                <RadioGroup
-                  name="exc-target"
-                  legend="Função"
-                  value={target}
-                  onChange={(value) => {
-                    setTarget(value as "manager" | "financial");
-                    setNewMember("");
-                  }}
-                  options={[
-                    { value: "manager", label: "Gestor" },
-                    { value: "financial", label: "Financeiro" },
-                  ]}
-                />
-                <EntityPicker
-                  key={target}
-                  id="exc-member"
-                  label="Nova pessoa"
-                  placeholder="Buscar pelo e-mail"
-                  disabled={block !== null}
-                  value={newMember}
-                  search={memberSearch}
-                  cacheKey={target}
-                  onUnauthorized={onUnauthorized}
-                  onChange={(id) => setNewMember(id)}
-                />
-                {block && <p className="form-hint">{block}</p>}
-                <button
-                  className="btn btn-secondary btn-md"
-                  type="button"
-                  disabled={busy || block !== null || !newMember}
-                  onClick={() => setAsking("reassign")}
-                >
-                  Reatribuir
-                </button>
-              </div>
-            </Disclosure>
+            <ExceptionReassign
+              target={target}
+              setTarget={setTarget}
+              newMember={newMember}
+              setNewMember={setNewMember}
+              block={block}
+              memberSearch={memberSearch}
+              busy={busy}
+              setAsking={setAsking}
+              onUnauthorized={onUnauthorized}
+            />
           </section>
         )}
       </div>
 
-      <ConfirmDialog
-        open={asking === "propose"}
-        title="Registrar proposta?"
-        description="A proposta exige uma decisão financeira registrada separadamente. O administrador pode assumir as duas etapas."
-        details={[
-          { label: "Encaminhamento", value: outcomeLabel(resolution) },
-          { label: "Valor", value: money(item.amount_cents) },
-        ]}
-        reason={{ label: "Motivo da proposta", min: 10, max: 500 }}
-        confirmLabel="Registrar proposta"
+      <ExceptionDialogs
+        item={item}
+        asking={asking}
+        setAsking={setAsking}
         busy={busy}
-        onConfirm={(reason) => void finish(() => onPropose(resolution, reason))}
-        onCancel={() => setAsking(null)}
-      />
-      <ConfirmDialog
-        open={asking === "confirm"}
-        title="Confirmar decisão financeira?"
-        description="Depois da confirmação, a execução passa a ser sua responsabilidade."
-        details={[
-          { label: "Proposta", value: outcomeLabel(item.proposed_resolution) },
-          { label: "Motivo do gestor", value: item.proposal_reason ?? "—" },
-          { label: "Valor", value: money(item.amount_cents) },
-        ]}
-        reason={{ label: "Motivo da decisão", min: 10, max: 500 }}
-        confirmLabel="Confirmar decisão"
-        busy={busy}
-        onConfirm={(reason) => void finish(() => onConfirm(reason))}
-        onCancel={() => setAsking(null)}
-      />
-      <ConfirmDialog
-        open={asking === "refund"}
-        tone="danger"
-        title="Iniciar estorno integral?"
-        description={
-          item.funding_source === "credits"
-            ? "O valor integral será devolvido ao saldo de créditos do cliente, sem chamada ao Asaas."
-            : "O estorno integral será solicitado ao Asaas da conta que recebeu o PIX. Uma resposta incerta exige conciliação antes de qualquer nova ação."
-        }
-        details={[
-          { label: "Valor", value: money(item.amount_cents) },
-          { label: "Trabalho", value: item.work_id },
-        ]}
-        confirmLabel={
-          item.funding_source === "credits"
-            ? "Devolver créditos"
-            : "Iniciar estorno"
-        }
-        busy={busy}
-        onConfirm={() => {
-          setAsking(null);
-          onExecute("refund-attempts");
-        }}
-        onCancel={() => setAsking(null)}
-      />
-      <ConfirmDialog
-        open={asking === "reassign"}
-        title="Reatribuir o caso?"
-        description="A pessoa anterior deixa de ser responsável. O motivo fica no histórico."
-        details={[
-          {
-            label: "Função",
-            value: target === "manager" ? "Gestor" : "Financeiro",
-          },
-          {
-            label: "Atual",
-            value: person(
-              target === "manager"
-                ? item.manager_assignee_id
-                : item.financial_assignee_id,
-            ),
-          },
-        ]}
-        reason={{ label: "Motivo da troca", min: 10, max: 500 }}
-        confirmLabel="Reatribuir"
-        busy={busy}
-        onConfirm={(reason) =>
-          void finish(async () => {
-            const done = await onReassign(target, newMember, reason);
-            if (done) setNewMember("");
-            return done;
-          })
-        }
-        onCancel={() => setAsking(null)}
+        resolution={resolution}
+        target={target}
+        newMember={newMember}
+        setNewMember={setNewMember}
+        person={person}
+        finish={finish}
+        onPropose={onPropose}
+        onConfirm={onConfirm}
+        onReassign={onReassign}
+        onExecute={onExecute}
       />
       <OriginalViewer
         target={viewing}

@@ -6,7 +6,6 @@ import {
   createCommercialPolicyDraft,
   decideCommercialPolicy,
   listCommercialPolicies,
-  listOrganizations,
   previewCommercialPolicy,
   updateCommercialPolicyDraft,
   type CommercialPolicy,
@@ -14,41 +13,23 @@ import {
 } from "./api";
 import {
   countByStatus,
-  describeAmount,
   filterPolicies,
   formToDraftBody,
   initialForm,
   policyToForm,
-  scopeSummary,
-  statusTone,
-  validityState,
   type FormState,
   type PolicyChannel,
   type PolicyStatus,
 } from "./commercial-model";
-import {
-  CommercialPolicyForm,
-  type OrganizationOption,
-} from "./CommercialPolicyForm";
+import { CommercialPolicyForm } from "./CommercialPolicyForm";
 import { CommercialPolicyPanel } from "./CommercialPolicyPanel";
+import { CommercialPoliciesTable } from "./CommercialPoliciesTable";
+import { CommercialPoliciesToolbar } from "./CommercialPoliciesToolbar";
+import { useCommercialPolicyOrganizations } from "./useCommercialPolicyOrganizations";
 import "./commercial-policies.css";
 import "./commercial-rules.css";
-import { itemLabel, sourceLabel, statusLabel } from "./display-labels";
-import { resolveOrganization } from "./lookups";
 
 type Drawer = "closed" | "view" | "form";
-
-const dateShort = new Intl.DateTimeFormat("pt-BR", {
-  dateStyle: "short",
-  timeZone: "America/Sao_Paulo",
-});
-
-const statusTabs: { value: "" | PolicyStatus; label: string }[] = [
-  { value: "", label: "Todas" },
-  { value: "draft", label: "Rascunhos" },
-  { value: "published", label: "Publicadas" },
-  { value: "suspended", label: "Suspensas" },
-];
 
 function errorMessage(cause: unknown): string {
   return cause instanceof ApiError
@@ -77,7 +58,6 @@ export function CommercialPolicies({
   const [form, setForm] = useState<FormState>(initialForm);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [preview, setPreview] = useState<CommercialPolicyPreview | null>(null);
-  const [organizations, setOrganizations] = useState<OrganizationOption[]>([]);
   const panelRef = useRef<HTMLElement>(null);
   const lastOpened = useRef<string | null>(null);
 
@@ -103,63 +83,8 @@ export function CommercialPolicies({
     };
   }, [revision, onUnauthorized]);
 
-  useEffect(() => {
-    let live = true;
-    listOrganizations("")
-      .then((page) => {
-        if (live)
-          setOrganizations(
-            page.items.map((org) => ({ id: org.id, name: org.name })),
-          );
-      })
-      .catch(() => undefined);
-    return () => {
-      live = false;
-    };
-  }, []);
+  const { organizations, orgNames } = useCommercialPolicyOrganizations(items);
 
-  const unknownOrgKey = useMemo(
-    () =>
-      [
-        ...new Set(
-          items
-            .map((item) => item.organization_id)
-            .filter(
-              (id): id is string =>
-                id !== null && !organizations.some((org) => org.id === id),
-            ),
-        ),
-      ]
-        .slice(0, 20)
-        .join(","),
-    [items, organizations],
-  );
-
-  useEffect(() => {
-    if (!unknownOrgKey) return;
-    let live = true;
-    void Promise.all(
-      unknownOrgKey
-        .split(",")
-        .map((id) => resolveOrganization(id).catch(() => null)),
-    ).then((found) => {
-      if (!live) return;
-      const known = found.filter((org) => org !== null);
-      if (known.length)
-        setOrganizations((current) => [
-          ...current,
-          ...known.map((org) => ({ id: org.id, name: org.label })),
-        ]);
-    });
-    return () => {
-      live = false;
-    };
-  }, [unknownOrgKey]);
-
-  const orgNames = useMemo(
-    () => Object.fromEntries(organizations.map((org) => [org.id, org.name])),
-    [organizations],
-  );
   const counts = useMemo(() => countByStatus(items), [items]);
   const visible = useMemo(
     () => filterPolicies(items, statusFilter, channelFilter),
@@ -318,180 +243,28 @@ export function CommercialPolicies({
           {notice}
         </div>
       )}
+      <CommercialPoliciesToolbar
+        counts={counts}
+        statusFilter={statusFilter}
+        channelFilter={channelFilter}
+        onStatus={setStatusFilter}
+        onChannel={setChannelFilter}
+      />
 
-      <div className="rules-toolbar">
-        <div
-          className="rules-tabs"
-          role="group"
-          aria-label="Filtrar por estado"
-        >
-          {statusTabs.map((tab) => (
-            <button
-              key={tab.label}
-              type="button"
-              className="rules-tab"
-              aria-pressed={statusFilter === tab.value}
-              onClick={() => setStatusFilter(tab.value)}
-            >
-              {tab.label}
-              <span className="rules-tab-count">
-                {counts[tab.value === "" ? "all" : tab.value]}
-              </span>
-            </button>
-          ))}
-        </div>
-        <label className="rules-channel">
-          <span className="sr-only">Canal</span>
-          <select
-            className="input"
-            value={channelFilter}
-            onChange={(event) =>
-              setChannelFilter(event.target.value as "" | PolicyChannel)
-            }
-          >
-            <option value="">Todos os canais</option>
-            <option value="site">Site direto</option>
-            <option value="integration">Integração</option>
-            <option value="promotion">Promoção</option>
-          </select>
-        </label>
-      </div>
-
-      {loading && items.length === 0 ? (
-        <div className="rules-skeleton" role="status" aria-label="Carregando">
-          {Array.from({ length: 5 }, (_, index) => (
-            <span className="skeleton" key={index} />
-          ))}
-        </div>
-      ) : visible.length === 0 ? (
-        <div className="empty-state" role="status">
-          <strong>
-            {filtering
-              ? "Nenhuma regra neste filtro"
-              : "Nenhuma regra cadastrada"}
-          </strong>
-          <span>
-            {filtering
-              ? "Altere o estado ou o canal para ver outras versões."
-              : "Crie a primeira regra para definir desconto e comissão por item e canal."}
-          </span>
-          {filtering ? (
-            <button
-              className="btn btn-secondary btn-sm"
-              type="button"
-              onClick={() => {
-                setStatusFilter("");
-                setChannelFilter("");
-              }}
-            >
-              Limpar filtros
-            </button>
-          ) : (
-            <button
-              className="btn btn-primary btn-sm"
-              type="button"
-              onClick={openNew}
-            >
-              Nova regra
-            </button>
-          )}
-        </div>
-      ) : (
-        <div className="data-table-wrap">
-          <table
-            className="data-table rules-table"
-            aria-label="Regras comerciais"
-          >
-            <thead>
-              <tr>
-                <th scope="col">Item</th>
-                <th scope="col">Escopo</th>
-                <th scope="col">Vigência</th>
-                <th scope="col">Desconto</th>
-                <th scope="col">Comissão</th>
-                <th scope="col">Estado</th>
-              </tr>
-            </thead>
-            <tbody>
-              {visible.map((policy) => {
-                const scope = scopeSummary(policy, orgNames);
-                const validity = validityState(
-                  policy.valid_from,
-                  policy.valid_until,
-                );
-                return (
-                  <tr
-                    key={policy.id}
-                    data-clickable
-                    className={
-                      policy.id === selectedId && drawer === "view"
-                        ? "selected"
-                        : undefined
-                    }
-                    onClick={() => openPolicy(policy.id)}
-                  >
-                    <td data-label="Item">
-                      <button
-                        className="rules-cell-button"
-                        data-row-id={policy.id}
-                        type="button"
-                        aria-haspopup="dialog"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          openPolicy(policy.id);
-                        }}
-                      >
-                        <strong>{itemLabel(policy.item_code)}</strong>
-                        <small>{sourceLabel(policy.source)}</small>
-                      </button>
-                    </td>
-                    <td data-label="Escopo">
-                      <strong className="rules-cell-main">
-                        {scope.primary}
-                      </strong>
-                      <small className="rules-cell-sub">
-                        {scope.secondary}
-                      </small>
-                    </td>
-                    <td data-label="Vigência">
-                      <span className="rules-cell-stack">
-                        <span className="rules-cell-main">
-                          {dateShort.format(new Date(policy.valid_from))} –{" "}
-                          {dateShort.format(new Date(policy.valid_until))}
-                        </span>
-                        <small className="rules-cell-sub">
-                          {validity === "active"
-                            ? "Vigente agora"
-                            : validity === "future"
-                              ? "Ainda não iniciou"
-                              : "Encerrada"}
-                        </small>
-                      </span>
-                    </td>
-                    <td data-label="Desconto">
-                      {describeAmount(
-                        policy.discount_rate_bps,
-                        policy.discount_fixed_cents,
-                      )}
-                    </td>
-                    <td data-label="Comissão">
-                      {describeAmount(
-                        policy.commission_rate_bps,
-                        policy.commission_fixed_cents,
-                      )}
-                    </td>
-                    <td data-label="Estado">
-                      <span className={`badge ${statusTone(policy.status)}`}>
-                        {statusLabel(policy.status)}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <CommercialPoliciesTable
+        visible={visible}
+        initialLoading={loading && items.length === 0}
+        filtering={filtering}
+        orgNames={orgNames}
+        selectedId={selectedId}
+        viewing={drawer === "view"}
+        onOpen={openPolicy}
+        onNew={openNew}
+        onClearFilters={() => {
+          setStatusFilter("");
+          setChannelFilter("");
+        }}
+      />
 
       {nextCursor && (
         <footer className="rules-footer">

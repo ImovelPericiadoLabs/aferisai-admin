@@ -6,49 +6,10 @@ import {
   pickerKeyAction,
   shortId,
   type PickerOption,
-  type PickerResult,
-  type PickerSearch,
 } from "./picker-model";
+import type { Loaded, Props } from "./entity-picker-types";
+import { PickerPopover } from "./PickerPopover";
 import "./entity-picker.css";
-
-type Shared = {
-  id: string;
-  label: string;
-  search: PickerSearch;
-  placeholder?: string;
-  required?: boolean;
-  disabled?: boolean;
-  hint?: string;
-  limitNote?: string;
-  emptyMessage?: string;
-  emptyAction?: { label: string; href: string };
-  knownOptions?: PickerOption[];
-  cacheKey?: string;
-  onUnauthorized?: () => void;
-  resolve?: (id: string) => Promise<PickerOption | null>;
-};
-
-type Single = Shared & {
-  multiple?: false;
-  value: string;
-  onChange: (id: string, option?: PickerOption) => void;
-};
-
-type Multiple = Shared & {
-  multiple: true;
-  value: string[];
-  onChange: (ids: string[]) => void;
-};
-
-type Props = Single | Multiple;
-
-type Loaded = {
-  key: string | undefined;
-  query: string;
-  options: PickerOption[];
-  next?: () => Promise<PickerResult>;
-  failed: boolean;
-};
 
 export function EntityPicker(props: Props) {
   const {
@@ -338,75 +299,23 @@ export function EntityPicker(props: Props) {
         )}
       </div>
       {open && (
-        <div className="picker-popover">
-          <ul
-            className="picker-list"
-            role="listbox"
-            tabIndex={-1}
-            id={listId}
-            aria-multiselectable={props.multiple}
-          >
-            {options.map((option, index) => (
-              <li
-                key={option.id}
-                id={`${listId}-${index}`}
-                role="option"
-                aria-selected={selectedIds.includes(option.id)}
-                className={`picker-option${index === active ? " active" : ""}`}
-                onPointerDown={(event) => event.preventDefault()}
-                onClick={() => choose(option)}
-              >
-                <span>
-                  <strong>{option.label}</strong>
-                  {option.hint && <small>{option.hint}</small>}
-                </span>
-                {selectedIds.includes(option.id) && (
-                  <span className="picker-check" aria-hidden="true">
-                    ✓
-                  </span>
-                )}
-              </li>
-            ))}
-          </ul>
-          {loading && (
-            <p className="picker-status" role="status">
-              Buscando…
-            </p>
-          )}
-          {!loading && loaded?.failed && (
-            <p className="picker-status picker-error" role="alert">
-              Não foi possível buscar agora.
-            </p>
-          )}
-          {!loading && !loaded?.failed && options.length === 0 && (
-            <>
-              <p className="picker-status">
-                {!query.trim() && !current?.next && emptyMessage
-                  ? emptyMessage
-                  : "Nenhum resultado."}
-              </p>
-              {!query.trim() && !current?.next && emptyAction && (
-                <a className="picker-empty-action" href={emptyAction.href}>
-                  {emptyAction.label}
-                </a>
-              )}
-            </>
-          )}
-          {current?.next && (
-            <button
-              className="picker-more"
-              type="button"
-              disabled={moreBusy}
-              onPointerDown={(event) => event.preventDefault()}
-              onClick={() => void loadMore()}
-            >
-              {moreBusy ? "Carregando…" : "Carregar mais resultados"}
-            </button>
-          )}
-          {limitNote && !loading && current?.next && (
-            <p className="picker-note">{limitNote}</p>
-          )}
-        </div>
+        <PickerPopover
+          listId={listId}
+          options={options}
+          active={active}
+          selectedIds={selectedIds}
+          multiple={props.multiple}
+          loading={loading}
+          failed={loaded?.failed}
+          query={query}
+          hasNext={Boolean(current?.next)}
+          emptyMessage={emptyMessage}
+          emptyAction={emptyAction}
+          limitNote={limitNote}
+          moreBusy={moreBusy}
+          onChoose={choose}
+          onLoadMore={() => void loadMore()}
+        />
       )}
       {hint && <span className="form-hint">{hint}</span>}
     </div>

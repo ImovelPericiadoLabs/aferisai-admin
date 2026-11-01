@@ -4,16 +4,12 @@ import {
   useMemo,
   useState,
   type FormEvent,
-  type ReactNode,
 } from "react";
 import {
   ApiError,
-  acceptPartnerOrganizationInvitation,
-  confirmPartnerInvitation,
   createPartnerSession,
   currentPartnerMember,
   deletePartnerSession,
-  enrollPartnerInvitation,
   listPartnerApplicationPermissions,
   listPartnerApplications,
   renewPartnerCsrf,
@@ -22,252 +18,21 @@ import {
   type PartnerApplication,
   type PartnerMember,
 } from "./api";
-import { PartnerOrganizationSwitcher } from "./PartnerOrganizationSwitcher";
-import {
-  ApplicationWorkspace,
-  type IntegrationTab,
-} from "./ApplicationWorkspace";
+import { PartnerAuthShell } from "./PartnerAuthShell";
+import { PartnerInvitation } from "./PartnerInvitation";
+import { PartnerLoginForm } from "./PartnerLoginForm";
+import { PartnerPortalHeader } from "./PartnerPortalHeader";
+import { PartnerPortalSections } from "./PartnerPortalSections";
+import type { IntegrationTab } from "./ApplicationWorkspace";
 import { Breadcrumbs } from "./Breadcrumbs";
-import { PartnerPeople } from "./PartnerPeople";
-import { PartnerMetrics } from "./PartnerMetrics";
-import { PartnerStatement } from "./PartnerStatement";
 import { portalSections, type PortalSection } from "./partner-finance-model";
-import { memberAccess, roleLabel } from "./partner-roles";
+import { memberAccess } from "./partner-roles";
 import { ToastStack } from "./ToastStack";
 import { useToast } from "./useToast";
 import { PartnerMfaRecovery } from "./PartnerMfaRecovery";
-import { PartnerDocumentation } from "./PartnerDocumentation";
 import "./partner-portal.css";
 
 type PartnerSession = { member: PartnerMember; csrf: string };
-
-function PartnerAuthShell({ children }: { children: ReactNode }) {
-  return (
-    <main className="pp-auth">
-      <div className="pp-auth-brand">
-        <img src="/logo-dark.svg" alt="AferisAI" />
-        <span>Integrações</span>
-      </div>
-      <div className="pp-auth-card card">{children}</div>
-    </main>
-  );
-}
-
-function Invitation() {
-  const token =
-    new URLSearchParams(window.location.hash.split("?")[1] || "").get(
-      "token",
-    ) || "";
-  const [password, setPassword] = useState("");
-  const [secret, setSecret] = useState("");
-  const [otp, setOtp] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const [completed, setCompleted] = useState(false);
-  const [existingMember, setExistingMember] = useState<PartnerMember | null>(
-    null,
-  );
-  const [existingCsrf, setExistingCsrf] = useState("");
-
-  useEffect(() => {
-    let live = true;
-    currentPartnerMember()
-      .then(async (member) => {
-        const csrf = await renewPartnerCsrf();
-        if (live) {
-          setExistingMember(member);
-          setExistingCsrf(csrf.csrf_token);
-        }
-      })
-      .catch(() => undefined);
-    return () => {
-      live = false;
-    };
-  }, []);
-
-  async function acceptExisting() {
-    if (!existingCsrf) return;
-    setBusy(true);
-    setError("");
-    try {
-      const accepted = await acceptPartnerOrganizationInvitation(
-        token,
-        existingCsrf,
-      );
-      await switchPartnerOrganization(accepted.organization_id, existingCsrf);
-      window.history.replaceState(null, "", "/#parceiro");
-      window.location.reload();
-    } catch (cause) {
-      setError(
-        cause instanceof ApiError
-          ? cause.status === 503
-            ? "O serviço está em manutenção. Tente novamente em instantes."
-            : cause.detail
-          : "Não foi possível aceitar o convite.",
-      );
-      setBusy(false);
-    }
-  }
-
-  async function enroll(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setBusy(true);
-    setError("");
-    try {
-      const result = await enrollPartnerInvitation(token, password);
-      setSecret(result.totp_secret);
-      setPassword("");
-    } catch (cause) {
-      setError(
-        cause instanceof ApiError
-          ? cause.status === 503
-            ? "O serviço está em manutenção. Tente novamente em instantes."
-            : cause.detail
-          : "Não foi possível preparar o acesso. Confira o convite e tente novamente.",
-      );
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function confirm(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setBusy(true);
-    setError("");
-    try {
-      await confirmPartnerInvitation(token, otp);
-      setSecret("");
-      setOtp("");
-      setCompleted(true);
-      window.history.replaceState(null, "", "/#convite");
-    } catch (cause) {
-      setError(
-        cause instanceof ApiError
-          ? cause.status === 503
-            ? "O serviço está em manutenção. Tente novamente em instantes."
-            : cause.detail
-          : "Não foi possível confirmar o autenticador.",
-      );
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  const err = error && (
-    <div className="alert alert-danger" role="alert">
-      {error}
-    </div>
-  );
-  return (
-    <PartnerAuthShell>
-      <p className="pp-kicker">Convite para parceria</p>
-      {completed ? (
-        <>
-          <h1 className="pp-title">Acesso preparado</h1>
-          <p className="form-hint">
-            Seu autenticador está confirmado. Entre com seu e-mail, senha e
-            código atual.
-          </p>
-          <a className="btn btn-primary btn-md" href="/#parceiro">
-            Entrar na integração
-          </a>
-        </>
-      ) : !token ? (
-        <>
-          <h1 className="pp-title">Convite não encontrado</h1>
-          <p className="form-hint">
-            Abra o link recebido por e-mail para preparar seu acesso.
-          </p>
-        </>
-      ) : existingMember ? (
-        <div className="pp-stack">
-          <h1 className="pp-title">Adicionar empresa ao seu acesso</h1>
-          <p className="form-hint">
-            Convite para {existingMember.email}. Você poderá trocar de empresa
-            no topo do painel.
-          </p>
-          {err}
-          <button
-            type="button"
-            className="btn btn-primary btn-md"
-            disabled={busy || !existingCsrf}
-            onClick={() => void acceptExisting()}
-          >
-            {busy ? "Adicionando…" : "Aceitar convite"}
-          </button>
-        </div>
-      ) : !secret ? (
-        <form className="pp-stack" onSubmit={(event) => void enroll(event)}>
-          <h1 className="pp-title">Crie seu acesso</h1>
-          <p className="form-hint">
-            Defina uma senha para a sua parceria. Depois, ative o código do
-            autenticador.
-          </p>
-          <div className="form-field">
-            <label className="form-field-label" htmlFor="partner-new-password">
-              Senha
-            </label>
-            <input
-              id="partner-new-password"
-              className="input"
-              type="password"
-              autoComplete="new-password"
-              minLength={15}
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              required
-            />
-            <span className="form-hint">Use pelo menos 15 caracteres.</span>
-          </div>
-          {err}
-          <button
-            className="btn btn-primary btn-md"
-            disabled={busy || password.length < 15}
-          >
-            {busy ? "Preparando…" : "Continuar"}
-          </button>
-        </form>
-      ) : (
-        <form className="pp-stack" onSubmit={(event) => void confirm(event)}>
-          <h1 className="pp-title">Ative o autenticador</h1>
-          <p className="form-hint">
-            Adicione esta chave ao aplicativo autenticador. Ela aparece somente
-            agora.
-          </p>
-          <div className="secret-reveal-box">
-            <span className="form-field-label">Chave do autenticador</span>
-            <code>{secret}</code>
-          </div>
-          <div className="form-field">
-            <label className="form-field-label" htmlFor="partner-confirm-otp">
-              Código de 6 dígitos
-            </label>
-            <input
-              id="partner-confirm-otp"
-              className="input"
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              pattern="[0-9]{6}"
-              maxLength={6}
-              value={otp}
-              onChange={(event) =>
-                setOtp(event.target.value.replace(/\D/g, ""))
-              }
-              required
-            />
-          </div>
-          {err}
-          <button
-            className="btn btn-primary btn-md"
-            disabled={busy || otp.length !== 6}
-          >
-            {busy ? "Confirmando…" : "Confirmar acesso"}
-          </button>
-        </form>
-      )}
-    </PartnerAuthShell>
-  );
-}
 
 export function PartnerPortal() {
   const [session, setSession] = useState<PartnerSession | null>(null);
@@ -462,7 +227,7 @@ export function PartnerPortal() {
     window.history.replaceState(null, "", "/#parceiro");
   }
 
-  if (isInvitation) return <Invitation />;
+  if (isInvitation) return <PartnerInvitation />;
   if (recoveringMfa)
     return (
       <PartnerAuthShell>
@@ -485,80 +250,18 @@ export function PartnerPortal() {
     );
   if (!session)
     return (
-      <PartnerAuthShell>
-        <form className="pp-stack" onSubmit={(event) => void login(event)}>
-          <p className="pp-kicker">Sua parceria</p>
-          <h1 className="pp-title">Entre na sua integração</h1>
-          <p className="form-hint">
-            Consulte eventos, configure seu webhook e gerencie credenciais da
-            sua aplicação.
-          </p>
-          <div className="form-field">
-            <label className="form-field-label" htmlFor="partner-email">
-              E-mail
-            </label>
-            <input
-              id="partner-email"
-              className="input"
-              type="email"
-              autoComplete="username"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              required
-            />
-          </div>
-          <div className="form-field">
-            <label className="form-field-label" htmlFor="partner-password">
-              Senha
-            </label>
-            <input
-              id="partner-password"
-              className="input"
-              type="password"
-              autoComplete="current-password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              required
-            />
-          </div>
-          <div className="form-field">
-            <label className="form-field-label" htmlFor="partner-otp">
-              Código do autenticador
-            </label>
-            <input
-              id="partner-otp"
-              className="input"
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              pattern="[0-9]{6}"
-              maxLength={6}
-              value={otp}
-              onChange={(event) =>
-                setOtp(event.target.value.replace(/\D/g, ""))
-              }
-              required
-            />
-          </div>
-          {error && (
-            <div className="alert alert-danger" role="alert">
-              {error}
-            </div>
-          )}
-          <button className="btn btn-primary btn-md" disabled={busy}>
-            {busy ? "Entrando…" : "Entrar"}
-          </button>
-          <button
-            type="button"
-            className="pp-recovery-link"
-            onClick={openMfaRecovery}
-          >
-            Perdi meu autenticador
-          </button>
-          <a className="pp-link" href="/#">
-            Acesso da equipe
-          </a>
-        </form>
-      </PartnerAuthShell>
+      <PartnerLoginForm
+        email={email}
+        password={password}
+        otp={otp}
+        busy={busy}
+        error={error}
+        onEmailChange={setEmail}
+        onPasswordChange={setPassword}
+        onOtpChange={setOtp}
+        onSubmit={(event) => void login(event)}
+        onRecoverMfa={openMfaRecovery}
+      />
     );
 
   const selectedPermissions = application
@@ -574,39 +277,14 @@ export function PartnerPortal() {
 
   return (
     <div className="pp-shell">
-      <header className="pp-topbar">
-        <div className="pp-topbar-brand">
-          <img src="/logo-dark.svg" alt="AferisAI" />
-          <span>Integrações</span>
-        </div>
-        <PartnerOrganizationSwitcher
-          activeId={session.member.organization_id}
-          activeName={session.member.organization_name}
-          activeLogoUrl={session.member.organization_logo_url}
-          disabled={switching}
-          onSelect={changeOrganization}
-          onUnauthorized={unauthorize}
-        />
-        <div className="pp-account">
-          <span className="pp-avatar" aria-hidden="true">
-            {session.member.email.slice(0, 2).toUpperCase()}
-          </span>
-          <span className="pp-account-email">{session.member.email}</span>
-          {session.member.role && (
-            <span className="badge badge-neutral">
-              {roleLabel(session.member.role)}
-            </span>
-          )}
-          <button
-            type="button"
-            className="btn btn-secondary btn-sm"
-            disabled={busy}
-            onClick={() => void logout()}
-          >
-            Sair
-          </button>
-        </div>
-      </header>
+      <PartnerPortalHeader
+        member={session.member}
+        switching={switching}
+        busy={busy}
+        onSelectOrganization={changeOrganization}
+        onUnauthorized={unauthorize}
+        onLogout={() => void logout()}
+      />
       <main className="page pp-content">
         {error && (
           <div className="alert alert-danger" role="alert">
@@ -637,72 +315,26 @@ export function PartnerPortal() {
                   : []),
               ]}
             />
-            {sections.length > 1 && (
-              <nav className="seg-tabs" aria-label="Seções da parceria">
-                {sections.map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    className={`seg-tab${section === item.id ? " active" : ""}`}
-                    aria-current={section === item.id ? "page" : undefined}
-                    onClick={() => setSection(item.id)}
-                  >
-                    {item.label}
-                  </button>
-                ))}
-              </nav>
-            )}
-            {section === "people" && peopleApi ? (
-              <PartnerPeople
-                api={peopleApi}
-                organizationName={
-                  session.member.organization_name || "esta parceria"
-                }
-                canManage
-                viewerId={session.member.id}
-                onUnauthorized={unauthorize}
-                onToast={showToast}
-              />
-            ) : section === "metrics" ? (
-              <PartnerMetrics
-                applications={applications}
-                organizationName={
-                  session.member.organization_name || "esta parceria"
-                }
-                onUnauthorized={unauthorize}
-              />
-            ) : section === "statement" ? (
-              <PartnerStatement onUnauthorized={unauthorize} />
-            ) : section === "documentation" ? (
-              <PartnerDocumentation />
-            ) : section === null ? (
-              <div className="empty-state" role="status">
-                <strong>Seu papel não tem telas disponíveis</strong>
-                <span>
-                  Peça a um proprietário da parceria para ajustar o seu papel.
-                </span>
-              </div>
-            ) : (
-              <ApplicationWorkspace
-                applications={appRecords}
-                permissions={selectedPermissions}
-                selectedApplicationId={selectedId}
-                onSelectApplication={setSelectedId}
-                csrfToken={session.csrf}
-                canManage
-                canEdit
-                onUnauthorized={unauthorize}
-                permissionBusy={false}
-                onTogglePermission={() => {}}
-                additionalApplication={null}
-                hasMoreApplications={Boolean(applicationsCursor)}
-                loadingMoreApplications={loadingMoreApplications}
-                onLoadMoreApplications={loadMoreApplications}
-                channel="partner"
-                selectedTab={tab}
-                onTabChange={setTab}
-              />
-            )}
+            <PartnerPortalSections
+              sections={sections}
+              section={section}
+              member={session.member}
+              peopleApi={peopleApi}
+              applications={applications}
+              appRecords={appRecords}
+              selectedPermissions={selectedPermissions}
+              selectedId={selectedId}
+              csrf={session.csrf}
+              hasMoreApplications={Boolean(applicationsCursor)}
+              loadingMoreApplications={loadingMoreApplications}
+              tab={tab}
+              onSectionChange={setSection}
+              onSelectApplication={setSelectedId}
+              onLoadMoreApplications={loadMoreApplications}
+              onTabChange={setTab}
+              onUnauthorized={unauthorize}
+              onToast={showToast}
+            />
           </>
         )}
       </main>

@@ -14,7 +14,9 @@
     "test:e2e:review": "node scripts/e2e-review.mjs",
     "test:e2e:financial": "node scripts/e2e-financial.mjs",
     "test:e2e:review:live": "node scripts/e2e-review-live.mjs",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "lint:eslint": "eslint .",
+    "lint:fix": "eslint . --fix"
   },
   "dependencies": {
     "@simplewebauthn/browser": "^13.3.0",
@@ -26,14 +28,17 @@
     "react-dom": "^19.2.8"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.5",
     "@types/node": "^24.13.3",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
     "@vitejs/plugin-react": "^6.1.1",
+    "eslint": "^9.39.5",
     "oxlint": "^1.81.0",
     "playwright-core": "^1.64.1",
     "prettier": "^3.9.10",
     "typescript": "~6.0.2",
+    "typescript-eslint": "^8.72.1",
     "vite": "^8.3.0",
     "vitest": "^5.0.5"
   }

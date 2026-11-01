@@ -1,67 +1,27 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ApiError, listTeamAnalysisRequests } from "./api";
 import { matchesQuery, rowsToCsv } from "./ops-model";
-import {
-  AgeBadge,
-  BottomSheet,
-  OpsKpis,
-  OpsTimeline,
-  OpsViews,
-  RecordDrawer,
-} from "./OpsParts";
+import { OpsKpis, OpsViews } from "./OpsParts";
 import { OpsTable, OpsViewMenu, type OpsColumn } from "./OpsTable";
 import { useOpsPrefs } from "./useOpsPrefs";
 import {
   REQUEST_VIEWS,
-  admissionLabel,
-  documentLabels,
-  documentTone,
   paymentLabel,
-  paymentTone,
   requestKpis,
-  requestTimeline,
   requestTone,
   requestView,
   viewCounts,
   workLabel,
-  workProgressLabel,
-  workTone,
   type RequestRow,
   type RequestViewId,
 } from "./requests-model";
+import { RequestCard } from "./RequestCard";
+import { RequestFilterSheet } from "./RequestFilterSheet";
+import { RequestRecordDrawer } from "./RequestRecordDrawer";
+import { requestColumns } from "./request-columns";
+import { DOCUMENT_FILTERS, download } from "./request-directory-model";
 import { useNow } from "./useNow";
 import "./ops.css";
-
-const dateTime = new Intl.DateTimeFormat("pt-BR", {
-  dateStyle: "short",
-  timeStyle: "short",
-});
-
-const DOCUMENT_FILTERS = [
-  { value: "", label: "Qualquer original" },
-  { value: "available", label: "Original disponível" },
-  { value: "expired", label: "Original vencido" },
-  { value: "purged", label: "Original eliminado" },
-];
-
-const shortId = (id: string) => id.slice(-8);
-
-function download(filename: string, text: string) {
-  const url = URL.createObjectURL(
-    new Blob([text], { type: "text/csv;charset=utf-8" }),
-  );
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  document.body.append(link);
-  link.click();
-  link.remove();
-  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
-function Badge({ tone, children }: { tone: string; children: string }) {
-  return <span className={`badge badge-${tone}`}>{children}</span>;
-}
 
 export function RequestDirectory({
   canRead,
@@ -139,74 +99,7 @@ export function RequestDirectory({
   );
 
   const columns: OpsColumn<RequestRow>[] = useMemo(
-    () => [
-      {
-        id: "id",
-        label: "Pedido",
-        locked: true,
-        render: (item) => (
-          <span className="ops-id">
-            <strong>{shortId(item.request_id)}</strong>
-            <small>{dateTime.format(new Date(item.created_at))}</small>
-          </span>
-        ),
-        text: (item) => item.request_id,
-      },
-      {
-        id: "pages",
-        label: "Páginas",
-        hideBelow: "tablet",
-        render: (item) => item.page_count,
-        text: (item) => String(item.page_count),
-      },
-      {
-        id: "document",
-        label: "Original",
-        render: (item) => (
-          <Badge tone={documentTone(item)}>
-            {documentLabels[item.document_state]}
-          </Badge>
-        ),
-        text: (item) => documentLabels[item.document_state],
-      },
-      {
-        id: "admission",
-        label: "Arquivo",
-        hideBelow: "tablet",
-        render: (item) => admissionLabel(item),
-        text: admissionLabel,
-      },
-      {
-        id: "payment",
-        label: "Pagamento",
-        render: (item) => (
-          <Badge tone={paymentTone(item)}>{paymentLabel(item)}</Badge>
-        ),
-        text: paymentLabel,
-      },
-      {
-        id: "work",
-        label: "Análise",
-        render: (item) => (
-          <span>
-            <Badge tone={workTone(item)}>{workLabel(item)}</Badge>
-            {workProgressLabel(item) && (
-              <small style={{ display: "block", marginTop: 4 }}>
-                {workProgressLabel(item)}
-              </small>
-            )}
-          </span>
-        ),
-        text: workLabel,
-      },
-      {
-        id: "age",
-        label: "Idade",
-        align: "end",
-        render: (item) => <AgeBadge iso={item.created_at} now={now} />,
-        text: (item) => item.created_at,
-      },
-    ],
+    () => requestColumns(now),
     [now],
   );
 
@@ -398,25 +291,7 @@ export function RequestDirectory({
             trigger.current = element;
             setSelected(item);
           }}
-          card={(item) => (
-            <>
-              <span className="ops-card-top">
-                <strong>{shortId(item.request_id)}</strong>
-                <AgeBadge iso={item.created_at} now={now} />
-              </span>
-              <span className="ops-card-badges">
-                <Badge tone={paymentTone(item)}>{paymentLabel(item)}</Badge>
-                <Badge tone={workTone(item)}>{workLabel(item)}</Badge>
-              </span>
-              <span className="ops-card-meta">
-                {item.page_count} {item.page_count === 1 ? "página" : "páginas"}{" "}
-                · {documentLabels[item.document_state]}
-              </span>
-              {workProgressLabel(item) && (
-                <span className="ops-card-meta">{workProgressLabel(item)}</span>
-              )}
-            </>
-          )}
+          card={(item) => <RequestCard item={item} now={now} />}
         />
       )}
 
@@ -439,141 +314,23 @@ export function RequestDirectory({
         )}
       </div>
 
-      <RecordDrawer
-        open={selected !== null}
-        title={selected ? `Pedido ${shortId(selected.request_id)}` : ""}
-        subtitle={
-          selected ? dateTime.format(new Date(selected.created_at)) : undefined
-        }
-        badges={
-          selected && (
-            <>
-              <Badge tone={paymentTone(selected)}>
-                {paymentLabel(selected)}
-              </Badge>
-              <Badge tone={workTone(selected)}>{workLabel(selected)}</Badge>
-            </>
-          )
-        }
+      <RequestRecordDrawer
+        selected={selected}
+        readOnly={readOnly}
+        trigger={trigger}
         onClose={() => setSelected(null)}
-        returnFocus={() => trigger.current}
-      >
-        {selected && (
-          <>
-            <section className="detail-panel-section">
-              <h3 className="detail-panel-section-title">Linha do tempo</h3>
-              <OpsTimeline
-                steps={requestTimeline(
-                  selected,
-                  dateTime.format(new Date(selected.created_at)),
-                )}
-              />
-              <p className="ops-missing">
-                A data de cada etapa ainda não vem do backend; só a criação.
-              </p>
-            </section>
-            <section className="detail-panel-section">
-              <h3 className="detail-panel-section-title">Resumo</h3>
-              <dl className="ops-facts">
-                <div>
-                  <dt>Código completo</dt>
-                  <dd>
-                    <code>{selected.request_id}</code>
-                  </dd>
-                </div>
-                <div>
-                  <dt>Páginas</dt>
-                  <dd>{selected.page_count}</dd>
-                </div>
-                <div>
-                  <dt>Original</dt>
-                  <dd>{documentLabels[selected.document_state]}</dd>
-                </div>
-                <div>
-                  <dt>Arquivo</dt>
-                  <dd>{admissionLabel(selected)}</dd>
-                </div>
-                {workProgressLabel(selected) && (
-                  <div>
-                    <dt>Andamento técnico</dt>
-                    <dd>{workProgressLabel(selected)}</dd>
-                  </div>
-                )}
-              </dl>
-            </section>
-            {!readOnly && (
-              <section className="detail-panel-section">
-                <h3 className="detail-panel-section-title">Ações</h3>
-                <div className="ops-actions">
-                  <button
-                    type="button"
-                    className="btn btn-secondary btn-md"
-                    onClick={() => openSource(selected.request_id)}
-                  >
-                    Conferir fonte
-                  </button>
-                  {selected.work_id && (
-                    <button
-                      type="button"
-                      className="btn btn-secondary btn-md"
-                      onClick={() => openReview(selected.work_id!)}
-                    >
-                      Conferir análise
-                    </button>
-                  )}
-                </div>
-              </section>
-            )}
-          </>
-        )}
-      </RecordDrawer>
+        openSource={openSource}
+        openReview={openReview}
+      />
 
-      <BottomSheet
+      <RequestFilterSheet
         open={sheet}
-        title="Filtros"
+        documentState={documentState}
+        resultCount={visible.length}
+        sheetTrigger={sheetTrigger}
         onClose={() => setSheet(false)}
-        returnFocus={() => sheetTrigger.current}
-        footer={
-          <>
-            <button
-              type="button"
-              className="btn btn-secondary btn-md"
-              onClick={() => {
-                setDocumentState("");
-                setSheet(false);
-              }}
-            >
-              Limpar
-            </button>
-            <button
-              type="button"
-              className="btn btn-primary btn-md"
-              onClick={() => setSheet(false)}
-            >
-              Ver {visible.length}{" "}
-              {visible.length === 1 ? "resultado" : "resultados"}
-            </button>
-          </>
-        }
-      >
-        <div className="form-field">
-          <label className="form-field-label" htmlFor="req-doc-sheet">
-            Situação do original
-          </label>
-          <select
-            id="req-doc-sheet"
-            className="input"
-            value={documentState}
-            onChange={(event) => setDocumentState(event.target.value)}
-          >
-            {DOCUMENT_FILTERS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </div>
-      </BottomSheet>
+        onDocumentStateChange={setDocumentState}
+      />
     </section>
   );
 }

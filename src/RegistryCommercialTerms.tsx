@@ -6,22 +6,7 @@ import {
   type RegistryCommercialTerms as Terms,
   type RegistryCommercialTermsCreate,
 } from "./api";
-import {
-  Composer,
-  ComposerSection,
-  ComposerSummary,
-  Delta,
-  InlinePanel,
-  Metrics,
-  SettingCard,
-} from "./SupplierUi";
 import { stepStates } from "./account-model";
-import {
-  DeclarationPanel,
-  FilePickButton,
-  LabelRow,
-  MiniButton,
-} from "./EvidenceTools";
 import { declarationText, nextVersionId, sha256Hex } from "./evidence-model";
 import {
   COMMERCIAL_LIMITS,
@@ -30,168 +15,25 @@ import {
   type CommercialLimits,
   type CommercialValues,
 } from "./commercial-form-model";
+import { RegistryCommercialTermsCard } from "./RegistryCommercialTermsCard";
+import { RegistryCommercialTermsComposer } from "./RegistryCommercialTermsComposer";
+import {
+  analysisBudgetPerDocumentCents,
+  commercialFields as fields,
+  displayNumber,
+  draftFrom,
+  economicAnalysisCallSuggestion,
+  numericKeys,
+  parseCommercialNumber,
+  type NumericKey,
+} from "./registry-commercial-terms-model";
 import type { ToastKind } from "./useToast";
 
-const money = (cents: number) =>
-  new Intl.NumberFormat("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  }).format(cents / 100);
-const dateTime = new Intl.DateTimeFormat("pt-BR", {
-  dateStyle: "short",
-  timeStyle: "short",
-  timeZone: "America/Sao_Paulo",
-});
-
-type NumericKey = keyof Pick<
-  RegistryCommercialTermsCreate,
-  | "operations_reserve_cents"
-  | "analysis_call_reserve_cents"
-  | "exception_reserve_cents"
-  | "payment_fee_cents"
-  | "payment_fee_rate_bps"
-  | "tax_rate_bps"
-  | "minimum_contribution_cents"
-  | "markup_bps"
-  | "onr_markup_bps"
->;
-const numericKeys: NumericKey[] = [
-  "analysis_call_reserve_cents",
-  "operations_reserve_cents",
-  "exception_reserve_cents",
-  "payment_fee_cents",
-  "payment_fee_rate_bps",
-  "tax_rate_bps",
-  "minimum_contribution_cents",
-  "markup_bps",
-  "onr_markup_bps",
-];
-function displayNumber(value: number): string {
-  return (value / 100).toLocaleString("pt-BR", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-}
-export function parseCommercialNumber(value: string): number | null {
-  const trimmed = value.trim();
-  const normalized = /^\d{1,3}(?:\.\d{3})+,\d{1,2}$/.test(trimmed)
-    ? trimmed.replaceAll(".", "").replace(",", ".")
-    : trimmed.replace(",", ".");
-  if (!/^\d+(?:\.\d{1,2})?$/.test(normalized)) return null;
-  const scaled = Math.round(Number(normalized) * 100);
-  return Number.isSafeInteger(scaled) ? scaled : null;
-}
-
-/** Calculates the per-document AI reserve from the planned calls and reserve per call. */
-export function analysisBudgetPerDocumentCents(
-  plannedCalls: number,
-  callReserveCents: number,
-): number {
-  return Number.isSafeInteger(plannedCalls) &&
-    Number.isSafeInteger(callReserveCents)
-    ? Math.max(1000, plannedCalls * callReserveCents)
-    : 0;
-}
-
-/** Returns the lowest server-allowed reserve when it is cheaper than the current one. */
-export function economicAnalysisCallSuggestion(
-  currentCents: number,
-  minimumCents: number,
-): number | null {
-  if (
-    !Number.isSafeInteger(currentCents) ||
-    !Number.isSafeInteger(minimumCents)
-  )
-    return null;
-  return currentCents > minimumCents ? minimumCents : null;
-}
-
-const fields: {
-  key: NumericKey;
-  label: string;
-  unit: string;
-}[] = [
-  {
-    key: "analysis_call_reserve_cents",
-    label: "Reserva de IA por chamada",
-    unit: "R$ por chamada planejada",
-  },
-  {
-    key: "onr_markup_bps",
-    label: "Acréscimo sobre a matrícula ONR",
-    unit: "%",
-  },
-  {
-    key: "markup_bps",
-    label: "Acréscimo público sobre o custo total",
-    unit: "%",
-  },
-  {
-    key: "tax_rate_bps",
-    label: "Reserva tributária",
-    unit: "%",
-  },
-  { key: "payment_fee_cents", label: "Tarifa fixa PIX", unit: "R$" },
-  {
-    key: "payment_fee_rate_bps",
-    label: "Tarifa percentual PIX",
-    unit: "%",
-  },
-  {
-    key: "operations_reserve_cents",
-    label: "Reserva operacional",
-    unit: "R$ por pedido",
-  },
-  {
-    key: "exception_reserve_cents",
-    label: "Reserva de exceção",
-    unit: "R$ por pedido",
-  },
-  {
-    key: "minimum_contribution_cents",
-    label: "Contribuição mínima",
-    unit: "R$",
-  },
-];
-
-/** Show the current value and server-published field bounds. */
-function unitHint(
-  key: NumericKey,
-  unit: string,
-  current: Terms,
-  limits: CommercialLimits,
-): string {
-  const value = current[key];
-  const shown = unit.startsWith("%")
-    ? `${(value / 100).toLocaleString("pt-BR", { maximumFractionDigits: 2 })}%`
-    : `R$ ${displayNumber(value)}`;
-  const floor = limits[key].min;
-  const ceiling = limits[key].max;
-  const show = (amount: number) =>
-    unit.startsWith("%")
-      ? `${(amount / 100).toLocaleString("pt-BR", { maximumFractionDigits: 2 })}%`
-      : money(amount);
-  const bound = ` · mínimo ${show(floor)} · máximo ${show(ceiling)}`;
-  return `${unit}${bound} · atual ${shown}`;
-}
-
-function draftFrom(terms: Terms): RegistryCommercialTermsCreate {
-  return {
-    base_offer_id: terms.id,
-    version: "",
-    analysis_call_reserve_cents: terms.analysis_call_reserve_cents,
-    operations_reserve_cents: terms.operations_reserve_cents,
-    exception_reserve_cents: terms.exception_reserve_cents,
-    payment_fee_cents: terms.payment_fee_cents,
-    payment_fee_rate_bps: terms.payment_fee_rate_bps,
-    tax_rate_bps: terms.tax_rate_bps,
-    minimum_contribution_cents: terms.minimum_contribution_cents,
-    markup_bps: terms.markup_bps,
-    onr_markup_bps: terms.onr_markup_bps,
-    payment_fee_evidence_sha256: null,
-    reason: "",
-  };
-}
+export {
+  analysisBudgetPerDocumentCents,
+  economicAnalysisCallSuggestion,
+  parseCommercialNumber,
+} from "./registry-commercial-terms-model";
 
 export function RegistryCommercialTerms({
   accountId,
@@ -438,470 +280,56 @@ export function RegistryCommercialTerms({
 
   return (
     <>
-      <SettingCard
-        title="Condições da cotação"
-        help="Cada publicação vale para novas cotações desta conta. Preços já cotados conservam a versão em que nasceram."
-        badge={
-          effective && (
-            <span className="badge badge-success">
-              Vigente até {dateTime.format(new Date(effective.valid_until))}
-            </span>
-          )
-        }
-        actions={
-          <>
-            <button
-              type="button"
-              className="btn btn-ghost btn-md"
-              disabled={loading || busy}
-              onClick={() => void load()}
-            >
-              Atualizar
-            </button>
-            {history.length > 0 && (
-              <button
-                type="button"
-                className="btn btn-secondary btn-md"
-                onClick={() => setHistoryOpen(true)}
-              >
-                Histórico ({history.length})
-              </button>
-            )}
-            <button
-              type="button"
-              className="btn btn-primary btn-md"
-              aria-haspopup="dialog"
-              disabled={!active || !draft || !effective || !numericInputs}
-              title={!active ? "Ative a conta para publicar." : undefined}
-              onClick={() => {
-                setAttempted(false);
-                setFormOpen(true);
-              }}
-            >
-              Nova versão
-            </button>
-          </>
-        }
-      >
-        {loading && (
-          <p role="status" className="sup-muted">
-            Carregando condições…
-          </p>
-        )}
-        {error && !formOpen && (
-          <p className="alert alert-danger" role="alert">
-            {error}
-          </p>
-        )}
-        {!loading && effective && (
-          <>
-            <Metrics
-              items={[
-                {
-                  label: "IA por documento",
-                  value: money(effective.analysis_reserve_cents),
-                },
-                {
-                  label: "Margem ONR",
-                  value: `${(effective.onr_markup_bps / 100).toLocaleString("pt-BR")}%`,
-                },
-                {
-                  label: "Tributos",
-                  value: `${(effective.tax_rate_bps / 100).toLocaleString("pt-BR")}%`,
-                },
-                {
-                  label: "Tarifa PIX",
-                  value: money(effective.payment_fee_cents),
-                },
-              ]}
-            />
-            <p className="sup-muted sup-clip">
-              Versão <code>{effective.version}</code>
-              {effective.onr_account_id === null &&
-                " · geral anterior; publique uma desta conta para personalizar"}
-            </p>
-            <div
-              className="sup-analysis-availability"
-              aria-label="Disponibilidade da IA por documento"
-            >
-              <div>
-                <strong>
-                  {effective.analysis_planned_calls > 0
-                    ? "IA disponível"
-                    : "IA indisponível"}
-                </strong>
-                <span>
-                  {effective.analysis_planned_calls > 0
-                    ? `${effective.analysis_planned_calls} chamadas planejadas por documento`
-                    : "O orçamento de IA não está completo"}
-                </span>
-              </div>
-              <div>
-                <strong>Como é calculado</strong>
-                <span>
-                  {effective.analysis_planned_calls} chamadas ×{" "}
-                  {money(effective.analysis_call_reserve_cents)} ={" "}
-                  {money(effective.analysis_reserve_cents)} por documento
-                </span>
-              </div>
-            </div>
-          </>
-        )}
-        {!loading && !effective && (
-          <p className="sup-muted">
-            Sem oferta completa vigente. Publique antes o orçamento de IA e a
-            tarifa no backend.
-          </p>
-        )}
-      </SettingCard>
-
-      <InlinePanel
-        open={historyOpen}
-        title="Histórico da conta"
-        onClose={() => setHistoryOpen(false)}
-        footer={
-          cursor ? (
-            <button
-              type="button"
-              className="btn btn-secondary btn-md"
-              disabled={loading}
-              onClick={() => void load(cursor)}
-            >
-              Carregar versões anteriores
-            </button>
-          ) : undefined
-        }
-      >
-        <ol className="sup-history">
-          {history.map((item) => (
-            <li key={item.id}>
-              <strong className="sup-clip">{item.version}</strong>
-              <span>
-                ONR {(item.onr_markup_bps / 100).toLocaleString("pt-BR")}% ·
-                tributos {(item.tax_rate_bps / 100).toLocaleString("pt-BR")}%
-              </span>
-            </li>
-          ))}
-        </ol>
-      </InlinePanel>
+      <RegistryCommercialTermsCard
+        effective={effective}
+        history={history}
+        cursor={cursor}
+        loading={loading}
+        busy={busy}
+        error={error}
+        formOpen={formOpen}
+        active={active}
+        draft={draft}
+        numericInputs={numericInputs}
+        historyOpen={historyOpen}
+        onHistoryOpenChange={setHistoryOpen}
+        onReload={(next) => void load(next)}
+        onNewVersion={() => {
+          setAttempted(false);
+          setFormOpen(true);
+        }}
+      />
 
       {formOpen && draft && effective && numericInputs && (
-        <Composer
-          title="Nova versão comercial"
-          steps={[
-            { id: "values", label: "Valores", state: termStates[0] },
-            {
-              id: "identity",
-              label: "Versão e evidência",
-              state: termStates[1],
-            },
-            { id: "review", label: "Revisão", state: termStates[2] },
-          ]}
+        <RegistryCommercialTermsComposer
+          termStates={termStates}
+          draft={draft}
+          effective={effective}
+          numericInputs={numericInputs}
+          limits={limits}
+          errors={errors}
+          shown={shown}
+          active={active}
+          busy={busy}
+          reviewing={reviewing}
+          attempted={attempted}
+          error={error}
+          feeChanged={feeChanged}
+          evidenceNote={evidenceNote}
+          declaration={declaration}
+          analysisBudgetCents={analysisBudgetCents}
+          economicAnalysisReserve={economicAnalysisReserve}
+          set={set}
           onClose={() => !busy && setFormOpen(false)}
-          summary={
-            <ComposerSummary
-              title="Resumo da nova versão"
-              rows={[
-                {
-                  label: "Margem ONR",
-                  value: (
-                    <>
-                      {(draft.onr_markup_bps / 100).toLocaleString("pt-BR")}%{" "}
-                      <Delta
-                        current={draft.onr_markup_bps}
-                        previous={effective.onr_markup_bps}
-                      />
-                    </>
-                  ),
-                },
-                {
-                  label: "Tributos",
-                  value: (
-                    <>
-                      {(draft.tax_rate_bps / 100).toLocaleString("pt-BR")}%{" "}
-                      <Delta
-                        current={draft.tax_rate_bps}
-                        previous={effective.tax_rate_bps}
-                      />
-                    </>
-                  ),
-                },
-                {
-                  label: "Tarifa PIX",
-                  value: (
-                    <>
-                      {money(draft.payment_fee_cents)}{" "}
-                      <Delta
-                        current={draft.payment_fee_cents}
-                        previous={effective.payment_fee_cents}
-                      />
-                    </>
-                  ),
-                },
-                {
-                  label: "Contribuição mínima",
-                  value: money(draft.minimum_contribution_cents),
-                },
-                {
-                  label: "Reserva de IA",
-                  value: `${money(analysisBudgetCents)} por documento (${effective.analysis_planned_calls} chamadas)`,
-                },
-                { label: "Versão", value: draft.version.trim() || "—" },
-              ]}
-              footer={
-                reviewing ? (
-                  <div
-                    className="sup-review"
-                    role="group"
-                    aria-label="Confirmar versão comercial"
-                  >
-                    <p>
-                      Publicar <strong>{draft.version.trim()}</strong>: ONR{" "}
-                      {(draft.onr_markup_bps / 100).toLocaleString("pt-BR")}% ·
-                      tributos{" "}
-                      {(draft.tax_rate_bps / 100).toLocaleString("pt-BR")}% ·
-                      PIX {money(draft.payment_fee_cents)} · IA{" "}
-                      {money(analysisBudgetCents)} por documento.
-                    </p>
-                    <button
-                      type="button"
-                      className="btn btn-primary btn-md"
-                      disabled={busy}
-                      onClick={() => void publish()}
-                    >
-                      {busy ? "Publicando…" : "Confirmar publicação"}
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-secondary btn-md"
-                      disabled={busy}
-                      onClick={() => setReviewing(false)}
-                    >
-                      Voltar
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    type="submit"
-                    form="commercial-form"
-                    className="btn btn-primary btn-md"
-                    disabled={!active || busy}
-                  >
-                    Revisar publicação
-                  </button>
-                )
-              }
-            />
-          }
-        >
-          {error && (
-            <p className="alert alert-danger" role="alert">
-              {error}
-            </p>
-          )}
-          {attempted && Object.keys(errors).length > 0 && (
-            <p className="alert alert-danger" role="alert">
-              Há {Object.keys(errors).length}{" "}
-              {Object.keys(errors).length === 1 ? "campo" : "campos"} para
-              corrigir, destacados abaixo.
-            </p>
-          )}
-          <form
-            id="commercial-form"
-            className="sup-composer-form"
-            onSubmit={review}
-            noValidate
-          >
-            <ComposerSection
-              title="Valores"
-              state={termStates[0]}
-              recap={`ONR ${(draft.onr_markup_bps / 100).toLocaleString("pt-BR")}% · tributos ${(draft.tax_rate_bps / 100).toLocaleString("pt-BR")}% · PIX ${money(draft.payment_fee_cents)}`}
-            >
-              {shown("values", true) && (
-                <p className="sup-error sup-span" role="alert">
-                  {errors.values}
-                </p>
-              )}
-              {fields.map(({ key, label, unit }) => (
-                <div key={key} className="sup-field">
-                  <label htmlFor={`cm-${key}`}>
-                    {label}{" "}
-                    <span className="sup-unit">
-                      {unitHint(key, unit, effective, limits)}
-                    </span>
-                  </label>
-                  <input
-                    className="input"
-                    id={`cm-${key}`}
-                    type="text"
-                    inputMode="decimal"
-                    value={numericInputs[key]}
-                    disabled={!active || busy}
-                    onChange={(event) => setNumeric(key, event.target.value)}
-                  />
-                  {key === "analysis_call_reserve_cents" && (
-                    <div className="sup-analysis-field-note">
-                      <span>
-                        {effective.analysis_planned_calls} chamadas planejadas
-                        por documento · total atual {money(analysisBudgetCents)}
-                        .
-                      </span>
-                      {economicAnalysisReserve !== null ? (
-                        <button
-                          type="button"
-                          className="sup-mini"
-                          disabled={!active || busy}
-                          onClick={() =>
-                            setNumeric(
-                              key,
-                              displayNumber(economicAnalysisReserve),
-                            )
-                          }
-                        >
-                          Sugerir {money(economicAnalysisReserve)}/chamada
-                        </button>
-                      ) : (
-                        <span>
-                          Já está no menor valor permitido pelo backend.
-                        </span>
-                      )}
-                    </div>
-                  )}
-                  {shown(key, true) ? (
-                    <small className="sup-error" role="alert">
-                      {shown(key, true)}
-                    </small>
-                  ) : (
-                    <small>
-                      {key.endsWith("bps")
-                        ? "Percentual da nova versão"
-                        : "Valor da nova versão"}
-                    </small>
-                  )}
-                </div>
-              ))}
-            </ComposerSection>
-            <ComposerSection
-              title="Versão e evidência"
-              state={termStates[1]}
-              recap={`${draft.version.trim()} · ${draft.reason.trim().slice(0, 40)}`}
-            >
-              <div className="sup-field">
-                <LabelRow
-                  htmlFor="cm-version"
-                  text="Identificador da nova versão"
-                >
-                  <MiniButton
-                    title="Sugere o próximo identificador a partir da versão vigente"
-                    disabled={!active || busy}
-                    onClick={suggestVersion}
-                  >
-                    Gerar
-                  </MiniButton>
-                </LabelRow>
-                <input
-                  className="input"
-                  id="cm-version"
-                  autoComplete="off"
-                  value={draft.version}
-                  maxLength={120}
-                  disabled={!active || busy}
-                  placeholder="direct-onr-2026-10-v2"
-                  aria-invalid={!!shown("version", draft.version.length > 0)}
-                  onChange={(event) => set("version", event.target.value)}
-                />
-                {shown("version", draft.version.length > 0) && (
-                  <small className="sup-error" role="alert">
-                    {shown("version", draft.version.length > 0)}
-                  </small>
-                )}
-              </div>
-              <div className="sup-field">
-                <LabelRow
-                  htmlFor="cm-evidence"
-                  text="SHA-256 da evidência da tarifa PIX (se alterada)"
-                >
-                  <MiniButton
-                    title="Gera o SHA-256 de um texto de declaração criado pelo painel"
-                    disabled={!active || busy}
-                    onClick={() => void generateEvidence()}
-                  >
-                    Gerar
-                  </MiniButton>
-                  <FilePickButton
-                    disabled={!active || busy}
-                    onHash={hashFile}
-                    onError={setEvidenceNote}
-                  />
-                </LabelRow>
-                <input
-                  className="input"
-                  id="cm-evidence"
-                  autoComplete="off"
-                  spellCheck={false}
-                  value={draft.payment_fee_evidence_sha256 ?? ""}
-                  maxLength={64}
-                  disabled={!active || busy}
-                  aria-invalid={
-                    !!shown(
-                      "evidence",
-                      (draft.payment_fee_evidence_sha256 ?? "").length > 0,
-                    )
-                  }
-                  readOnly
-                />
-                {shown(
-                  "evidence",
-                  (draft.payment_fee_evidence_sha256 ?? "").length > 0,
-                ) ? (
-                  <small className="sup-error" role="alert">
-                    {errors.evidence}
-                  </small>
-                ) : (
-                  <small>
-                    {feeChanged
-                      ? "O painel gera a declaração ao revisar, se nenhum arquivo foi escolhido."
-                      : "Só é exigida quando a tarifa PIX muda."}
-                  </small>
-                )}
-              </div>
-              {evidenceNote && (
-                <p className="sup-muted" role="status">
-                  {evidenceNote}
-                </p>
-              )}
-              {declaration &&
-                declaration.hash === draft.payment_fee_evidence_sha256 && (
-                  <DeclarationPanel
-                    text={declaration.text}
-                    fileName={`declaracao-pix-${draft.version.trim() || "versao"}.txt`}
-                  />
-                )}
-              <label>
-                Motivo da publicação
-                <textarea
-                  className="input"
-                  rows={3}
-                  maxLength={500}
-                  value={draft.reason}
-                  disabled={!active || busy}
-                  aria-invalid={!!shown("reason", draft.reason.length > 0)}
-                  onChange={(event) => set("reason", event.target.value)}
-                />
-                {shown("reason", draft.reason.length > 0) ? (
-                  <small className="sup-error" role="alert">
-                    {errors.reason}
-                  </small>
-                ) : (
-                  <small>
-                    O orçamento de IA e o vencimento vêm da oferta vigente.
-                    Confira a tarifa PIX real antes de alterá-la.
-                  </small>
-                )}
-              </label>
-            </ComposerSection>
-          </form>
-        </Composer>
+          onPublish={() => void publish()}
+          onCancelReview={() => setReviewing(false)}
+          onSubmit={review}
+          onNumericChange={setNumeric}
+          onSuggestVersion={suggestVersion}
+          onGenerateEvidence={generateEvidence}
+          onHashFile={hashFile}
+          onEvidenceNote={setEvidenceNote}
+        />
       )}
     </>
   );

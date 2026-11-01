@@ -14,97 +14,20 @@ import {
   type PartnerRole,
   type PeopleApi,
 } from "./api";
-import { ConfirmDialog } from "./ConfirmDialog";
-import { relativeTime } from "./integration-insights-model";
-import { roleLabel } from "./partner-roles";
-import { RolePicker } from "./RolePicker";
+import { PartnerHistoryPanel } from "./PartnerHistoryPanel";
+import { PartnerInvitePanel } from "./PartnerInvitePanel";
+import { PartnerPeopleDialogs } from "./PartnerPeopleDialogs";
+import { PartnerPeopleList } from "./PartnerPeopleList";
+import { EMAIL_PATTERN, actionCopy, filters } from "./partner-people-copy";
 import {
   countPeople,
-  eventActor,
-  eventLabel,
-  eventValueLabel,
   filterPeople,
-  invitationNote,
-  personView,
   type PeopleFilter,
   type PersonAction,
 } from "./partner-people-model";
 import type { ToastKind } from "./useToast";
 import { useDialogFocus } from "./useDialogFocus";
 import "./partner-people.css";
-
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-const filters: { value: PeopleFilter; label: string }[] = [
-  { value: "all", label: "Todas" },
-  { value: "active", label: "Ativas" },
-  { value: "pending", label: "Convites" },
-  { value: "suspended", label: "Suspensas" },
-];
-
-const dateTime = new Intl.DateTimeFormat("pt-BR", {
-  dateStyle: "short",
-  timeStyle: "short",
-  timeZone: "America/Sao_Paulo",
-});
-
-const actionCopy: Record<
-  PersonAction,
-  {
-    button: string;
-    title: string;
-    description: string;
-    confirm: string;
-    success: string;
-    danger: boolean;
-  }
-> = {
-  resend: {
-    button: "Reenviar",
-    title: "Reenviar o convite?",
-    description:
-      "O link anterior deixa de valer e um novo link é enviado por e-mail, válido por 24 horas.",
-    confirm: "Reenviar convite",
-    success: "Convite reenviado.",
-    danger: false,
-  },
-  revoke: {
-    button: "Revogar convite",
-    title: "Revogar o convite?",
-    description:
-      "O link enviado deixa de funcionar. A pessoa não consegue mais aceitar.",
-    confirm: "Revogar convite",
-    success: "Convite revogado.",
-    danger: true,
-  },
-  suspend: {
-    button: "Suspender acesso",
-    title: "Suspender o acesso desta pessoa?",
-    description:
-      "As sessões atuais são encerradas na hora e ela perde o acesso a todas as aplicações desta parceria.",
-    confirm: "Suspender acesso",
-    success: "Acesso suspenso. As sessões da pessoa foram encerradas.",
-    danger: true,
-  },
-  "change-role": {
-    button: "Alterar papel",
-    title: "Alterar o papel desta pessoa?",
-    description:
-      "O novo papel vale só nesta parceria. As sessões atuais da pessoa são encerradas e ela precisa entrar de novo.",
-    confirm: "Alterar papel",
-    success: "Papel alterado. A pessoa precisa entrar de novo.",
-    danger: false,
-  },
-  reactivate: {
-    button: "Reativar acesso",
-    title: "Reativar o acesso desta pessoa?",
-    description:
-      "Ela volta a entrar na parceria, mas precisa fazer login de novo.",
-    confirm: "Reativar acesso",
-    success: "Acesso reativado.",
-    danger: false,
-  },
-};
 
 type Pending = { action: PersonAction; person: PartnerPerson };
 
@@ -290,8 +213,6 @@ export function PartnerPeople({
     }
   }
 
-  const copy = pending ? actionCopy[pending.action] : null;
-
   return (
     <section className="card people" aria-labelledby="people-title">
       <div className="card-header">
@@ -334,106 +255,25 @@ export function PartnerPeople({
           ))}
         </div>
 
-        {loading ? (
-          <div
-            className="rules-skeleton"
-            role="status"
-            aria-label="Carregando pessoas"
-          >
-            <span className="skeleton" />
-            <span className="skeleton" />
-          </div>
-        ) : loadFailed ? (
-          <div className="alert alert-danger" role="alert">
-            Não foi possível carregar as pessoas da parceria.{" "}
-            <button
-              className="btn btn-secondary btn-sm"
-              type="button"
-              onClick={() => {
-                setLoading(true);
-                void load();
-              }}
-            >
-              Tentar novamente
-            </button>
-          </div>
-        ) : visible.length === 0 ? (
-          <div className="empty-state" role="status">
-            <strong>
-              {items.length === 0
-                ? "Ninguém com acesso ainda"
-                : "Ninguém neste filtro"}
-            </strong>
-            <span>
-              {items.length === 0
-                ? isAdmin
-                  ? "Convide a pessoa responsável pela integração para ela entrar no portal."
-                  : "Peça a um administrador para convidar a pessoa responsável."
-                : "Escolha outro filtro para ver as demais pessoas."}
-            </span>
-          </div>
-        ) : (
-          <ul className="people-list" aria-label="Pessoas da parceria">
-            {visible.map((person) => {
-              const view = personView(person, isAdmin);
-              const note = invitationNote(person.invitation, now);
-              return (
-                <li key={person.membership_id}>
-                  <span className="people-avatar" aria-hidden="true">
-                    {person.email.slice(0, 2).toUpperCase()}
-                  </span>
-                  <div className="people-main">
-                    <strong>
-                      {person.email}
-                      {person.id === viewerId && " (você)"}
-                    </strong>
-                    <small>
-                      {note ??
-                        (person.last_access_at
-                          ? `Último acesso ${relativeTime(person.last_access_at, now)}`
-                          : person.membership_status === "active"
-                            ? "Nunca acessou"
-                            : "—")}
-                    </small>
-                  </div>
-                  <span className="people-status">
-                    <span className="badge badge-neutral people-role">
-                      {roleLabel(person.role)}
-                    </span>
-                    <span className={`badge badge-${view.tone}`}>
-                      {view.label}
-                    </span>
-                  </span>
-                  <div className="people-actions">
-                    {view.actions.map((action) => (
-                      <button
-                        key={action}
-                        type="button"
-                        className={`btn btn-sm ${actionCopy[action].danger ? "btn-ghost-danger" : "btn-secondary"}`}
-                        disabled={busy}
-                        onClick={() => {
-                          setNewRole(null);
-                          setPending({ action, person });
-                        }}
-                      >
-                        {actionCopy[action].button}
-                      </button>
-                    ))}
-                    <button
-                      type="button"
-                      className="btn btn-ghost btn-sm"
-                      data-person-id={person.id}
-                      aria-haspopup="dialog"
-                      onClick={() => void openHistory(person)}
-                    >
-                      Histórico
-                    </button>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        )}
+        <PartnerPeopleList
+          items={items}
+          visible={visible}
+          loading={loading}
+          loadFailed={loadFailed}
+          isAdmin={isAdmin}
+          busy={busy}
+          viewerId={viewerId}
+          now={now}
+          onRetry={() => {
+            setLoading(true);
+            void load();
+          }}
+          onAction={(action, person) => {
+            setNewRole(null);
+            setPending({ action, person });
+          }}
+          onHistory={(person) => void openHistory(person)}
+        />
         {nextCursor && (
           <button
             type="button"
@@ -445,233 +285,51 @@ export function PartnerPeople({
         )}
       </div>
 
-      <ConfirmDialog
-        open={inviteConfirm}
-        title="Enviar convite de acesso?"
-        description="O convite será enviado agora por e-mail e o link vale por 24 horas. Confira o endereço: se estiver errado, outra pessoa receberá o acesso."
-        details={[
-          { label: "Parceria", value: organizationName },
-          { label: "Enviar para", value: inviteEmail.trim() },
-          { label: "Papel", value: roleLabel(inviteRole) },
-        ]}
-        confirmLabel="Enviar convite"
+      <PartnerPeopleDialogs
+        organizationName={organizationName}
         busy={busy}
-        onConfirm={() => void sendInvite()}
-        onCancel={() => setInviteConfirm(false)}
+        inviteConfirm={inviteConfirm}
+        inviteEmail={inviteEmail}
+        inviteRole={inviteRole}
+        pending={pending}
+        newRole={newRole}
+        onSendInvite={() => void sendInvite()}
+        onCancelInvite={() => setInviteConfirm(false)}
+        onConfirmAction={(reason) => void confirmAction(reason)}
+        onCancelAction={() => setPending(null)}
+        onNewRole={setNewRole}
       />
-      <ConfirmDialog
-        open={pending !== null}
-        tone={copy?.danger ? "danger" : "primary"}
-        title={copy?.title ?? ""}
-        description={copy?.description}
-        details={
-          pending
-            ? [
-                { label: "Pessoa", value: pending.person.email },
-                { label: "Parceria", value: organizationName },
-              ]
-            : []
-        }
-        reason={{
-          label: "Motivo (fica na trilha de auditoria)",
-          min: 3,
-          max: 500,
-        }}
-        confirmDisabled={
-          pending?.action === "change-role" &&
-          (newRole === null || newRole === pending.person.role)
-        }
-        confirmLabel={copy?.confirm ?? ""}
-        busy={busy}
-        onConfirm={(reason) => void confirmAction(reason)}
-        onCancel={() => setPending(null)}
-      >
-        {pending?.action === "change-role" && (
-          <RolePicker
-            label={`Novo papel (atual: ${roleLabel(pending.person.role)})`}
-            value={newRole ?? pending.person.role}
-            disabled={busy}
-            onChange={setNewRole}
-          />
-        )}
-      </ConfirmDialog>
 
       {createPortal(
         <>
-          {inviteOpen && (
-            <div className="detail-panel-overlay" onClick={closeInvite} />
-          )}
-          <aside
-            ref={inviteRef}
-            className={`detail-panel${inviteOpen ? " open" : ""}`}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="people-invite-title"
-            aria-hidden={!inviteOpen}
-          >
-            {inviteOpen && (
-              <form
-                noValidate
-                onSubmit={requestInvite}
-                className="people-invite"
-              >
-                <div className="detail-panel-header">
-                  <div>
-                    <h2 className="rules-panel-title" id="people-invite-title">
-                      Convidar pessoa
-                    </h2>
-                    <p className="rules-panel-sub">{organizationName}</p>
-                  </div>
-                  <button
-                    className="btn btn-ghost btn-sm"
-                    type="button"
-                    aria-label="Fechar"
-                    onClick={closeInvite}
-                  >
-                    ✕
-                  </button>
-                </div>
-                <div className="detail-panel-body">
-                  <div className="form-field">
-                    <label
-                      className="form-field-label"
-                      htmlFor="partner-invite-email"
-                    >
-                      E-mail da pessoa
-                    </label>
-                    <input
-                      id="partner-invite-email"
-                      className="input"
-                      name="responsible-contact"
-                      type="text"
-                      inputMode="email"
-                      autoComplete="off"
-                      autoCapitalize="none"
-                      spellCheck={false}
-                      readOnly={!inviteEditable}
-                      onFocus={() => setInviteEditable(true)}
-                      value={inviteEmail}
-                      onChange={(event) => {
-                        setInviteEmail(event.target.value);
-                        setInviteError("");
-                      }}
-                    />
-                    <span className="form-hint">
-                      Ela cria a senha e ativa o autenticador antes de entrar.
-                    </span>
-                  </div>
-                  <RolePicker
-                    label="Papel na parceria"
-                    value={inviteRole}
-                    disabled={busy}
-                    onChange={(role) => {
-                      setInviteRole(role);
-                      setInviteError("");
-                    }}
-                  />
-                  {inviteError && (
-                    <div className="alert alert-danger" role="alert">
-                      {inviteError}
-                    </div>
-                  )}
-                </div>
-                <div className="detail-panel-footer">
-                  <button
-                    className="btn btn-primary btn-md"
-                    disabled={busy || !inviteEmail.trim() || !inviteRole}
-                  >
-                    Enviar convite
-                  </button>
-                  <button
-                    className="btn btn-ghost btn-md"
-                    type="button"
-                    disabled={busy}
-                    onClick={closeInvite}
-                  >
-                    Cancelar
-                  </button>
-                </div>
-              </form>
-            )}
-          </aside>
-          {history && (
-            <div className="detail-panel-overlay" onClick={closeHistory} />
-          )}
-          <aside
-            ref={panelRef}
-            className={`detail-panel${history ? " open" : ""}`}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="people-history-title"
-            aria-hidden={!history}
-          >
-            {history && (
-              <>
-                <div className="detail-panel-header">
-                  <div>
-                    <h2 className="rules-panel-title" id="people-history-title">
-                      Histórico
-                    </h2>
-                    <p className="rules-panel-sub">{history.email}</p>
-                  </div>
-                  <button
-                    className="btn btn-ghost btn-sm"
-                    type="button"
-                    aria-label="Fechar"
-                    onClick={closeHistory}
-                  >
-                    ✕
-                  </button>
-                </div>
-                <div className="detail-panel-body">
-                  {eventsFailed ? (
-                    <div className="alert alert-danger" role="alert">
-                      Não foi possível carregar o histórico.
-                    </div>
-                  ) : events === null ? (
-                    <div
-                      className="rules-skeleton"
-                      role="status"
-                      aria-label="Carregando"
-                    >
-                      <span className="skeleton" />
-                      <span className="skeleton" />
-                    </div>
-                  ) : events.length === 0 ? (
-                    <div className="empty-state" role="status">
-                      <strong>Sem registros</strong>
-                      <span>
-                        Eventos anteriores à trilha de auditoria não são
-                        inferidos.
-                      </span>
-                    </div>
-                  ) : (
-                    <ol className="people-timeline">
-                      {events.map((event) => (
-                        <li key={event.id}>
-                          <strong>{eventLabel(event.action)}</strong>
-                          <small>
-                            {dateTime.format(new Date(event.created_at))} ·{" "}
-                            {eventActor(event)}
-                          </small>
-                          {(event.previous_value || event.new_value) && (
-                            <small>
-                              {eventValueLabel(
-                                event.action,
-                                event.previous_value,
-                              )}{" "}
-                              → {eventValueLabel(event.action, event.new_value)}
-                            </small>
-                          )}
-                          <p>{event.reason}</p>
-                        </li>
-                      ))}
-                    </ol>
-                  )}
-                </div>
-              </>
-            )}
-          </aside>
+          <PartnerInvitePanel
+            open={inviteOpen}
+            panelRef={inviteRef}
+            organizationName={organizationName}
+            email={inviteEmail}
+            editable={inviteEditable}
+            role={inviteRole}
+            error={inviteError}
+            busy={busy}
+            onClose={closeInvite}
+            onSubmit={requestInvite}
+            onFocusEmail={() => setInviteEditable(true)}
+            onEmail={(value) => {
+              setInviteEmail(value);
+              setInviteError("");
+            }}
+            onRole={(role) => {
+              setInviteRole(role);
+              setInviteError("");
+            }}
+          />
+          <PartnerHistoryPanel
+            history={history}
+            events={events}
+            eventsFailed={eventsFailed}
+            panelRef={panelRef}
+            onClose={closeHistory}
+          />
         </>,
         document.body,
       )}
