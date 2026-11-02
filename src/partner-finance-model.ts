@@ -1,6 +1,7 @@
 import type { RoleAccess } from "./partner-roles";
 
-export type PortalSection = "integrations" | "metrics" | "statement" | "people" | "documentation";
+export type PortalSection =
+  "integrations" | "metrics" | "statement" | "people" | "documentation";
 
 const SECTIONS: { id: PortalSection; label: string; key?: keyof RoleAccess }[] =
   [
@@ -12,10 +13,9 @@ const SECTIONS: { id: PortalSection; label: string; key?: keyof RoleAccess }[] =
   ];
 
 export const portalSections = (access: RoleAccess) =>
-  SECTIONS.filter((section) => !section.key || access[section.key]).map(({ id, label }) => ({
-    id,
-    label,
-  }));
+  SECTIONS.filter((section) =>
+    section.key ? access[section.key] : Object.values(access).some(Boolean),
+  ).map(({ id, label }) => ({ id, label }));
 
 export const deliveryRate = (delivered: number, attempts: number) =>
   attempts === 0 ? null : Math.round((delivered / attempts) * 100);

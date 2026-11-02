@@ -166,7 +166,7 @@
 
 .pp-docs-head {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
   gap: var(--space-6);
   padding-bottom: var(--space-5);
@@ -260,7 +260,7 @@
   color: var(--primary);
   font-size: var(--text-caption);
   font-weight: var(--weight-semibold);
-  letter-spacing: .08em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
@@ -304,7 +304,7 @@
   color: #52647e;
   font-size: var(--text-caption);
   font-weight: var(--weight-semibold);
-  letter-spacing: .08em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
@@ -314,7 +314,7 @@
   padding: 16px;
   color: #173967;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: .78rem;
+  font-size: 0.78rem;
   line-height: 1.65;
   white-space: pre;
 }
