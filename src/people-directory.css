@@ -1,7 +1,33 @@
+.people.page {
+  display: grid;
+  gap: var(--space-5);
+  align-content: start;
+  max-width: 1440px;
+}
+
+.people .page-header {
+  align-items: flex-start;
+  margin-bottom: 0;
+  padding-bottom: var(--space-5);
+  border-bottom: 1px solid var(--border);
+}
+
+.people .page-title {
+  font-size: clamp(var(--text-xl), 2.4vw, var(--text-2xl));
+  letter-spacing: -0.035em;
+}
+
+.people-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
 .people-tabs {
   display: flex;
   gap: var(--space-1);
-  margin-bottom: var(--space-4);
+  margin-bottom: 0;
   border-bottom: 1px solid var(--border);
 }
 
@@ -37,7 +63,11 @@
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-3);
-  margin-bottom: var(--space-4);
+  margin-bottom: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-muted);
 }
 
 .people-search {
@@ -70,6 +100,18 @@
   margin-left: auto;
   color: var(--text-muted);
   font-size: var(--text-caption);
+}
+
+.people-table {
+  min-width: 640px;
+}
+
+.people-table tbody tr {
+  transition: background-color var(--motion-fast) var(--ease-standard);
+}
+
+.people-table tbody tr:hover td {
+  background: var(--primary-faint);
 }
 
 .people-skeleton {
@@ -144,6 +186,10 @@
   min-width: 0;
 }
 
+.people-detail-head > div {
+  min-width: 0;
+}
+
 .people-detail-title {
   margin: 0 0 var(--space-1);
   color: var(--text);
@@ -183,6 +229,33 @@
 }
 
 @media (max-width: 760px) {
+  .people.page {
+    gap: var(--space-4);
+  }
+
+  .people .page-header {
+    gap: var(--space-3);
+  }
+
+  .people-header-actions {
+    width: 100%;
+  }
+
+  .people-header-actions .btn {
+    flex: 1;
+  }
+
+  .people-toolbar {
+    align-items: stretch;
+  }
+
+  .people-search,
+  .people-filter,
+  .people-filter .input {
+    width: 100%;
+    max-width: none;
+  }
+
   .people-count {
     width: 100%;
     margin-left: 0;
@@ -295,6 +368,7 @@
 .pm-kpis strong {
   color: var(--text);
   font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
 }
 
 .pm-overview-section {
@@ -349,7 +423,19 @@
 }
 
 .pm-action {
-  max-width: 320px;
+  max-width: none;
+  padding: var(--space-3) 0;
+  border-top: 1px solid var(--border);
+}
+
+.pm-actions {
+  display: grid;
+  gap: 0;
+}
+
+.pm-action:first-child {
+  border-top: 0;
+  padding-top: 0;
 }
 
 .pm-action .input {

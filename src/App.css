@@ -525,7 +525,7 @@ textarea:focus-visible {
   position: relative;
   z-index: 1;
 }
-.login-story h1 {
+.login-story h2 {
   font-size: clamp(2.5rem, 4vw, 4rem);
   line-height: 1.14;
   max-width: 550px;
@@ -716,8 +716,7 @@ textarea:focus-visible {
   transition: border-color 0.15s;
   width: 100%;
 }
-.input:focus {
-  outline: none;
+.input:focus-visible {
   border-color: var(--blue);
   box-shadow: 0 0 0 3px rgba(7, 91, 255, 0.12);
 }
@@ -935,7 +934,7 @@ textarea:focus-visible {
     0 0 0 calc(6vw + 1px) var(--text-muted);
   opacity: 0.55;
 }
-.login-story h1 {
+.login-story h2 {
   font-size: clamp(2.65rem, 4vw, 4rem);
   max-width: 510px;
   letter-spacing: -0.055em;

@@ -3,18 +3,23 @@
 
   --bg: #eef2f8;
   --surface: #ffffff;
+  --surface-raised: #ffffff;
   --surface-muted: #f1f5f9;
   --border: #e2e8f0;
   --border-strong: #cbd5e1;
 
   --text: #0f172a;
+  --foreground: var(--text);
   --text-muted: #475569;
+  --muted-foreground: var(--text-muted);
   --text-subtle: #94a3b8;
+  --subtle-foreground: var(--text-subtle);
 
   --primary: #075bff;
   --primary-hover: #0550e6;
   --primary-faint: #eff6ff;
   --primary-ring: #bfdbfe;
+  --ring: var(--primary);
 
   --success: #16a34a;
   --success-bg: #f0fdf4;
@@ -60,6 +65,14 @@
   --radius-md: 6px;
   --radius-lg: 8px;
   --radius-xl: 12px;
+
+  --control-height: 36px;
+  --touch-target: 44px;
+  --shadow-sm: 0 1px 2px rgb(15 23 42 / 4%);
+  --shadow-popover: 0 12px 32px rgb(15 23 42 / 12%);
+  --motion-fast: 140ms;
+  --motion-standard: 200ms;
+  --ease-standard: ease;
 
   --space-1: calc(4rem / var(--rem-px));
   --space-2: calc(8rem / var(--rem-px));

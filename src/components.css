@@ -6,7 +6,7 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
-  height: 36px;
+  height: var(--control-height);
   padding: 0 14px;
   border: 1px solid transparent;
   border-radius: var(--radius-md);
@@ -17,6 +17,7 @@
   font-weight: var(--weight-semibold);
   white-space: nowrap;
   cursor: pointer;
+  touch-action: manipulation;
   transition:
     background-color 140ms ease,
     border-color 140ms ease,
@@ -98,6 +99,10 @@
   outline: 2px solid var(--primary);
   outline-offset: 1px;
   box-shadow: 0 0 0 4px var(--primary-ring);
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(1px);
 }
 
 /* ── Badges ──────────────────────────────────────────────── */
@@ -186,6 +191,11 @@
   width: 100%;
   border-collapse: collapse;
   font-size: var(--text-sm);
+}
+
+.data-table :is(th, td):has(.numeric),
+.data-table .numeric {
+  font-variant-numeric: tabular-nums;
 }
 
 .data-table thead th {
@@ -589,7 +599,7 @@ textarea.input {
 
 .alert {
   padding: var(--space-3) var(--space-4);
-  border-left: 3px solid var(--info);
+  border: 1px solid var(--info);
   border-radius: var(--radius-md);
   background: var(--info-bg);
   color: var(--text);
@@ -598,17 +608,17 @@ textarea.input {
 }
 
 .alert-success {
-  border-left-color: var(--success);
+  border-color: var(--success);
   background: var(--success-bg);
 }
 
 .alert-danger {
-  border-left-color: var(--danger);
+  border-color: var(--danger);
   background: var(--danger-bg);
 }
 
 .alert-warning {
-  border-left-color: var(--warning);
+  border-color: var(--warning);
   background: var(--warning-bg);
 }
 

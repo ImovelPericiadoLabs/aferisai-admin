@@ -86,7 +86,7 @@ export function TeamLogin({
         <Brand light />
         <div>
           <p className="eyebrow">AferisAI</p>
-          <h1>Clareza para cada decisão.</h1>
+          <h2>Clareza para cada decisão.</h2>
           <p>
             Acompanhe operações, análises e parcerias em um espaço seguro,
             organizado para a sua equipe.
@@ -166,12 +166,20 @@ export function TeamLogin({
               ? "Informe seu e-mail e confirme a chave de acesso no dispositivo."
               : "Use sua senha e o código atual do aplicativo autenticador."}
           </p>
-          <form onSubmit={submit} className="form">
+          <form
+            onSubmit={submit}
+            className="form"
+            aria-busy={busy}
+            aria-describedby={error ? "login-error" : undefined}
+          >
             <label htmlFor="email">E-mail</label>
             <input
               id="email"
+              name="email"
               type="email"
+              inputMode="email"
               autoComplete="username"
+              spellCheck={false}
               required
               value={email}
               onChange={(event) => setEmail(event.target.value)}
@@ -181,6 +189,7 @@ export function TeamLogin({
                 <label htmlFor="password">Senha</label>
                 <input
                   id="password"
+                  name="password"
                   type="password"
                   autoComplete="current-password"
                   required
@@ -190,6 +199,7 @@ export function TeamLogin({
                 <label htmlFor="otp">Código do autenticador</label>
                 <input
                   id="otp"
+                  name="otp"
                   type="text"
                   inputMode="numeric"
                   autoComplete="one-time-code"
@@ -205,11 +215,16 @@ export function TeamLogin({
               </>
             )}
             {error && (
-              <p className="error" role="alert">
+              <p id="login-error" className="error" role="alert">
                 {error}
               </p>
             )}
-            <button className="button primary full" disabled={busy}>
+            <button
+              type="submit"
+              className="button primary full"
+              disabled={busy}
+              aria-busy={busy}
+            >
               {busy
                 ? "Verificando…"
                 : loginMode === "passkey"

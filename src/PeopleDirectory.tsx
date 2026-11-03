@@ -161,6 +161,7 @@ export function PeopleDirectory({
           </svg>
           <input
             id="people-query"
+            name="people-query"
             className="input"
             type="search"
             maxLength={100}
@@ -172,6 +173,7 @@ export function PeopleDirectory({
         <label className="people-filter">
           <span className="sr-only">Estado</span>
           <select
+            name="people-status"
             className="input"
             value={status}
             disabled={loading && Boolean(serverStatusFilter)}
@@ -186,6 +188,7 @@ export function PeopleDirectory({
           <label className="people-filter">
             <span className="sr-only">Papel</span>
             <select
+              name="people-role"
               className="input"
               value={role}
               onChange={(event) => setRole(event.target.value)}

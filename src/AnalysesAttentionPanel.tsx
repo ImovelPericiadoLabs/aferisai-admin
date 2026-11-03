@@ -120,6 +120,7 @@ export function AnalysesAttentionPanel({
           </label>
           <input
             id="ana-search"
+            name="analysis-search"
             className="input"
             type="search"
             placeholder="Buscar pelo código do trabalho ou do pedido"

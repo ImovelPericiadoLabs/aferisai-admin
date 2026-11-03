@@ -24,8 +24,63 @@
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
+  color-scheme: light;
+  scroll-padding-top: calc(var(--topbar-height) + var(--space-4));
   font-size: 90%;
   font-family: "Lexend Deca", Arial, sans-serif;
+}
+
+body {
+  overflow-x: hidden;
+}
+
+::selection {
+  background: var(--primary-ring);
+  color: var(--text);
+}
+
+:where(h1, h2, h3) {
+  text-wrap: balance;
+}
+
+button,
+a,
+input,
+select,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+
+:where(button, a, input, select, textarea):focus-visible {
+  outline: 3px solid var(--ring);
+  outline-offset: 2px;
+}
+
+:where(h1, h2, h3, h4, [id]) {
+  scroll-margin-top: calc(var(--topbar-height) + var(--space-4));
+}
+
+.skip-link {
+  position: fixed;
+  top: var(--space-3);
+  left: var(--space-3);
+  z-index: 100;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--text);
+  color: var(--surface);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  transform: translateY(-180%);
+  transition: transform var(--motion-fast) var(--ease-standard);
+}
+
+.skip-link:focus-visible {
+  transform: translateY(0);
+}
+
+.numeric {
+  font-variant-numeric: tabular-nums;
 }
 
 @media (max-width: 767px) {

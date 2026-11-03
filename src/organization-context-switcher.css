@@ -8,7 +8,7 @@
   align-items: center;
   gap: 0.5rem;
   max-width: 248px;
-  min-height: 32px;
+  min-height: var(--control-height);
   padding: 0.35rem 0.6rem;
   border: 1px solid var(--line);
   border-radius: 5px;
@@ -42,7 +42,7 @@
   border: 1px solid var(--line);
   border-radius: 6px;
   background: white;
-  box-shadow: 0 12px 35px rgba(15, 23, 42, 0.12);
+  box-shadow: var(--shadow-popover);
 }
 .organization-context-heading {
   display: block;

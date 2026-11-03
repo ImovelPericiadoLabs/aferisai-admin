@@ -50,8 +50,10 @@ export function AnalysisReview({
   return (
     <div className="review-page page-fade-in">
       <header className="review-heading">
-        <p className="eyebrow">Análises</p>
-        <h1>Análises</h1>
+        <div>
+          <h2>Fluxo de análise</h2>
+          <p>Consulte pedidos, evidências e decisões no mesmo contexto.</p>
+        </div>
       </header>
       <nav className="tabs" role="tablist" aria-label="Abas de análise">
         {tabs.map((tab) => (

@@ -116,6 +116,9 @@ function TeamApp() {
 
   return (
     <div className={`shell${sidebarCollapsed ? " shell-collapsed" : ""}`}>
+      <a className="skip-link" href="#main-content">
+        Ir para o conteúdo principal
+      </a>
       <TeamSidebar
         sidebarRef={sidebarRef}
         menuCloseRef={menuCloseRef}
@@ -167,7 +170,7 @@ function TeamApp() {
             />
           )}
         </header>
-        <main key={currentPage} className="page-fade-in">
+        <main id="main-content" key={currentPage} className="page-fade-in">
           <TeamPageContent
             currentPage={currentPage}
             session={session}

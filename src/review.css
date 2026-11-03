@@ -1,6 +1,6 @@
 .review-page {
   display: grid;
-  gap: 1.2rem;
+  gap: var(--space-5);
   max-width: 1500px;
   margin: 0 auto;
   min-width: 0;
@@ -12,6 +12,19 @@
 }
 .review-heading h1 {
   margin: 0;
+}
+
+.review-heading h2 {
+  margin: 0;
+  color: var(--text);
+  font-size: clamp(var(--text-lg), 2vw, var(--text-xl));
+  letter-spacing: -0.03em;
+}
+
+.review-heading p {
+  margin: var(--space-1) 0 0;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
 }
 .review-card {
   min-width: 0;
@@ -31,6 +44,13 @@
   justify-content: space-between;
   align-items: start;
   gap: 1rem;
+}
+
+.review-queue-heading h2 {
+  margin-bottom: var(--space-1);
+  color: var(--text);
+  font-size: var(--text-lg);
+  letter-spacing: -0.025em;
 }
 .review-queue-list {
   display: grid;
@@ -175,7 +195,7 @@
 .review-layout {
   display: grid;
   grid-template-columns: minmax(0, 1.1fr) minmax(340px, 0.9fr);
-  gap: 1.2rem;
+  gap: var(--space-5);
   align-items: start;
 }
 .review-mobile-steps,
@@ -191,10 +211,11 @@
   min-height: 260px;
   max-height: 75vh;
   overflow: auto;
-  background: #e8edf4;
+  background: var(--surface-muted);
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
   margin-top: 1rem;
+  padding: var(--space-4);
 }
 .review-page-controls {
   display: flex;
@@ -215,6 +236,18 @@
   display: block;
   max-width: 100%;
   height: auto;
+}
+
+.review-page-viewer {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.review-page-viewer .review-page-controls {
+  padding: var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
 }
 .review-page-overlay {
   position: absolute;
@@ -304,8 +337,10 @@
 }
 .review-citation blockquote {
   margin: 0.7rem 0;
-  padding-left: 0.7rem;
-  border-left: 3px solid #a7c0e9;
+  padding: var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-muted);
   overflow-wrap: anywhere;
   font-size: 0.8rem;
 }
