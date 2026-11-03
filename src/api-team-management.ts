@@ -1,5 +1,57 @@
 import { eventsQuery, managed, request } from "./api-core";
 
+export type UserOverview = {
+  account: {
+    id: string;
+    email: string;
+    status: string;
+    created_at: string;
+    last_login_at: string | null;
+  };
+  credits: {
+    balance_cents: number;
+    frozen_at: string | null;
+    movements: {
+      id: string;
+      kind: string;
+      delta_cents: number;
+      balance_after_cents: number;
+      reason: string;
+      created_at: string;
+    }[];
+    truncated: boolean;
+  };
+  registry_requests: {
+    id: string;
+    source: string;
+    product: string;
+    status: string;
+    item_count: number;
+    result_signal: string | null;
+    result_attention_count: number | null;
+    created_at: string;
+  }[];
+  analyses: {
+    id: string;
+    source: string;
+    status: string;
+    work_status: string | null;
+    created_at: string;
+  }[];
+  payments: {
+    id: string;
+    amount_cents: number;
+    funding_source: string;
+    payment_method: string;
+    status: string;
+    charge_attempt: string;
+    subject_type: string;
+    created_at: string;
+    received_at: string | null;
+  }[];
+  truncated: Record<string, boolean>;
+};
+
 export type ManagementEvent = {
   id: string;
   actor_team_member_id: string;
@@ -62,6 +114,38 @@ export const changeUserStatus = (
     `/v1/team/users/${encodeURIComponent(accountId)}/status`,
     "PATCH",
     { status, reason: reason.trim() },
+    csrfToken,
+  );
+
+export const getUserOverview = (accountId: string) =>
+  request<UserOverview>(
+    `/v1/team/users/${encodeURIComponent(accountId)}/overview`,
+    { method: "GET" },
+  );
+
+export const grantUserCredits = (
+  accountId: string,
+  amountCents: number,
+  reason: string,
+  csrfToken: string,
+  requestId: string,
+) =>
+  managed<{ movement_id: string; balance_cents: number }>(
+    `/v1/team/users/${encodeURIComponent(accountId)}/credits`,
+    "POST",
+    { request_id: requestId, amount_cents: amountCents, reason: reason.trim() },
+    csrfToken,
+  );
+
+export const deleteUserAccount = (
+  accountId: string,
+  reason: string,
+  csrfToken: string,
+) =>
+  managed<{ deletion_id: string; status: string }>(
+    `/v1/team/users/${encodeURIComponent(accountId)}`,
+    "DELETE",
+    { reason: reason.trim() },
     csrfToken,
   );
 

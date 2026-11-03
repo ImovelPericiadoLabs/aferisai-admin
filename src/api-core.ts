@@ -54,7 +54,7 @@ export const eventsQuery = (cursor?: string) =>
 
 export const managed = <T>(
   path: string,
-  method: "PATCH" | "PUT" | "POST",
+  method: "PATCH" | "PUT" | "POST" | "DELETE",
   body: unknown,
   csrfToken: string,
 ) =>

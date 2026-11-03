@@ -35,7 +35,7 @@ export type TeamMemberListItem = {
   id: string;
   email: string;
   role: "administrator" | "manager" | "viewer" | "financial";
-  status: "active" | "suspended";
+  status: "active" | "suspended" | "deleted";
   created_at: string;
 };
 
@@ -55,7 +55,7 @@ export const listTeamMembers = (cursor?: string) => {
 export type TeamUser = {
   id: string;
   email: string;
-  status: "active" | "suspended";
+  status: "active" | "suspended" | "deleted";
   created_at: string;
 };
 

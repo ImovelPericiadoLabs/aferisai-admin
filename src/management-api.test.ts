@@ -4,6 +4,9 @@ import {
   changeTeamMemberRole,
   changeTeamMemberStatus,
   changeUserStatus,
+  deleteUserAccount,
+  getUserOverview,
+  grantUserCredits,
   inviteTeamMember,
   listOrganizationEvents,
   listTeamMemberEvents,
@@ -35,6 +38,49 @@ function stub() {
 }
 
 describe("account management API", () => {
+  it("reads a complete user overview without sending CSRF and grants credits with an idempotency key", async () => {
+    const last = stub();
+    await getUserOverview("u1");
+    expect(last()).toMatchObject({
+      path: "/v1/team/users/u1/overview",
+      method: "GET",
+    });
+    expect(last().headers?.["X-CSRF-Token"]).toBeUndefined();
+
+    await grantUserCredits(
+      "u1",
+      1250,
+      "  Ajuste comercial autorizado  ",
+      "csrf",
+      "req-1",
+    );
+    expect(last()).toMatchObject({
+      path: "/v1/team/users/u1/credits",
+      method: "POST",
+      headers: { "X-CSRF-Token": "csrf" },
+      body: {
+        request_id: "req-1",
+        amount_cents: 1250,
+        reason: "Ajuste comercial autorizado",
+      },
+    });
+  });
+
+  it("deletes an account only through the audited admin mutation", async () => {
+    const last = stub();
+    await deleteUserAccount(
+      "u1",
+      "  Solicitação administrativa documentada  ",
+      "csrf",
+    );
+    expect(last()).toMatchObject({
+      path: "/v1/team/users/u1",
+      method: "DELETE",
+      headers: { "X-CSRF-Token": "csrf" },
+      body: { reason: "Solicitação administrativa documentada" },
+    });
+  });
+
   it("changes organization state and CNPJ with PATCH/PUT, CSRF and a trimmed reason in the body", async () => {
     const last = stub();
     await changeOrganizationStatus(

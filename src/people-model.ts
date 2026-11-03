@@ -1,7 +1,7 @@
 export type Person = {
   id: string;
   email: string;
-  status: "active" | "suspended";
+  status: "active" | "suspended" | "deleted";
   created_at: string;
   role?: "administrator" | "manager" | "viewer" | "financial";
 };
