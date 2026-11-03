@@ -66,6 +66,7 @@ export function PartnerPeople({
   const [inviteOpen, setInviteOpen] = useState(false);
   const inviteRef = useRef<HTMLElement>(null);
   const inviteTrigger = useRef<HTMLButtonElement>(null);
+  const inviteSendLock = useRef(false);
   const panelRef = useRef<HTMLElement>(null);
   const lastOpened = useRef<string | null>(null);
 
@@ -188,9 +189,10 @@ export function PartnerPeople({
   }
 
   async function sendInvite() {
+    if (inviteSendLock.current || !inviteRole) return;
+    inviteSendLock.current = true;
     setBusy(true);
     try {
-      if (!inviteRole) return;
       await api.invite(inviteEmail.trim(), inviteRole);
       onToast(
         "Convite enviado por e-mail. O link vale por 24 horas.",
@@ -202,12 +204,14 @@ export function PartnerPeople({
       setInviteOpen(false);
       await load();
     } catch (cause) {
-      fail(
-        cause,
-        "Não foi possível confirmar o envio do convite. Consulte a lista antes de tentar novamente.",
-      );
+      const fallback =
+        "Não foi possível confirmar o envio do convite. Consulte a lista antes de tentar novamente.";
+      if (cause instanceof ApiError && cause.status === 401) onUnauthorized();
+      else
+        setInviteError(cause instanceof ApiError ? cause.detail : fallback);
       await load();
     } finally {
+      inviteSendLock.current = false;
       setBusy(false);
       setInviteConfirm(false);
     }
