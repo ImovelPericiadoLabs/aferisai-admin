@@ -49,6 +49,14 @@ export type UserOverview = {
     created_at: string;
     received_at: string | null;
   }[];
+  jetimob_oauth_events: {
+    id: string;
+    request_id: string | null;
+    event_type: string;
+    has_code: boolean;
+    has_state: boolean;
+    created_at: string;
+  }[];
   truncated: Record<string, boolean>;
 };
 

@@ -103,6 +103,15 @@ function Overview({ overview }: { overview: UserOverview }) {
         }))}
       />
       <OverviewList
+        title="Conexão Jetimob"
+        empty="Nenhuma tentativa de conexão registrada."
+        items={overview.jetimob_oauth_events.map((item) => ({
+          key: item.id,
+          title: item.event_type,
+          detail: `${item.has_code ? "code recebido" : "sem code"} · ${item.has_state ? "state recebido" : "sem state"} · ${date(item.created_at)}${item.request_id ? ` · ${item.request_id}` : ""}`,
+        }))}
+      />
+      <OverviewList
         title="Movimentações de crédito"
         empty="Nenhuma movimentação."
         items={overview.credits.movements.map((item) => ({
