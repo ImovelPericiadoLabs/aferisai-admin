@@ -114,7 +114,7 @@ export function WebhookSettings({
       onEndpoint(
         await selectWebhookEvents(
           applicationId,
-          selected,
+          order.filter((eventType) => selected.includes(eventType)),
           endpoint.event_selection_version ?? 1,
           csrfToken,
           channel,

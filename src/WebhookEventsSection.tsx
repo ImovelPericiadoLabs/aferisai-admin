@@ -1,7 +1,11 @@
 import type { WebhookEventCatalogItem } from "./api";
 import { Checkbox } from "./controls";
 import { EVENT_LABELS } from "./webhook-event-labels";
-import { toggleEvent } from "./webhook-settings-model";
+import {
+  allEventsSelected,
+  toggleAllEvents,
+  toggleEvent,
+} from "./webhook-settings-model";
 
 export function WebhookEventsSection({
   catalog,
@@ -45,6 +49,22 @@ export function WebhookEventsSection({
         </div>
       ) : (
         <>
+          <div className="wh-events-actions">
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              disabled={busy || events.length === 0}
+              onClick={() => setSelected((now) => toggleAllEvents(now, order))}
+            >
+              {allEventsSelected(selected, order)
+                ? "Limpar seleção"
+                : "Selecionar todos"}
+            </button>
+            <span className="form-hint">
+              {selected.filter((type) => order.includes(type)).length} de{" "}
+              {events.length} selecionados
+            </span>
+          </div>
           <div className="wh-events">
             {events.map((item) => (
               <Checkbox

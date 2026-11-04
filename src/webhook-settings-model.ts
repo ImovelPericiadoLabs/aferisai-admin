@@ -26,6 +26,17 @@ export function toggleEvent(
   return order.filter((item) => next.has(item));
 }
 
+export function allEventsSelected(
+  selected: string[],
+  order: string[],
+): boolean {
+  return order.length > 0 && order.every((item) => selected.includes(item));
+}
+
+export function toggleAllEvents(selected: string[], order: string[]): string[] {
+  return allEventsSelected(selected, order) ? [] : [...order];
+}
+
 export function selectionChanged(a: string[], b: string[]): boolean {
   if (a.length !== b.length) return true;
   const set = new Set(a);

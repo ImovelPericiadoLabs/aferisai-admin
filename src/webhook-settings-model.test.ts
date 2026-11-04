@@ -9,7 +9,9 @@ import {
   eventsSummary,
   keyStage,
   selectableEvents,
+  allEventsSelected,
   selectionChanged,
+  toggleAllEvents,
   toggleEvent,
 } from "./webhook-settings-model";
 
@@ -110,6 +112,32 @@ describe("event selection", () => {
       ),
     ).toBe(false);
     expect(selectionChanged([], ["analysis.completed"])).toBe(true);
+  });
+  it("selects or clears every subscribable event in catalog order", () => {
+    expect(
+      allEventsSelected(
+        ["analysis.created"],
+        ["analysis.created", "analysis.completed"],
+      ),
+    ).toBe(false);
+    expect(
+      toggleAllEvents(
+        ["analysis.created"],
+        ["analysis.created", "analysis.completed"],
+      ),
+    ).toEqual(["analysis.created", "analysis.completed"]);
+    expect(
+      allEventsSelected(
+        ["analysis.created", "analysis.completed"],
+        ["analysis.created", "analysis.completed"],
+      ),
+    ).toBe(true);
+    expect(
+      toggleAllEvents(
+        ["analysis.created", "analysis.completed"],
+        ["analysis.created", "analysis.completed"],
+      ),
+    ).toEqual([]);
   });
 });
 
