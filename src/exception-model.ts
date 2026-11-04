@@ -48,7 +48,7 @@ export function stageOf(item: PaymentExceptionCase): CaseStage {
 
 export type NextAction =
   | { kind: "claim" | "propose" | "confirm" | "none" }
-  | { kind: "start-refund" | "reconcile-refund" | "verify-correction" }
+  | { kind: "start-refund" | "reconcile-refund" | "verify-correction" | "retry-delivery" }
   | { kind: "wait"; reason: string };
 
 const wait = (reason: string): NextAction => ({ kind: "wait", reason });
@@ -70,6 +70,11 @@ export function nextAction(
       return item.execution_status
         ? { kind: "reconcile-refund" }
         : { kind: "start-refund" };
+    const affected = item.affected_items ?? [];
+    if (affected.some((entry) => ["unavailable", "failed"].includes(entry.item_status ?? "")))
+      return { kind: "retry-delivery" };
+    if (affected.some((entry) => entry.item_status !== "confirmed"))
+      return wait("Aguardando a entrega dos documentos.");
     return { kind: "verify-correction" };
   }
   if (

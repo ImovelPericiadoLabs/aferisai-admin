@@ -230,6 +230,9 @@ export function FinancialExceptions({
     run(
       async () => {
         const result = await executePaymentException(selected.id, action, csrf);
+        if ("queued_items" in result) {
+          return `${result.queued_items} documento(s) recolocado(s) na fila de entrega.`;
+        }
         if (result.status === "done") {
           setSelectedId(null);
           setOpen(false);

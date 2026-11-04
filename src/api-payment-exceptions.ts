@@ -5,6 +5,7 @@ export type ExceptionAffectedItem = {
   work_id: string | null;
   work_status: string | null;
   error_code: string | null;
+  item_status?: string | null;
   /** Only present once the backend exposes it; lets the original be opened directly. */
   request_id?: string | null;
 };
@@ -18,6 +19,8 @@ export type PaymentExceptionCase = {
   reason_code: string;
   amount_cents: number;
   funding_source?: "pix" | "credits";
+  customer_name?: string | null;
+  customer_email?: string | null;
   latest_proposal_id: string | null;
   proposed_resolution: "correct" | "refund" | null;
   proposal_reason: string | null;
@@ -101,10 +104,16 @@ export const confirmPaymentException = (
 export const executePaymentException = (
   caseId: string,
   action:
-    "refund-attempts" | "refund-reconciliations" | "correction-verifications",
+    | "refund-attempts"
+    | "refund-reconciliations"
+    | "correction-verifications"
+    | "delivery-retries",
   csrfToken: string,
 ) =>
-  request<{ id: string; status: "attempted" | "pending" | "done" | "unknown" }>(
+  request<
+    | { id: string; status: "attempted" | "pending" | "done" | "unknown" }
+    | { queued_items: number }
+  >(
     `/v1/team/payment-exceptions/${encodeURIComponent(caseId)}/${action}`,
     { method: "POST", headers: { "X-CSRF-Token": csrfToken } },
   );

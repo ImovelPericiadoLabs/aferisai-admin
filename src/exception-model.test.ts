@@ -142,10 +142,40 @@ describe("nextAction", () => {
     ).toEqual({ kind: "reconcile-refund" });
     expect(
       nextAction(
-        kase({ ...decided, resolution: "correct" }),
+        kase({
+          ...decided,
+          resolution: "correct",
+          affected_items: [{
+            ordinal: 1,
+            work_id: null,
+            work_status: null,
+            error_code: "submission_unknown",
+            item_status: "unavailable",
+          }],
+        }),
         "financial",
         "f1",
       ),
+    ).toEqual({ kind: "retry-delivery" });
+    expect(
+      nextAction(
+        kase({
+          ...decided,
+          resolution: "correct",
+          affected_items: [{
+            ordinal: 1,
+            work_id: "work",
+            work_status: "pending",
+            error_code: null,
+            item_status: "pending",
+          }],
+        }),
+        "financial",
+        "f1",
+      ),
+    ).toEqual({ kind: "wait", reason: "Aguardando a entrega dos documentos." });
+    expect(
+      nextAction(kase({ ...decided, resolution: "correct" }), "financial", "f1"),
     ).toEqual({ kind: "verify-correction" });
     expect(
       nextAction(

@@ -171,6 +171,10 @@ export function ExceptionPanel({
           <dl className="detail-panel-field">
             <dt>Valor pago</dt>
             <dd>{money(item.amount_cents)}</dd>
+            <dt>Cliente</dt>
+            <dd>{item.customer_name ?? "Não informado"}</dd>
+            <dt>E-mail</dt>
+            <dd>{item.customer_email ?? "Não informado"}</dd>
             <dt>Forma de pagamento</dt>
             <dd>
               {item.funding_source === "credits"

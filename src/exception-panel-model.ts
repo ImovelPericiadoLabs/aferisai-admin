@@ -4,7 +4,10 @@ import { statusLabel } from "./display-labels";
 export type Role = TeamMember["role"];
 export type Asking = null | "propose" | "confirm" | "refund" | "reassign";
 export type ExecuteAction =
-  "refund-attempts" | "refund-reconciliations" | "correction-verifications";
+  | "refund-attempts"
+  | "refund-reconciliations"
+  | "correction-verifications"
+  | "delivery-retries";
 
 export const outcomeLabel = (value: "correct" | "refund" | null) =>
   value === "correct"
