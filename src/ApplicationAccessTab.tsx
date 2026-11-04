@@ -12,6 +12,7 @@ export function ApplicationAccessTab({
   csrfToken,
   onUnauthorized,
   onRequestPermission,
+  onGrantAllPermissions,
   onOpenDocumentation,
 }: {
   application: Application;
@@ -23,6 +24,7 @@ export function ApplicationAccessTab({
   csrfToken: string;
   onUnauthorized: () => void;
   onRequestPermission: (code: string, granted: boolean) => void;
+  onGrantAllPermissions: () => void;
   onOpenDocumentation?: () => void;
 }) {
   return (
@@ -42,6 +44,7 @@ export function ApplicationAccessTab({
               : "Somente leitura: seu perfil não pode alterar estes acessos, ou a aplicação está suspensa."
           }
           onRequest={onRequestPermission}
+          onGrantAll={onGrantAllPermissions}
         />
       </section>
       {channel === "partner" && onOpenDocumentation && (
