@@ -24,6 +24,78 @@ export type EventDefinition = {
   source: string;
 };
 
+type BackendEventCatalogItem = {
+  type: string;
+  version: number;
+  subscribable: boolean;
+  json_schema: Record<string, unknown>;
+  example: Record<string, unknown>;
+};
+
+const EVENT_COPY: Record<string, { title: string; description: string }> = {
+  "analysis.created": {
+    title: "Análise criada",
+    description:
+      "Enviado quando uma análise iniciada pela sua aplicação é criada.",
+  },
+  "analysis.completed": {
+    title: "Análise concluída",
+    description:
+      "Enviado quando uma análise iniciada pela sua aplicação termina.",
+  },
+  "analysis.failed": {
+    title: "Análise com falha",
+    description: "Enviado quando uma análise termina com falha durável.",
+  },
+  "analysis.review_required": {
+    title: "Análise em revisão humana",
+    description: "Enviado quando uma análise precisa de revisão da equipe.",
+  },
+  "webhook.test": {
+    title: "Teste de integração",
+    description:
+      "Evento fictício assinado pelo botão de teste; não cria análise nem cobrança.",
+  },
+};
+
+function jsonType(schema: Record<string, unknown>): string {
+  const type = schema.type;
+  if (type === "integer") return "inteiro";
+  if (type === "boolean") return "booleano";
+  if (type === "string" && schema.format === "uuid") return "UUIDv7";
+  if (type === "string") return "texto";
+  return typeof type === "string" ? type : "objeto";
+}
+
+/** Convert the backend source-of-truth catalog into the documentation model. */
+export function eventDefinitionFromBackend(
+  item: BackendEventCatalogItem,
+): EventDefinition {
+  const data = (item.example.data ?? {}) as Record<string, unknown>;
+  const dataSchema = ((item.json_schema.properties as Record<string, unknown> | undefined)
+    ?.data as Record<string, unknown> | undefined) ?? {};
+  const properties = (dataSchema.properties ?? {}) as Record<string, Record<string, unknown>>;
+  const copy = EVENT_COPY[item.type] ?? {
+    title: item.type,
+    description: `Evento ${item.type} publicado pelo catálogo da AferisAI.`,
+  };
+  return {
+    type: item.type,
+    title: copy.title,
+    status: "implemented",
+    subscribable: item.subscribable,
+    hasConnection: item.example.connection_id !== null,
+    description: copy.description,
+    data,
+    fields: Object.keys(data).map((name) => ({
+      name: `data.${name}`,
+      type: jsonType(properties[name] ?? {}),
+      description: `Campo ${name} do evento ${item.type}.`,
+    })),
+    source: `catálogo do backend · v${item.version}`,
+  };
+}
+
 /** Fields every event carries (the v1 envelope). */
 export const envelopeFields: EventField[] = [
   {
@@ -125,65 +197,52 @@ export const eventCatalog: EventDefinition[] = [
   {
     type: "analysis.failed",
     title: "Análise com falha",
-    status: "proposed",
-    subscribable: false,
+    status: "implemented",
+    subscribable: true,
     hasConnection: true,
-    description: "Proposta: avisar quando a análise não pôde ser concluída.",
-    data: {
-      analysis_request_id: SAMPLE_ANALYSIS,
-      reason_code: "extraction_failed",
-    },
-    fields: [
-      analysisField,
-      {
-        name: "data.reason_code",
-        type: "texto",
-        description: "Motivo resumido da falha.",
-      },
-    ],
-    source: "docs/partner-connection-blueprint.md:35",
-  },
-  {
-    type: "analysis.needs_review",
-    title: "Análise em revisão humana",
-    status: "proposed",
-    subscribable: false,
-    hasConnection: true,
-    description:
-      "Proposta: avisar quando a análise segue para conferência da equipe.",
+    description: "Enviado quando a análise termina com falha durável.",
     data: { analysis_request_id: SAMPLE_ANALYSIS },
     fields: [analysisField],
-    source: "docs/partner-connection-blueprint.md:35",
+    source: "app/integrations/webhook_events.py:40",
   },
   {
-    type: "payment.received",
-    title: "Pagamento recebido",
-    status: "proposed",
-    subscribable: false,
+    type: "analysis.review_required",
+    title: "Análise em revisão humana",
+    status: "implemented",
+    subscribable: true,
     hasConnection: true,
-    description: "Proposta: avisar quando o PIX do titular é confirmado.",
-    data: { analysis_request_id: SAMPLE_ANALYSIS, amount_cents: 1990 },
+    description:
+      "Enviado quando a análise precisa de revisão da equipe.",
+    data: { analysis_request_id: SAMPLE_ANALYSIS },
+    fields: [analysisField],
+    source: "app/integrations/webhook_events.py:45",
+  },
+  {
+    type: "payment.confirmed",
+    title: "Pagamento confirmado",
+    status: "implemented",
+    subscribable: true,
+    hasConnection: true,
+    description: "Enviado quando um pagamento ligado à aplicação é confirmado.",
+    data: { resource_type: "payment", resource_id: SAMPLE_ANALYSIS, status: "confirmed" },
     fields: [
-      analysisField,
-      {
-        name: "data.amount_cents",
-        type: "inteiro",
-        description: "Valor pago em centavos.",
-      },
+      { name: "data.resource_type", type: "texto", description: "Tipo do recurso relacionado." },
+      { name: "data.resource_id", type: "UUIDv7", description: "Identificador do recurso relacionado." },
+      { name: "data.status", type: "texto", description: "Estado do pagamento." },
     ],
-    source: "docs/partner-connection-blueprint.md:35",
+    source: "app/integrations/webhook_events.py:80",
   },
   {
     type: "connection.revoked",
     title: "Conexão revogada",
-    status: "proposed",
-    subscribable: false,
+    status: "implemented",
+    subscribable: true,
     hasConnection: true,
     description:
-      "Proposta: avisar quando o titular revoga o acesso da aplicação.",
+      "Enviado quando o titular revoga o acesso da aplicação.",
     data: {},
     fields: [],
-    source: "docs/partner-connection-blueprint.md:35",
+    source: "app/integrations/webhook_events.py:124",
   },
 ];
 

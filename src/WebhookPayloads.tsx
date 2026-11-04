@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
+import { ApiError, listWebhookEventCatalog } from "./api";
 import { CodeBlock } from "./CodeBlock";
 import {
   buildExample,
   curlFor,
   envelopeFields,
+  eventDefinitionFromBackend,
   eventCatalog,
   nodeVerifySnippet,
   pythonVerifySnippet,
@@ -23,13 +25,38 @@ type View = (typeof views)[number]["id"];
 
 export function WebhookPayloads({
   endpointUrl,
+  channel = "team",
 }: {
   endpointUrl: string | null;
+  channel?: "team" | "partner";
 }) {
+  const [catalog, setCatalog] = useState<EventDefinition[]>(eventCatalog);
   const [selected, setSelected] = useState<EventDefinition>(eventCatalog[0]);
+  const [catalogError, setCatalogError] = useState("");
   const [view, setView] = useState<View>("request");
   const [language, setLanguage] = useState<"node" | "python">("node");
   const [example, setExample] = useState<SignedExample | null>(null);
+
+  useEffect(() => {
+    let live = true;
+    setCatalogError("");
+    listWebhookEventCatalog(channel)
+      .then((items) => {
+        if (!live || items.length === 0) return;
+        const next = items.map(eventDefinitionFromBackend);
+        setCatalog(next);
+        setSelected((current) => next.find((item) => item.type === current.type) ?? next[0]);
+      })
+      .catch((cause: unknown) => {
+        if (!live) return;
+        if (!(cause instanceof ApiError && cause.status === 401)) {
+          setCatalogError("Catálogo ao vivo indisponível; exibindo a referência local.");
+        }
+      });
+    return () => {
+      live = false;
+    };
+  }, [channel]);
 
   useEffect(() => {
     let live = true;
@@ -66,7 +93,7 @@ export function WebhookPayloads({
       </header>
       <div className="wp-body">
         <ul className="wp-events" aria-label="Eventos">
-          {eventCatalog.map((event) => (
+            {catalog.map((event) => (
             <li key={event.type}>
               <button
                 type="button"
@@ -92,6 +119,7 @@ export function WebhookPayloads({
               <p className="form-hint">{selected.description}</p>
             </div>
           </div>
+          {catalogError && <p className="form-hint">{catalogError}</p>}
           {selected.status === "proposed" && (
             <div className="alert alert-warning" role="note">
               Este evento ainda não existe no backend. O formato mostrado é uma
