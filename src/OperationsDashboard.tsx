@@ -6,6 +6,7 @@ import {
 } from "./api";
 import { date, stateLabel } from "./operations-format";
 import { OperationsHourlyChart } from "./OperationsHourlyChart";
+import { DeployStatusPanel } from "./DeployStatusPanel";
 import {
   OperationsAccounts,
   OperationsPools,
@@ -85,6 +86,7 @@ export function OperationsDashboard({
         </div>
       )}
       {loading && !data && <p role="status">Carregando observações…</p>}
+      <DeployStatusPanel onUnauthorized={onUnauthorized} />
       {data && (
         <>
           <p className="ops-updated">

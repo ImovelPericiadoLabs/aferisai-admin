@@ -75,6 +75,27 @@ export type OperationsOverview = {
 export const getOperationsOverview = () =>
   request<OperationsOverview>("/v1/team/operations", { method: "GET" });
 
+export type DeployJob = {
+  job_id?: string;
+  commit?: string;
+  state: "idle" | "queued" | "running" | "succeeded" | "failed" | "superseded";
+  message?: string;
+  exit_code?: number;
+  started_at?: string;
+  finished_at?: string;
+};
+
+export type DeploySnapshot = {
+  service: "aferisai-deploy-hook";
+  checked_at: string;
+  current: DeployJob;
+  last?: DeployJob;
+  history: DeployJob[];
+};
+
+export const getDeployStatus = () =>
+  request<DeploySnapshot>("/v1/team/operations/deploys", { method: "GET" });
+
 export type DashboardDailyCount = { date: string; count: number };
 
 export type DashboardDailySeries = {
