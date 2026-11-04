@@ -12,6 +12,9 @@ export function PartnerLoginForm({
   onOtpChange,
   onSubmit,
   onRecoverMfa,
+  onRecoverPassword,
+  onPasskey,
+  passkeyAvailable,
 }: {
   email: string;
   password: string;
@@ -23,6 +26,9 @@ export function PartnerLoginForm({
   onOtpChange: (value: string) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   onRecoverMfa: () => void;
+  onRecoverPassword: () => void;
+  onPasskey: () => void;
+  passkeyAvailable: boolean;
 }) {
   return (
     <PartnerAuthShell>
@@ -94,6 +100,14 @@ export function PartnerLoginForm({
         >
           Perdi meu autenticador
         </button>
+        <button type="button" className="pp-recovery-link" onClick={onRecoverPassword}>
+          Esqueci minha senha
+        </button>
+        {passkeyAvailable && (
+          <button type="button" className="btn btn-secondary btn-md" disabled={busy} onClick={onPasskey}>
+            Entrar com chave de acesso
+          </button>
+        )}
         <a className="pp-link" href="/#">
           Acesso da equipe
         </a>

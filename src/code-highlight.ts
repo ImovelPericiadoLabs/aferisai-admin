@@ -1,9 +1,18 @@
 /**
  * Small dependency-free syntax highlighter for the code the admin shows (JSON bodies,
- * Node.js and Python snippets, cURL commands and HTTP headers). It is a lexer, not a
+ * Node.js, Python, Java, C# and Go snippets, cURL commands and HTTP headers). It is a lexer, not a
  * parser: it never changes the text, so copying the rendered block copies the source.
  */
-export type CodeLanguage = "json" | "js" | "python" | "shell" | "http" | "text";
+export type CodeLanguage =
+  | "json"
+  | "js"
+  | "python"
+  | "java"
+  | "csharp"
+  | "go"
+  | "shell"
+  | "http"
+  | "text";
 export type TokenKind =
   | "plain"
   | "punct"
@@ -70,6 +79,40 @@ const PY_RULES: Rule[] = [
   { kind: "punct", pattern: sticky(String.raw`[{}()\[\];,.:=<>+\-*/&|!?]`) },
 ];
 
+/** Languages that share C-style comments, numbers, calls and punctuation. */
+function cLike(keywords: string, strings: string): Rule[] {
+  return [
+    {
+      kind: "comment",
+      pattern: sticky(String.raw`//[^\n]*|/\*[\s\S]*?(?:\*/|$)`),
+    },
+    { kind: "string", pattern: sticky(strings) },
+    { kind: "number", pattern: sticky(String.raw`\b\d+(?:\.\d+)?[LlFfDd]?\b`) },
+    { kind: "keyword", pattern: sticky(String.raw`\b(?:${keywords})\b`) },
+    { kind: "function", pattern: sticky(String.raw`[A-Za-z_]\w*(?=\()`) },
+    { kind: "plain", pattern: sticky(String.raw`[A-Za-z_]\w*`) },
+    {
+      kind: "punct",
+      pattern: sticky(String.raw`[{}()\[\];,.:=<>+\-*/&|!?^%@$]`),
+    },
+  ];
+}
+
+const JAVA_RULES = cLike(
+  "package|import|class|interface|record|enum|public|private|protected|static|final|abstract|void|new|return|if|else|for|while|do|switch|case|default|break|continue|try|catch|finally|throw|throws|var|int|long|byte|boolean|char|double|float|null|true|false|this|extends|implements|instanceof",
+  String.raw`"""[\s\S]*?(?:"""|$)|"(?:[^"\\\n]|\\.)*"?|'(?:[^'\\\n]|\\.)*'?`,
+);
+
+const CSHARP_RULES = cLike(
+  "using|namespace|class|struct|interface|record|enum|public|private|protected|internal|static|readonly|const|void|new|return|if|else|for|foreach|while|do|switch|case|default|break|continue|try|catch|finally|throw|var|int|long|byte|bool|char|double|float|string|object|null|true|false|this|async|await|in|out|ref|is|as|using",
+  String.raw`\$@"(?:[^"]|"")*"?|@\$"(?:[^"]|"")*"?|@"(?:[^"]|"")*"?|\$"(?:[^"\\\n]|\\.)*"?|"(?:[^"\\\n]|\\.)*"?|'(?:[^'\\\n]|\\.)*'?`,
+);
+
+const GO_RULES = cLike(
+  "package|import|func|return|var|const|type|struct|interface|if|else|for|range|switch|case|default|break|continue|go|defer|select|map|chan|nil|true|false|string|int|int64|uint64|byte|bool|error|make|new",
+  String.raw`\x60[^\x60]*\x60?|"(?:[^"\\\n]|\\.)*"?|'(?:[^'\\\n]|\\.)*'?`,
+);
+
 const SHELL_RULES: Rule[] = [
   { kind: "comment", pattern: sticky(String.raw`#[^\n]*`) },
   {
@@ -87,6 +130,9 @@ const RULES: Partial<Record<CodeLanguage, Rule[]>> = {
   json: JSON_RULES,
   js: JS_RULES,
   python: PY_RULES,
+  java: JAVA_RULES,
+  csharp: CSHARP_RULES,
+  go: GO_RULES,
   shell: SHELL_RULES,
 };
 

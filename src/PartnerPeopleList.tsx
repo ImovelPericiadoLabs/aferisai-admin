@@ -20,6 +20,7 @@ export function PartnerPeopleList({
   onRetry,
   onAction,
   onHistory,
+  onSupport,
 }: {
   items: PartnerPerson[];
   visible: PartnerPerson[];
@@ -32,6 +33,7 @@ export function PartnerPeopleList({
   onRetry: () => void;
   onAction: (action: PersonAction, person: PartnerPerson) => void;
   onHistory: (person: PartnerPerson) => void;
+  onSupport?: (person: PartnerPerson) => void;
 }) {
   return (
     <>
@@ -123,6 +125,11 @@ export function PartnerPeopleList({
                   >
                     Histórico
                   </button>
+                  {onSupport && person.membership_status === "active" && person.identity_status === "active" && (
+                    <button type="button" className="btn btn-ghost btn-sm" disabled={busy} onClick={() => onSupport(person)}>
+                      Abrir como parceiro
+                    </button>
+                  )}
                 </div>
               </li>
             );

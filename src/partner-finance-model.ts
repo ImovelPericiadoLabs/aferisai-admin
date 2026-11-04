@@ -1,7 +1,7 @@
 import type { RoleAccess } from "./partner-roles";
 
 export type PortalSection =
-  "integrations" | "metrics" | "statement" | "people" | "documentation";
+  "integrations" | "metrics" | "statement" | "people" | "documentation" | "security";
 
 const SECTIONS: { id: PortalSection; label: string; key?: keyof RoleAccess }[] =
   [
@@ -10,6 +10,7 @@ const SECTIONS: { id: PortalSection; label: string; key?: keyof RoleAccess }[] =
     { id: "statement", label: "Extrato", key: "statement" },
     { id: "people", label: "Pessoas", key: "people" },
     { id: "documentation", label: "Documentação" },
+    { id: "security", label: "Segurança" },
   ];
 
 export const portalSections = (access: RoleAccess) =>
