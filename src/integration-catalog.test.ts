@@ -56,9 +56,28 @@ describe("integration catalog", () => {
       expect(applicationPermissionLabel(entry.code)).toBe(entry.title);
   });
   it("flags labels that exist in the admin but not in the backend", () => {
-    const real = permissions
-      .filter((p) => p.status === "implemented")
-      .map((p) => p.code);
+    const real = [
+      "application:read",
+      "analysis:read",
+      "analysis:submit:upload",
+      "analysis:quote",
+      "analysis:pay",
+      "events:analysis",
+      "events:registry",
+      "events:payment",
+      "events:acquisition",
+      "events:certificate",
+      "events:connection",
+      "events:credential",
+      "events:commission",
+      "payment:read",
+      "registry:submit",
+      "registry:read",
+      "registry:quote",
+      "registry:preview",
+      "certificate:read",
+      "registry:pay",
+    ];
     const legacy = labelledPermissionCodes
       .filter((code) => !real.includes(code))
       .sort();

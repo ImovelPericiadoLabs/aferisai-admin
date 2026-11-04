@@ -510,6 +510,10 @@
 }
 
 .form-section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
   float: none;
   margin: 0 0 var(--space-3);
   padding: 0;

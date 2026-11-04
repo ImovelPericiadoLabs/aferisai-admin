@@ -5,6 +5,7 @@ import {
   applicationPermissionDescription,
   applicationPermissionLabel,
 } from "./display-labels";
+import { allScopesSelected, toggleAllScopes } from "./credential-scopes";
 
 export function CredentialIssuePanel({
   open,
@@ -133,7 +134,33 @@ export function CredentialIssuePanel({
                 </div>
               </fieldset>
               <fieldset className="form-section">
-                <legend className="form-section-title">Permissões</legend>
+                <legend className="form-section-title">
+                  <span>Permissões</span>
+                  <button
+                    className="btn btn-ghost btn-sm"
+                    type="button"
+                    aria-pressed={allScopesSelected(
+                      availableScopes,
+                      selectedScopes,
+                    )}
+                    onClick={() => {
+                      onSelectedScopes((current) =>
+                        toggleAllScopes(availableScopes, current),
+                      );
+                      onFormError("");
+                    }}
+                    disabled={busy || availableScopes.length === 0}
+                  >
+                    {allScopesSelected(availableScopes, selectedScopes)
+                      ? "Limpar seleção"
+                      : "Selecionar todas"}
+                  </button>
+                </legend>
+                <span className="form-hint">
+                  Selecione os acessos que esta credencial poderá usar. A
+                  seleção total inclui apenas permissões já concedidas à
+                  aplicação.
+                </span>
                 {availableScopes.map((scope) => (
                   <Checkbox
                     key={scope}
