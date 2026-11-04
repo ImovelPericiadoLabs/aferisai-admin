@@ -286,7 +286,7 @@ export const partnerDocs: DocsSite = {
           blocks: [
             {
               type: "p",
-              text: "O painel fornece o contexto da integração; o fluxo OAuth acontece no produto do parceiro. Gere `state`, `code_verifier` e `code_challenge` no backend. Redirecione o navegador para a Aferis, confira o `state` no retorno e troque o `code` por um token delegado somente no servidor.",
+              text: "O painel fornece o contexto da integração; o fluxo OAuth acontece no produto do parceiro. Gere `state`, `code_verifier` e `code_challenge` no backend. Use `scope=all` para solicitar todos os escopos delegáveis da credencial; o titular ainda aprova a lista expandida. Redirecione o navegador para a Aferis, confira o `state` no retorno e troque o `code` por um token delegado somente no servidor.",
             },
             {
               type: "steps",
@@ -348,7 +348,7 @@ export const partnerDocs: DocsSite = {
                 ],
                 [
                   "`scope`",
-                  "Escopos solicitados, separados por espaço (até 240 caracteres).",
+                  "Escopos separados por espaço, ou `all` para solicitar todos os escopos delegáveis da credencial.",
                 ],
                 [
                   "`state`",

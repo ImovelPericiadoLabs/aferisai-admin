@@ -22,7 +22,7 @@ curl --get "$API_URL/oauth/authorize" \\
   --data-urlencode "response_type=code" \\
   --data-urlencode "client_id=$CLIENT_ID" \\
   --data-urlencode "redirect_uri=$REDIRECT_URI" \\
-  --data-urlencode "scope=registry:submit registry:read" \\
+  --data-urlencode "scope=all" \\
   --data-urlencode "state=$STATE" \\
   --data-urlencode "code_challenge=$CHALLENGE" \\
   --data-urlencode "code_challenge_method=S256"`,
@@ -58,7 +58,7 @@ export function startAuthorization(session, clientId, redirectUri) {
   return authorizationUrl({
     clientId,
     redirectUri,
-    scopes: ["registry:submit", "registry:read"],
+    scopes: ["all"],
     state,
     challenge,
   });
@@ -100,7 +100,7 @@ def start_authorization(session: dict, client_id: str, redirect_uri: str) -> str
     verifier, challenge = create_pkce()
     session["oauth"] = {"state": state, "verifier": verifier}
     return authorization_url(
-        client_id, redirect_uri, ["registry:submit", "registry:read"], state, challenge
+        client_id, redirect_uri, ["all"], state, challenge
     )`,
       java: `import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
