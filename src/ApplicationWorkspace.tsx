@@ -39,6 +39,7 @@ export function ApplicationWorkspace({
   onUnauthorized,
   permissionBusy,
   onTogglePermission,
+  onGrantAllPermissions = () => undefined,
   channel = "team",
   selectedTab,
   onTabChange,
@@ -284,7 +285,16 @@ export function ApplicationWorkspace({
             csrfToken={csrfToken}
             onUnauthorized={onUnauthorized}
             onRequestPermission={(code, granted) =>
-              setPermissionToReview({ code, granted })
+              setPermissionToReview({ kind: "single", code, granted })
+            }
+            onGrantAllPermissions={() =>
+              setPermissionToReview({
+                kind: "all",
+                count: permissions.filter(
+                  (permission) =>
+                    !application.permissions.includes(permission.code),
+                ).length,
+              })
             }
             onOpenDocumentation={onOpenDocumentation}
           />
@@ -318,12 +328,16 @@ export function ApplicationWorkspace({
         busy={permissionBusy}
         onConfirm={(reason) => {
           if (!permissionToReview) return;
-          onTogglePermission(
-            application.id,
-            permissionToReview.code,
-            permissionToReview.granted,
-            reason,
-          );
+          if (permissionToReview.kind === "all") {
+            onGrantAllPermissions(application.id, reason);
+          } else {
+            onTogglePermission(
+              application.id,
+              permissionToReview.code,
+              permissionToReview.granted,
+              reason,
+            );
+          }
           setPermissionToReview(null);
         }}
         onCancel={() => setPermissionToReview(null)}

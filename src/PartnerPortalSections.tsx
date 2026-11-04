@@ -107,6 +107,7 @@ export function PartnerPortalSections({
           onUnauthorized={onUnauthorized}
           permissionBusy={false}
           onTogglePermission={() => {}}
+          onGrantAllPermissions={() => {}}
           additionalApplication={null}
           hasMoreApplications={hasMoreApplications}
           loadingMoreApplications={loadingMoreApplications}
