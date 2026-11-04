@@ -2,7 +2,9 @@ import { ConfirmDialog } from "./ConfirmDialog";
 import { applicationPermissionLabel } from "./display-labels";
 import type { Application } from "./application-workspace-model";
 
-export type PermissionReview = { code: string; granted: boolean };
+export type PermissionReview =
+  | { kind: "single"; code: string; granted: boolean }
+  | { kind: "all"; count: number };
 
 export function ApplicationPermissionDialog({
   application,
@@ -20,32 +22,47 @@ export function ApplicationPermissionDialog({
   return (
     <ConfirmDialog
       open={permissionToReview !== null}
-      tone={permissionToReview?.granted ? "danger" : "primary"}
+      tone={
+        permissionToReview?.kind === "single" && permissionToReview.granted
+          ? "danger"
+          : "primary"
+      }
       title={
-        permissionToReview?.granted
-          ? "Revogar esta permissão?"
-          : "Conceder esta permissão?"
+        permissionToReview?.kind === "all"
+          ? "Conceder todas as permissões?"
+          : permissionToReview?.kind === "single" && permissionToReview.granted
+            ? "Revogar esta permissão?"
+            : "Conceder esta permissão?"
       }
       description={
-        permissionToReview?.granted
-          ? "As credenciais desta aplicação perdem a permissão imediatamente."
-          : "As credenciais desta aplicação poderão usar a permissão após a alteração."
+        permissionToReview?.kind === "all"
+          ? "As permissões disponíveis no catálogo desta parceria serão concedidas de uma vez. As que já existem serão mantidas."
+          : permissionToReview?.kind === "single" && permissionToReview.granted
+            ? "As credenciais desta aplicação perdem a permissão imediatamente."
+            : "As credenciais desta aplicação poderão usar a permissão após a alteração."
       }
       details={
         permissionToReview
           ? [
               { label: "Aplicação", value: application.name },
-              {
-                label: "Permissão",
-                value: applicationPermissionLabel(permissionToReview.code),
-              },
+              permissionToReview.kind === "all"
+                ? {
+                    label: "Escopo",
+                    value: `${permissionToReview.count} permissões do catálogo`,
+                  }
+                : {
+                    label: "Permissão",
+                    value: applicationPermissionLabel(permissionToReview.code),
+                  },
             ]
           : []
       }
       confirmLabel={
-        permissionToReview?.granted
-          ? "Confirmar revogação"
-          : "Confirmar concessão"
+        permissionToReview?.kind === "all"
+          ? "Conceder todas"
+          : permissionToReview?.kind === "single" && permissionToReview.granted
+            ? "Confirmar revogação"
+            : "Confirmar concessão"
       }
       busy={busy}
       reason={{

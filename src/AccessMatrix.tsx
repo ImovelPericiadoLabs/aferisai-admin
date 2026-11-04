@@ -24,6 +24,7 @@ export function AccessMatrix({
   canChange,
   busy,
   onRequest,
+  onGrantAll,
   readOnlyHint,
 }: {
   permissions: { code: string; description: string }[];
@@ -31,6 +32,7 @@ export function AccessMatrix({
   canChange: boolean;
   busy: boolean;
   onRequest: (code: string, granted: boolean) => void;
+  onGrantAll?: () => void;
   readOnlyHint: string;
 }) {
   const [query, setQuery] = useState("");
@@ -72,6 +74,16 @@ export function AccessMatrix({
               : readOnlyHint}
           </small>
         </div>
+        {canChange && onGrantAll && count < total && (
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            disabled={busy}
+            onClick={onGrantAll}
+          >
+            Conceder todas
+          </button>
+        )}
         <div
           className="acc-meter"
           role="img"

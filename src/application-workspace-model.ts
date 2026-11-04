@@ -33,6 +33,7 @@ export type Props = {
     granted: boolean,
     reason?: string,
   ) => void;
+  onGrantAllPermissions?: (applicationId: string, reason: string) => void;
   channel?: "team" | "partner";
   selectedTab?: IntegrationTab;
   onTabChange?: (tab: IntegrationTab) => void;
