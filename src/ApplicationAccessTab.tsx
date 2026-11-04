@@ -12,6 +12,7 @@ export function ApplicationAccessTab({
   csrfToken,
   onUnauthorized,
   onRequestPermission,
+  onOpenDocumentation,
 }: {
   application: Application;
   permissions: Permission[];
@@ -22,6 +23,7 @@ export function ApplicationAccessTab({
   csrfToken: string;
   onUnauthorized: () => void;
   onRequestPermission: (code: string, granted: boolean) => void;
+  onOpenDocumentation?: () => void;
 }) {
   return (
     <div className="appws-access">
@@ -42,6 +44,32 @@ export function ApplicationAccessTab({
           onRequest={onRequestPermission}
         />
       </section>
+      {channel === "partner" && onOpenDocumentation && (
+        <section
+          className="appws-access-guide"
+          aria-labelledby="appws-integration-guide-title"
+        >
+          <div>
+            <h3
+              className="appws-section-title"
+              id="appws-integration-guide-title"
+            >
+              Próximo passo: autenticar a aplicação
+            </h3>
+            <p className="form-hint">
+              Confira os escopos concedidos, configure OAuth + PKCE no seu
+              backend e só depois ligue webhooks para acompanhar a operação.
+            </p>
+          </div>
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            onClick={onOpenDocumentation}
+          >
+            Abrir guia OAuth + PKCE
+          </button>
+        </section>
+      )}
       {canManage && channel === "team" && (
         <section aria-labelledby="appws-oauth-title">
           <h3 className="appws-section-title" id="appws-oauth-title">

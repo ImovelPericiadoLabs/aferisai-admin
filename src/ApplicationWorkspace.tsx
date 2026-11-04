@@ -42,6 +42,7 @@ export function ApplicationWorkspace({
   channel = "team",
   selectedTab,
   onTabChange,
+  onOpenDocumentation,
   additionalApplication,
   onLoadMoreApplications,
   hasMoreApplications = false,
@@ -233,6 +234,7 @@ export function ApplicationWorkspace({
             onUnauthorized={onUnauthorized}
             onChanged={refreshSnapshot}
             channel={channel}
+            onOpenDocumentation={onOpenDocumentation}
           />
         )}
         {activeTab === "deliveries" && canManage && (
@@ -243,6 +245,7 @@ export function ApplicationWorkspace({
             channel={channel}
             csrfToken={csrfToken}
             canResend={canManage && editable}
+            onOpenDocumentation={onOpenDocumentation}
           />
         )}
         {activeTab === "credentials" && canManage && (
@@ -283,6 +286,7 @@ export function ApplicationWorkspace({
             onRequestPermission={(code, granted) =>
               setPermissionToReview({ code, granted })
             }
+            onOpenDocumentation={onOpenDocumentation}
           />
         )}
       </div>

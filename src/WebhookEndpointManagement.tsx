@@ -37,6 +37,7 @@ export function WebhookEndpointManagement({
   onUnauthorized,
   channel = "team",
   onChanged,
+  onOpenDocumentation,
 }: Props) {
   const [endpoint, setEndpoint] = useState<WebhookEndpoint | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -246,6 +247,20 @@ export function WebhookEndpointManagement({
         url={endpoint?.url ?? null}
         step={step}
       />
+
+      {channel === "partner" && onOpenDocumentation && (
+        <div className="alert" role="note">
+          <strong>Integração segura:</strong> configure o receptor, valide o
+          HMAC com o corpo bruto e acompanhe as tentativas na aba Entregas.{" "}
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            onClick={onOpenDocumentation}
+          >
+            Ver guia de webhooks e assinatura
+          </button>
+        </div>
+      )}
 
       {!endpoint && !error && (
         <WebhookOnboardingCard

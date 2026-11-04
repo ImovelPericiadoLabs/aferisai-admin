@@ -8,7 +8,41 @@ type DocTopic = {
   code?: string;
 };
 
+const QUICKSTART = [
+  {
+    number: "01",
+    title: "Confira os acessos",
+    body: "Valide os escopos concedidos antes de iniciar o fluxo.",
+    action: "Abrir Acessos",
+  },
+  {
+    number: "02",
+    title: "Conecte com OAuth",
+    body: "Use state, PKCE e troque o code somente no backend.",
+    action: "Ler OAuth + PKCE",
+  },
+  {
+    number: "03",
+    title: "Ligue os webhooks",
+    body: "Cadastre um endpoint HTTPS, escolha eventos e valide a assinatura.",
+    action: "Ler Webhooks",
+  },
+  {
+    number: "04",
+    title: "Monitore entregas",
+    body: "Responda 2xx, deduplique por event_id e investigue retries.",
+    action: "Ler Entregas",
+  },
+] as const;
+
 const TOPICS: DocTopic[] = [
+  {
+    id: "comece-aqui",
+    label: "Comece aqui",
+    summary: "Siga a ordem recomendada para colocar a integração em produção.",
+    body: "A integração começa no backend do parceiro: confirme os acessos, implemente OAuth + PKCE, configure o receptor HTTPS e valide a assinatura antes de ativar eventos reais. Depois, acompanhe as entregas pelo painel e trate retries de forma idempotente.",
+    code: `# Ordem recomendada\n1. Acessos e escopos\n2. OAuth + PKCE\n3. Webhook + assinatura HMAC\n4. Entregas + retries`,
+  },
   {
     id: "organizacao-e-sessao",
     label: "Organização e sessão",
@@ -120,15 +154,20 @@ curl "$API_URL/v1/partner/registry-requests/<OPERATION_ID>" \\
 /** Render partner documentation inside the authenticated corporate portal. */
 export function PartnerDocumentation() {
   const [query, setQuery] = useState("");
-  const [activeId, setActiveId] = useState(TOPICS[0].id);
+  const [activeId, setActiveId] = useState("comece-aqui");
   const [copied, setCopied] = useState("");
   const filtered = useMemo(() => {
     const term = query.trim().toLocaleLowerCase("pt-BR");
     return term
-      ? TOPICS.filter((topic) => `${topic.label} ${topic.summary} ${topic.body}`.toLocaleLowerCase("pt-BR").includes(term))
+      ? TOPICS.filter((topic) =>
+          `${topic.label} ${topic.summary} ${topic.body}`
+            .toLocaleLowerCase("pt-BR")
+            .includes(term),
+        )
       : TOPICS;
   }, [query]);
-  const active = filtered.find((topic) => topic.id === activeId) ?? filtered[0] ?? TOPICS[0];
+  const active =
+    filtered.find((topic) => topic.id === activeId) ?? filtered[0] ?? TOPICS[0];
 
   async function copy(code: string) {
     await navigator.clipboard?.writeText(code);
@@ -142,27 +181,107 @@ export function PartnerDocumentation() {
         <div>
           <p className="pp-kicker">Central do parceiro</p>
           <h1 className="pp-docs-title">Documentação da integração</h1>
-          <p className="pp-docs-lead">Um guia direto para autenticar, criar ordens, receber eventos e operar sua integração AferisAI.</p>
+          <p className="pp-docs-lead">
+            Um guia direto para autenticar, criar ordens, receber eventos e
+            operar sua integração AferisAI.
+          </p>
         </div>
         <label className="pp-docs-search">
           <span>Buscar na documentação</span>
-          <input className="input" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="OAuth, webhook, ordem…" />
+          <input
+            className="input"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="OAuth, webhook, ordem…"
+          />
         </label>
       </header>
+      <section
+        className="pp-docs-quickstart"
+        aria-labelledby="pp-docs-quickstart-title"
+      >
+        <div className="pp-docs-quickstart-intro">
+          <p className="pp-docs-eyebrow">Rota recomendada</p>
+          <h2 id="pp-docs-quickstart-title">
+            Da primeira autorização ao primeiro evento
+          </h2>
+          <p>
+            Use esta sequência para reduzir erros de configuração e validar o
+            receptor antes de ativar a operação.
+          </p>
+        </div>
+        <ol className="pp-docs-steps">
+          {QUICKSTART.map((step, index) => (
+            <li key={step.number}>
+              <span className="pp-docs-step-number" aria-hidden="true">
+                {step.number}
+              </span>
+              <div>
+                <strong>{step.title}</strong>
+                <p>{step.body}</p>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  onClick={() => {
+                    setQuery("");
+                    setActiveId(
+                      ["acessos", "oauth", "webhooks", "entregas"][index] ??
+                        "comece-aqui",
+                    );
+                  }}
+                >
+                  {step.action}
+                </button>
+              </div>
+            </li>
+          ))}
+        </ol>
+      </section>
       <div className="pp-docs-layout">
         <nav className="pp-docs-nav" aria-label="Tópicos da documentação">
-          {filtered.map((topic) => <button key={topic.id} type="button" className={active.id === topic.id ? "active" : ""} onClick={() => setActiveId(topic.id)}>{topic.label}<small>{topic.summary}</small></button>)}
-          {filtered.length === 0 && <p className="form-hint">Nenhum tópico encontrado.</p>}
+          {filtered.map((topic) => (
+            <button
+              key={topic.id}
+              type="button"
+              className={active.id === topic.id ? "active" : ""}
+              onClick={() => setActiveId(topic.id)}
+            >
+              {topic.label}
+              <small>{topic.summary}</small>
+            </button>
+          ))}
+          {filtered.length === 0 && (
+            <p className="form-hint">Nenhum tópico encontrado.</p>
+          )}
         </nav>
         <article className="pp-docs-article">
           <p className="pp-docs-eyebrow">Guia de operação</p>
           <h2>{active.label}</h2>
           <p className="pp-docs-summary">{active.summary}</p>
           <p className="pp-docs-body">{active.body}</p>
-          {active.code && <div className="pp-docs-code-wrap"><div className="pp-docs-code-head"><span>cURL</span><button type="button" className="btn btn-secondary btn-sm" onClick={() => void copy(active.code!)}>{copied === active.id ? "Copiado" : "Copiar código"}</button></div><pre><code>{active.code}</code></pre></div>}
+          {active.code && (
+            <div className="pp-docs-code-wrap">
+              <div className="pp-docs-code-head">
+                <span>cURL</span>
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => void copy(active.code!)}
+                >
+                  {copied === active.id ? "Copiado" : "Copiar código"}
+                </button>
+              </div>
+              <pre>
+                <code>{active.code}</code>
+              </pre>
+            </div>
+          )}
         </article>
       </div>
-      <footer className="pp-docs-footer">Precisa de ajuda com credenciais, permissões ou retorno OAuth? Fale com o administrador da sua organização.</footer>
+      <footer className="pp-docs-footer">
+        Precisa de ajuda com credenciais, permissões ou retorno OAuth? Fale com
+        o administrador da sua organização.
+      </footer>
     </section>
   );
 }

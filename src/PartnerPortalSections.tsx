@@ -114,6 +114,7 @@ export function PartnerPortalSections({
           channel="partner"
           selectedTab={tab}
           onTabChange={onTabChange}
+          onOpenDocumentation={() => onSectionChange("documentation")}
         />
       )}
     </>

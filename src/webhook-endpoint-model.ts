@@ -6,6 +6,7 @@ export type WebhookEndpointManagementProps = {
   onUnauthorized: () => void;
   channel?: "team" | "partner";
   onChanged?: () => void;
+  onOpenDocumentation?: () => void;
 };
 
 /** Accepts only public HTTPS destinations on the default or 8443 port, without credentials. */

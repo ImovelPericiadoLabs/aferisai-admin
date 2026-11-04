@@ -27,6 +27,7 @@ type Props = {
   /** Resend needs the CSRF token and a role that manages integrations. */
   csrfToken?: string;
   canResend?: boolean;
+  onOpenDocumentation?: () => void;
 };
 
 export function WebhookDeliveries({
@@ -35,6 +36,7 @@ export function WebhookDeliveries({
   channel = "team",
   csrfToken,
   canResend: resendAllowed = false,
+  onOpenDocumentation,
 }: Props) {
   const [confirmResend, setConfirmResend] = useState(false);
   const [resendNotice, setResendNotice] = useState("");
@@ -216,6 +218,15 @@ export function WebhookDeliveries({
             Eventos enviados para esta aplicação, com resposta e tempo de
             entrega.
           </p>
+          {channel === "partner" && onOpenDocumentation && (
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              onClick={onOpenDocumentation}
+            >
+              Entender retries e idempotência
+            </button>
+          )}
         </div>
         <button
           className="btn btn-secondary btn-sm"

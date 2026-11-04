@@ -36,6 +36,8 @@ export type Props = {
   channel?: "team" | "partner";
   selectedTab?: IntegrationTab;
   onTabChange?: (tab: IntegrationTab) => void;
+  /** Opens the partner documentation from an integration surface. */
+  onOpenDocumentation?: () => void;
   additionalApplication: ReactNode;
   onLoadMoreApplications?: () => void;
   hasMoreApplications?: boolean;
