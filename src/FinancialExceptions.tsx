@@ -12,6 +12,7 @@ import {
   type TeamMember,
 } from "./api";
 import { filterCases, sortByUrgency, type CaseFilter } from "./exception-model";
+import type { CaseNavigation } from "./CaseJourneyView";
 import { ExceptionPanel, type ExecuteAction } from "./ExceptionPanel";
 import { errorMessage } from "./financial-exceptions-format";
 import { FinancialExceptionsList } from "./FinancialExceptionsList";
@@ -26,6 +27,9 @@ type Props = {
   memberId: string;
   role: TeamMember["role"];
   onUnauthorized: () => void;
+  nav?: CaseNavigation;
+  /** Opens this case as soon as the list has it (coming from a task). */
+  initialCaseId?: string;
 };
 
 export function FinancialExceptions({
@@ -33,6 +37,8 @@ export function FinancialExceptions({
   memberId,
   role,
   onUnauthorized,
+  nav,
+  initialCaseId,
 }: Props) {
   const [cases, setCases] = useState<PaymentExceptionCase[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
@@ -89,6 +95,21 @@ export function FinancialExceptions({
       live = false;
     };
   }, [load]);
+
+  const openedFor = useRef("");
+  useEffect(() => {
+    if (
+      initialCaseId &&
+      openedFor.current !== initialCaseId &&
+      cases.some((item) => item.id === initialCaseId)
+    ) {
+      openedFor.current = initialCaseId;
+      setSelectedId(initialCaseId);
+      setNotice("");
+      setPanelError("");
+      setOpen(true);
+    }
+  }, [cases, initialCaseId]);
 
   const names = useTeamNames(role);
 
@@ -333,6 +354,7 @@ export function FinancialExceptions({
                 onConfirm={confirm}
                 onReassign={reassign}
                 onExecute={(action) => void execute(action)}
+                nav={nav}
               />
             )}
           </aside>

@@ -13,8 +13,8 @@ describe("home page", () => {
     },
   );
 
-  it("sends the financial role to its exceptions queue", () => {
-    expect(homePageFor("financial")).toBe("financial");
+  it("sends the financial role to its task list", () => {
+    expect(homePageFor("financial")).toBe("tasks");
   });
 
   it("hides the overview entry only where the executive panel replaces it", () => {

@@ -10,6 +10,8 @@ export type Page =
   | "organizations"
   | "commercial"
   | "promotions"
+  | "tasks"
+  | "orders"
   | "requests"
   | "sources"
   | "analyses"
@@ -44,6 +46,8 @@ export const nav: { page: Page; label: string; detail: string }[] = [
     detail: "Regras e versões",
   },
   { page: "promotions", label: "Promoções", detail: "Cupons e links" },
+  { page: "tasks", label: "Tarefas", detail: "O que precisa de você" },
+  { page: "orders", label: "Compras", detail: "Arquivos e registrais" },
   { page: "requests", label: "Pedidos", detail: "Triagem operacional" },
   { page: "sources", label: "Fontes", detail: "Antes da cobrança" },
   { page: "analyses", label: "Análises", detail: "Conferência interna" },
@@ -91,15 +95,7 @@ export const navGroups: { title: string; pages: Page[] }[] = [
   { title: "Painel", pages: ["overview", "executive", "reports"] },
   {
     title: "Operação",
-    pages: [
-      "requests",
-      "registry-requests",
-      "sources",
-      "analyses",
-      "operations",
-      "reconciliation",
-      "onr-review",
-    ],
+    pages: ["tasks", "orders", "operations"],
   },
   {
     title: "Comercial",
@@ -111,7 +107,7 @@ export const navGroups: { title: string; pages: Page[] }[] = [
       "promotions",
     ],
   },
-  { title: "Financeiro", pages: ["financial", "commissions"] },
+  { title: "Financeiro", pages: ["commissions"] },
   { title: "Configurações", pages: ["maintenance"] },
 ];
 
@@ -120,6 +116,10 @@ export type NavItem = (typeof nav)[number];
 export function pageFromHash(): Page | HiddenPage {
   const value = window.location.hash.slice(1);
   return value === "organizations" ||
+    value === "tasks" ||
+    value === "orders" ||
+    value === "tasks" ||
+    value === "orders" ||
     value === "reports" ||
     value === "executive" ||
     value === "commercial" ||
@@ -161,11 +161,14 @@ export function visibleNavFor(role: Role): NavItem[] {
       : isFinancial
         ? item.page === "overview" ||
           item.page === "reports" ||
+          item.page === "tasks" ||
           item.page === "financial" ||
           item.page === "commissions" ||
           item.page === "passkeys"
         : (item.page !== "financial" || canReview) &&
           item.page !== "commissions" &&
+          (item.page !== "tasks" || canReview) &&
+          (item.page !== "orders" || canReview) &&
           (item.page !== "requests" || canReview) &&
           (item.page !== "sources" || canReview) &&
           (item.page !== "analyses" || canReview) &&
@@ -207,9 +210,9 @@ export function bottomNavFor(
   const isFinancial = role === "financial";
   const home: Page = showsOverview(role) ? "overview" : homePageFor(role);
   const mobileItems: Page[] = isFinancial
-    ? [home, "reports", "financial", "commissions"]
+    ? [home, "tasks", "reports", "commissions"]
     : canReview
-      ? [home, "requests", "reports", "financial"]
+      ? [home, "tasks", "orders", "reports"]
       : [home, "reports"];
   return {
     home,
@@ -218,3 +221,17 @@ export function bottomNavFor(
     ),
   };
 }
+
+/** Screens reached from another one: the sidebar highlights the entry they belong to. */
+const PARENT: Partial<Record<Page, Page>> = {
+  requests: "orders",
+  "registry-requests": "orders",
+  sources: "tasks",
+  analyses: "tasks",
+  reconciliation: "tasks",
+  "onr-review": "tasks",
+  financial: "tasks",
+};
+
+export const navParentOf = (page: Page | HiddenPage): Page | HiddenPage =>
+  PARENT[page as Page] ?? page;

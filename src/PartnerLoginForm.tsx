@@ -100,11 +100,20 @@ export function PartnerLoginForm({
         >
           Perdi meu autenticador
         </button>
-        <button type="button" className="pp-recovery-link" onClick={onRecoverPassword}>
+        <button
+          type="button"
+          className="pp-recovery-link"
+          onClick={onRecoverPassword}
+        >
           Esqueci minha senha
         </button>
         {passkeyAvailable && (
-          <button type="button" className="btn btn-secondary btn-md" disabled={busy} onClick={onPasskey}>
+          <button
+            type="button"
+            className="btn btn-secondary btn-md"
+            disabled={busy}
+            onClick={onPasskey}
+          >
             Entrar com chave de acesso
           </button>
         )}

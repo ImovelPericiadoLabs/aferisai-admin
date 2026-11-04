@@ -1,6 +1,12 @@
 import { useId, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { RadioGroup } from "./controls";
 import { validateReason } from "./reason";
+import {
+  composeReason,
+  reasonProblem,
+  type ReasonPreset,
+} from "./reason-presets";
 import { useDialogFocus } from "./useDialogFocus";
 
 type Props = {
@@ -8,7 +14,13 @@ type Props = {
   title: string;
   description?: ReactNode;
   details?: { label: string; value: ReactNode }[];
-  reason?: { label: string; min: number; max: number };
+  /** With `presets`, the person picks a ready-made reason (and may add a detail) instead of typing one. */
+  reason?: {
+    label: string;
+    min: number;
+    max: number;
+    presets?: ReasonPreset[];
+  };
   children?: ReactNode;
   confirmDisabled?: boolean;
   confirmLabel: string;
@@ -44,8 +56,21 @@ function ConfirmDialogBody({
   const dialogRef = useRef<HTMLDivElement>(null);
   const cancelRef = useRef<HTMLButtonElement>(null);
   const [reasonText, setReasonText] = useState("");
+  const [presetId, setPresetId] = useState("");
+  const presets = reason?.presets;
+  const chosen = presets?.find((item) => item.id === presetId);
+  const presetProblem =
+    reason && presets
+      ? reasonProblem(presets, presetId, reasonText, reason.min, reason.max)
+      : "";
   const check = reason
-    ? validateReason(reasonText, reason.min, reason.max)
+    ? presets
+      ? {
+          ok: presetProblem === "",
+          length: composeReason(presets, presetId, reasonText).length,
+          message: presetProblem,
+        }
+      : validateReason(reasonText, reason.min, reason.max)
     : { ok: true, length: 0, message: "" };
 
   useDialogFocus(true, dialogRef, () => !busy && onCancel(), {
@@ -82,7 +107,49 @@ function ConfirmDialogBody({
           </dl>
         )}
         {children}
-        {reason && (
+        {reason && presets && (
+          <div className="confirm-reason">
+            <RadioGroup
+              name={`${reasonId}-preset`}
+              legend={reason.label}
+              value={presetId}
+              onChange={setPresetId}
+              options={presets.map((item) => ({
+                value: item.id,
+                label: item.label,
+                description: chosen?.id === item.id ? item.hint : undefined,
+              }))}
+            />
+            {chosen && (
+              <>
+                <label className="form-field-label" htmlFor={reasonId}>
+                  {chosen.requiresNote
+                    ? "Descreva o motivo"
+                    : "Detalhe (opcional)"}
+                </label>
+                <textarea
+                  id={reasonId}
+                  className="input"
+                  value={reasonText}
+                  maxLength={reason.max}
+                  disabled={busy}
+                  aria-invalid={
+                    chosen.requiresNote && reasonText !== "" && !check.ok
+                  }
+                  onChange={(event) => setReasonText(event.target.value)}
+                />
+                <span
+                  className={`form-hint${chosen.requiresNote && reasonText !== "" && !check.ok ? " confirm-reason-error" : ""}`}
+                >
+                  {chosen.requiresNote && reasonText !== "" && !check.ok
+                    ? check.message
+                    : "Fica registrado no histórico, junto com a opção escolhida."}
+                </span>
+              </>
+            )}
+          </div>
+        )}
+        {reason && !presets && (
           <div className="confirm-reason">
             <label className="form-field-label" htmlFor={reasonId}>
               {reason.label}
@@ -121,7 +188,11 @@ function ConfirmDialogBody({
             disabled={busy || confirmDisabled || !check.ok}
             onClick={(event) => {
               if (!event.nativeEvent.isTrusted) return;
-              onConfirm(reasonText.trim());
+              onConfirm(
+                presets
+                  ? composeReason(presets, presetId, reasonText)
+                  : reasonText.trim(),
+              );
             }}
           >
             {busy ? "Aguarde…" : confirmLabel}

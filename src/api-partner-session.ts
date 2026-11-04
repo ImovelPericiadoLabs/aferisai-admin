@@ -90,7 +90,11 @@ export const createPartnerSupportSession = (
   request<PartnerSupportSession>("/v1/team/partner-support-sessions", {
     method: "POST",
     headers: { "X-CSRF-Token": csrfToken },
-    body: JSON.stringify({ partner_member_id: partnerMemberId, organization_id: organizationId, reason }),
+    body: JSON.stringify({
+      partner_member_id: partnerMemberId,
+      organization_id: organizationId,
+      reason,
+    }),
   });
 
 export const deletePartnerSupportSession = (csrfToken: string) =>
@@ -132,22 +136,31 @@ export const completePartnerMfaRecovery = (
   });
 
 export const requestPartnerPasswordRecovery = (email: string) =>
-  request<PartnerPasswordRecoveryResponse>("/v1/partner/password/recovery/request", {
-    method: "POST",
-    body: JSON.stringify({ email }),
-  });
+  request<PartnerPasswordRecoveryResponse>(
+    "/v1/partner/password/recovery/request",
+    {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    },
+  );
 
-export const completePartnerPasswordRecovery = (token: string, password: string) =>
+export const completePartnerPasswordRecovery = (
+  token: string,
+  password: string,
+) =>
   request<void>("/v1/partner/password/recovery/complete", {
     method: "POST",
     body: JSON.stringify({ token, password }),
   });
 
 export const beginPartnerPasskeyLogin = (email: string) =>
-  request<PartnerPasskeyOptions>("/v1/partner/passkeys/authentication/options", {
-    method: "POST",
-    body: JSON.stringify({ email }),
-  });
+  request<PartnerPasskeyOptions>(
+    "/v1/partner/passkeys/authentication/options",
+    {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    },
+  );
 
 export const finishPartnerPasskeyLogin = (
   email: string,

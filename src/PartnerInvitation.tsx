@@ -184,7 +184,10 @@ export function PartnerInvitation() {
           >
             {busy ? "Preparando…" : "Continuar"}
           </button>
-          <a className="pp-link" href={`/#parceiro?convite=${encodeURIComponent(token)}`}>
+          <a
+            className="pp-link"
+            href={`/#parceiro?convite=${encodeURIComponent(token)}`}
+          >
             Já tenho uma conta de parceiro
           </a>
         </form>

@@ -1,7 +1,12 @@
 import type { RoleAccess } from "./partner-roles";
 
 export type PortalSection =
-  "integrations" | "metrics" | "statement" | "people" | "documentation" | "security";
+  | "integrations"
+  | "metrics"
+  | "statement"
+  | "people"
+  | "documentation"
+  | "security";
 
 const SECTIONS: { id: PortalSection; label: string; key?: keyof RoleAccess }[] =
   [

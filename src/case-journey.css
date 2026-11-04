@@ -1,0 +1,267 @@
+/* Case panel (who acts now, what happened, the purchase) and the flow guide. Tokens only. */
+.cj-subtitle {
+  margin: 2px 0 var(--space-2);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  overflow-wrap: anywhere;
+}
+
+/* ── Whose turn ──────────────────────────────────────────── */
+.cj-turn {
+  display: grid;
+  margin-bottom: var(--space-4);
+  padding: var(--space-4);
+  gap: var(--space-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+
+.cj-turn-head {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.cj-turn h3 {
+  margin: 0;
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.cj-badge {
+  flex: none;
+  padding: 2px var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--surface-muted);
+  color: var(--text-muted);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-medium);
+  white-space: nowrap;
+}
+
+.cj-turn[data-tone="mine"] .cj-badge {
+  background: var(--primary-faint);
+  color: var(--primary);
+}
+
+.cj-turn[data-tone="done"] .cj-badge {
+  background: var(--success-bg);
+  color: var(--success);
+}
+
+.cj-facts {
+  display: grid;
+  margin: var(--space-1) 0 0;
+  gap: var(--space-1);
+  font-size: var(--text-sm);
+}
+
+.cj-facts > div {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: 52px minmax(0, 1fr);
+  align-items: baseline;
+}
+
+.cj-facts dt {
+  color: var(--text-muted);
+}
+
+.cj-facts dd {
+  display: flex;
+  min-width: 0;
+  margin: 0;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+  align-items: baseline;
+  overflow-wrap: anywhere;
+}
+
+.cj-facts small {
+  color: var(--text-muted);
+}
+
+.cj-link {
+  display: inline;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--primary);
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.cj-link:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* ── What happened ───────────────────────────────────────── */
+.cj-cause {
+  margin: 0;
+  font-size: var(--text-base);
+  font-weight: var(--weight-semibold);
+}
+
+.cj-cause-meta {
+  margin: var(--space-1) 0 0;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  overflow-wrap: anywhere;
+}
+
+.cj-tech {
+  margin-top: var(--space-2);
+  color: var(--text-muted);
+  font-size: var(--text-caption);
+}
+
+.cj-tech summary {
+  cursor: pointer;
+}
+
+.cj-tech p {
+  margin: var(--space-1) 0 0;
+  overflow-wrap: anywhere;
+}
+
+.cj-cause ~ .alert {
+  margin-top: var(--space-2);
+}
+
+/* ── The purchase ────────────────────────────────────────── */
+.cj-headline {
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-base);
+  font-weight: var(--weight-semibold);
+  line-height: 1.4;
+}
+
+.cj-stages {
+  display: grid;
+  margin: 0 0 var(--space-3);
+  padding: 0;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  list-style: none;
+}
+
+.cj-stages li {
+  display: grid;
+  padding: var(--space-2) var(--space-3);
+  gap: 1px;
+  border-right: 1px solid var(--border);
+}
+
+.cj-stages li:last-child {
+  border-right: 0;
+}
+
+.cj-stages small {
+  color: var(--text-muted);
+  font-size: var(--text-caption);
+}
+
+.cj-stages strong {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+}
+
+.cj-stages em {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  color: var(--text-muted);
+  font-size: var(--text-caption);
+  font-style: normal;
+}
+
+.cj-stages em::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--border-strong);
+}
+
+.cj-stages li[data-state="done"] em::before {
+  background: var(--success);
+}
+
+.cj-stages li[data-state="current"] em::before {
+  background: var(--info);
+}
+
+.cj-stages li[data-state="problem"] em::before {
+  background: var(--danger);
+}
+
+@media (max-width: 520px) {
+  .cj-stages {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .cj-stages li {
+    border-right: 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .cj-stages li:last-child {
+    border-bottom: 0;
+  }
+}
+
+.cj-docs {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.cj-docs li {
+  display: grid;
+  padding: var(--space-3);
+  gap: var(--space-2);
+  border-bottom: 1px solid var(--border);
+}
+
+.cj-docs li:last-child {
+  border-bottom: 0;
+}
+
+.cj-doc-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.cj-doc-head strong {
+  margin-right: var(--space-1);
+  font-size: var(--text-sm);
+}
+
+.cj-doc-error {
+  color: var(--text-muted);
+  font-size: var(--text-caption);
+  overflow-wrap: anywhere;
+}
+
+.cj-doc-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}

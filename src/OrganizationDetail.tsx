@@ -330,14 +330,30 @@ export function OrganizationDetail({
                     onUnauthorized={onUnauthorized}
                     onToast={onToast}
                     onSupport={async (person) => {
-                      const reason = window.prompt("Motivo do acesso de suporte (registrado na auditoria):", "Atendimento ao parceiro");
+                      const reason = window.prompt(
+                        "Motivo do acesso de suporte (registrado na auditoria):",
+                        "Atendimento ao parceiro",
+                      );
                       if (!reason) return;
                       try {
-                        const support = await createPartnerSupportSession(person.id, organizationId, reason, csrfToken);
-                        sessionStorage.setItem("aferis_partner_support_csrf", support.csrf_token);
+                        const support = await createPartnerSupportSession(
+                          person.id,
+                          organizationId,
+                          reason,
+                          csrfToken,
+                        );
+                        sessionStorage.setItem(
+                          "aferis_partner_support_csrf",
+                          support.csrf_token,
+                        );
                         window.location.assign("/#parceiro?suporte=1");
                       } catch (cause) {
-                        onToast(cause instanceof Error ? cause.message : "Não foi possível iniciar o suporte.", "error");
+                        onToast(
+                          cause instanceof Error
+                            ? cause.message
+                            : "Não foi possível iniciar o suporte.",
+                          "error",
+                        );
                       }
                     }}
                   />

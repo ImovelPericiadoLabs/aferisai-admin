@@ -1,7 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import type { PaymentExceptionCase } from "./api";
 import {
-  affectedItemRows,
   canViewOriginals,
   originalTargets,
   dueState,
@@ -11,7 +10,6 @@ import {
   stageOf,
 } from "./exception-model";
 import {
-  dateTime,
   exceptionSteps,
   money,
   outcomeLabel,
@@ -19,6 +17,13 @@ import {
   type ExecuteAction,
   type Role,
 } from "./exception-panel-model";
+import {
+  CaseCause,
+  CaseOverview,
+  CaseTurn,
+  type CaseNavigation,
+} from "./CaseJourneyView";
+import { journeyOf } from "./case-journey-model";
 import { ExceptionDialogs } from "./ExceptionDialogs";
 import { ExceptionNextStep } from "./ExceptionNextStep";
 import { ExceptionReassign } from "./ExceptionReassign";
@@ -54,6 +59,7 @@ type Props = {
     reason: string,
   ) => Promise<boolean>;
   onExecute: (action: ExecuteAction) => void;
+  nav?: CaseNavigation;
 };
 
 export function ExceptionPanel({
@@ -73,6 +79,7 @@ export function ExceptionPanel({
   onConfirm,
   onReassign,
   onExecute,
+  nav = {},
 }: Props) {
   const [asking, setAsking] = useState<Asking>(null);
   const [resolution, setResolution] = useState<"correct" | "refund">(
@@ -86,7 +93,7 @@ export function ExceptionPanel({
   const lastOriginal = useRef<string | null>(null);
   const targets = canViewOriginals(role) ? originalTargets(item) : [];
   const stage = stageOf(item);
-  const affectedRows = affectedItemRows(item);
+  const journey = journeyOf(item);
   const due = dueState(item.due_at, now);
   const action = nextAction(item, role, memberId);
   const canReviseProposal =
@@ -133,6 +140,11 @@ export function ExceptionPanel({
           <h2 className="rules-panel-title" id="exc-panel-title">
             Caso {item.id.slice(0, 8)}
           </h2>
+          <p className="cj-subtitle">
+            {item.customer_name ??
+              item.customer_email ??
+              "Cliente não informado"}
+          </p>
           <div className="rules-panel-badges">
             <span className={`badge ${stageTone(stage)}`}>
               {stageLabel[stage]}
@@ -166,53 +178,54 @@ export function ExceptionPanel({
             {notice}
           </div>
         )}
+        <CaseTurn
+          item={item}
+          role={role}
+          memberId={memberId}
+          person={person}
+          now={now}
+          nav={nav}
+        />
+        <ExceptionNextStep
+          item={item}
+          role={role}
+          action={action}
+          busy={busy}
+          resolution={resolution}
+          setResolution={setResolution}
+          canReviseProposal={canReviseProposal}
+          setAsking={setAsking}
+          onClaim={onClaim}
+          onExecute={onExecute}
+        />
+        <CaseCause item={item} nav={nav} />
+        <CaseOverview
+          journey={journey}
+          canOpen={canViewOriginals(role)}
+          nav={nav}
+        />
         <section className="detail-panel-section">
-          <h3 className="detail-panel-section-title">Resumo</h3>
+          <h3 className="detail-panel-section-title">Quem e quanto</h3>
           <dl className="detail-panel-field">
-            <dt>Valor pago</dt>
-            <dd>{money(item.amount_cents)}</dd>
             <dt>Cliente</dt>
             <dd>{item.customer_name ?? "Não informado"}</dd>
             <dt>E-mail</dt>
             <dd>{item.customer_email ?? "Não informado"}</dd>
-            <dt>Forma de pagamento</dt>
+            <dt>Pagamento</dt>
             <dd>
+              {money(item.amount_cents)}
               {item.funding_source === "credits"
-                ? "Créditos"
+                ? " em créditos"
                 : item.funding_source === "pix"
-                  ? "PIX"
-                  : "Não informada"}
+                  ? " por PIX"
+                  : ""}
             </dd>
-            <dt>Trabalho</dt>
-            <dd>{item.work_id}</dd>
-            <dt>Prazo para decidir</dt>
-            <dd>{dateTime.format(new Date(item.due_at))}</dd>
-            <dt>Código técnico</dt>
-            <dd>{item.reason_code}</dd>
             <dt>Gestor</dt>
             <dd>{person(item.manager_assignee_id)}</dd>
             <dt>Financeiro</dt>
             <dd>{person(item.financial_assignee_id)}</dd>
           </dl>
         </section>
-        {affectedRows.length > 0 && (
-          <section className="detail-panel-section">
-            <h3 className="detail-panel-section-title">
-              Documentos da compra ({affectedRows.length})
-            </h3>
-            <ul className="exc-affected">
-              {affectedRows.map((row) => (
-                <li key={row.key}>
-                  <strong>{row.title}</strong>
-                  <small>{row.detail}</small>
-                  {row.error && (
-                    <span className="badge badge-danger">{row.error}</span>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
         {targets.length > 0 && (
           <section className="detail-panel-section">
             <h3 className="detail-panel-section-title">Original</h3>
@@ -255,18 +268,6 @@ export function ExceptionPanel({
             ))}
           </ol>
         </section>
-        <ExceptionNextStep
-          item={item}
-          role={role}
-          action={action}
-          busy={busy}
-          resolution={resolution}
-          setResolution={setResolution}
-          canReviseProposal={canReviseProposal}
-          setAsking={setAsking}
-          onClaim={onClaim}
-          onExecute={onExecute}
-        />
         {role === "administrator" && stage !== "done" && (
           <section className="detail-panel-section">
             <ExceptionReassign

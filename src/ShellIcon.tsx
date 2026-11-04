@@ -7,6 +7,8 @@ type IconName =
   | "organizations"
   | "commercial"
   | "promotions"
+  | "tasks"
+  | "orders"
   | "requests"
   | "sources"
   | "analyses"
@@ -72,6 +74,18 @@ const paths: Record<IconName, ReactNode> = {
     <>
       <path d="M3 12l8-9h9a1 1 0 0 1 1 1v9l-9 8a2 2 0 0 1-3 0l-6-6a2 2 0 0 1 0-3Z" />
       <circle cx="16.5" cy="7.5" r="1" />
+    </>
+  ),
+  tasks: (
+    <>
+      <rect x="4" y="3" width="16" height="18" rx="2" />
+      <path d="m8 9 2 2 3-3m-5 8h8" />
+    </>
+  ),
+  orders: (
+    <>
+      <path d="M4 7l8-4 8 4v10l-8 4-8-4V7Z" />
+      <path d="M4 7l8 4 8-4M12 11v10" />
     </>
   ),
   requests: (
@@ -169,7 +183,12 @@ const paths: Record<IconName, ReactNode> = {
     </>
   ),
   maintenance: (
-    <><path d="M4 7h16M4 12h16M4 17h16" /><circle cx="8" cy="7" r="2" fill="currentColor" /><circle cx="16" cy="12" r="2" fill="currentColor" /><circle cx="11" cy="17" r="2" fill="currentColor" /></>
+    <>
+      <path d="M4 7h16M4 12h16M4 17h16" />
+      <circle cx="8" cy="7" r="2" fill="currentColor" />
+      <circle cx="16" cy="12" r="2" fill="currentColor" />
+      <circle cx="11" cy="17" r="2" fill="currentColor" />
+    </>
   ),
   settings: (
     <>

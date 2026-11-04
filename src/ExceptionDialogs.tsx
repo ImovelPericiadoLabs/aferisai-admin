@@ -1,5 +1,6 @@
 import type { PaymentExceptionCase } from "./api";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { REASON_PRESETS } from "./reason-presets";
 import {
   money,
   outcomeLabel,
@@ -55,7 +56,12 @@ export function ExceptionDialogs({
           { label: "Encaminhamento", value: outcomeLabel(resolution) },
           { label: "Valor", value: money(item.amount_cents) },
         ]}
-        reason={{ label: "Motivo da proposta", min: 10, max: 500 }}
+        reason={{
+          label: "Por que esta proposta?",
+          min: 10,
+          max: 500,
+          presets: REASON_PRESETS[`propose-${resolution}`],
+        }}
         confirmLabel="Registrar proposta"
         busy={busy}
         onConfirm={(reason) => void finish(() => onPropose(resolution, reason))}
@@ -70,7 +76,17 @@ export function ExceptionDialogs({
           { label: "Motivo do gestor", value: item.proposal_reason ?? "—" },
           { label: "Valor", value: money(item.amount_cents) },
         ]}
-        reason={{ label: "Motivo da decisão", min: 10, max: 500 }}
+        reason={{
+          label: "Por que confirmar?",
+          min: 10,
+          max: 500,
+          presets:
+            REASON_PRESETS[
+              item.proposed_resolution === "refund"
+                ? "confirm-refund"
+                : "confirm-correct"
+            ],
+        }}
         confirmLabel="Confirmar decisão"
         busy={busy}
         onConfirm={(reason) => void finish(() => onConfirm(reason))}
@@ -119,7 +135,12 @@ export function ExceptionDialogs({
             ),
           },
         ]}
-        reason={{ label: "Motivo da troca", min: 10, max: 500 }}
+        reason={{
+          label: "Por que trocar a pessoa responsável?",
+          min: 10,
+          max: 500,
+          presets: REASON_PRESETS.reassign,
+        }}
         confirmLabel="Reatribuir"
         busy={busy}
         onConfirm={(reason) =>

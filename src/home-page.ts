@@ -5,7 +5,7 @@ export const homePageFor = (role: HomeRole) =>
   role === "administrator"
     ? ("executive" as const)
     : role === "financial"
-      ? ("financial" as const)
+      ? ("tasks" as const)
       : ("overview" as const);
 
 export const showsOverview = (role: HomeRole) => role !== "administrator";

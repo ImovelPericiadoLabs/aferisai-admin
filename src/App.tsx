@@ -56,6 +56,7 @@ function TeamApp() {
   const [logoutError, setLogoutError] = useState("");
   const [selectedRequestId, setSelectedRequestId] = useState("");
   const [selectedWorkId, setSelectedWorkId] = useState("");
+  const [selectedCaseId, setSelectedCaseId] = useState("");
   const { toasts, show: showToast, dismiss: dismissToast } = useToast();
   const { sitePreviewBusy, openSitePreview } = useSitePreview(
     session,
@@ -184,6 +185,8 @@ function TeamApp() {
             setSelectedRequestId={setSelectedRequestId}
             selectedWorkId={selectedWorkId}
             setSelectedWorkId={setSelectedWorkId}
+            selectedCaseId={selectedCaseId}
+            setSelectedCaseId={setSelectedCaseId}
           />
         </main>
         <footer>AferisAI</footer>

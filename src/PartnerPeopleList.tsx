@@ -125,11 +125,18 @@ export function PartnerPeopleList({
                   >
                     Histórico
                   </button>
-                  {onSupport && person.membership_status === "active" && person.identity_status === "active" && (
-                    <button type="button" className="btn btn-ghost btn-sm" disabled={busy} onClick={() => onSupport(person)}>
-                      Abrir como parceiro
-                    </button>
-                  )}
+                  {onSupport &&
+                    person.membership_status === "active" &&
+                    person.identity_status === "active" && (
+                      <button
+                        type="button"
+                        className="btn btn-ghost btn-sm"
+                        disabled={busy}
+                        onClick={() => onSupport(person)}
+                      >
+                        Abrir como parceiro
+                      </button>
+                    )}
                 </div>
               </li>
             );

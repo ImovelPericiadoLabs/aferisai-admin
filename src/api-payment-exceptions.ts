@@ -113,7 +113,7 @@ export const executePaymentException = (
   request<
     | { id: string; status: "attempted" | "pending" | "done" | "unknown" }
     | { queued_items: number }
-  >(
-    `/v1/team/payment-exceptions/${encodeURIComponent(caseId)}/${action}`,
-    { method: "POST", headers: { "X-CSRF-Token": csrfToken } },
-  );
+  >(`/v1/team/payment-exceptions/${encodeURIComponent(caseId)}/${action}`, {
+    method: "POST",
+    headers: { "X-CSRF-Token": csrfToken },
+  });

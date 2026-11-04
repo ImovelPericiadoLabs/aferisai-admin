@@ -1,0 +1,202 @@
+/* Guided tour: dim everything, keep the target lit, one small card. */
+.tour {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+}
+
+.tour-scrim {
+  position: absolute;
+  inset: 0;
+}
+
+.tour-hole {
+  position: fixed;
+  border-radius: var(--radius-lg);
+  box-shadow:
+    0 0 0 2px var(--primary),
+    0 0 0 100vmax rgba(15, 23, 42, 0.58);
+  pointer-events: none;
+}
+
+.tour-card {
+  position: fixed;
+  z-index: 1;
+  display: grid;
+  max-height: calc(100dvh - 24px);
+  padding: var(--space-4);
+  gap: var(--space-3);
+  overflow-y: auto;
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: 0 18px 48px rgba(15, 23, 42, 0.28);
+}
+
+.tour-card[data-centered] {
+  top: 50%;
+  left: 50%;
+  width: min(440px, calc(100vw - 24px));
+  transform: translate(-50%, -50%);
+}
+
+.tour-card[data-sheet] {
+  top: auto;
+  right: 12px;
+  bottom: 12px;
+  left: 12px;
+  width: auto;
+  transform: none;
+}
+
+.tour-card h2 {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+  letter-spacing: -0.01em;
+}
+
+.tour-card p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--text-base);
+  line-height: 1.5;
+}
+
+.tour-dots {
+  display: flex;
+  gap: 6px;
+}
+
+.tour-dots span {
+  width: 18px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border-strong);
+}
+
+.tour-dots span[data-state="done"] {
+  background: var(--primary-ring);
+}
+
+.tour-dots span[data-state="now"] {
+  background: var(--primary);
+}
+
+.tour-actions {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.tour-actions span {
+  flex: 1;
+}
+
+/* The purchase, drawn: five stops on a line; the lit one moves along. */
+.tour-flow {
+  display: grid;
+  gap: var(--space-3);
+  margin: var(--space-2) 0;
+}
+
+.tour-flow ol {
+  position: relative;
+  display: flex;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tour-flow ol::before {
+  content: "";
+  position: absolute;
+  top: 5px;
+  right: 10%;
+  left: 10%;
+  height: 1px;
+  background: var(--border-strong);
+}
+
+.tour-flow li {
+  position: relative;
+  display: grid;
+  flex: 1;
+  min-width: 0;
+  gap: 8px;
+  justify-items: center;
+  color: var(--text-muted);
+  font-size: var(--text-label);
+  font-weight: var(--weight-medium);
+  text-align: center;
+  overflow-wrap: anywhere;
+  animation: tour-stop 4s infinite;
+  animation-delay: calc(var(--i) * 0.7s);
+}
+
+.tour-flow li i {
+  width: 11px;
+  height: 11px;
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+  background: var(--surface);
+  animation: tour-stop-dot 4s infinite;
+  animation-delay: calc(var(--i) * 0.7s);
+}
+
+.tour-flow .tour-branch {
+  margin: 0;
+  color: var(--danger);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+}
+
+@keyframes tour-stop {
+  0%,
+  22%,
+  100% {
+    color: var(--text-muted);
+  }
+  5%,
+  17% {
+    color: var(--text);
+  }
+}
+
+@keyframes tour-stop-dot {
+  0%,
+  22%,
+  100% {
+    border-color: var(--border-strong);
+    background: var(--surface);
+  }
+  5%,
+  17% {
+    border-color: var(--primary);
+    background: var(--primary);
+  }
+}
+
+/* The three dot colours, with their names. */
+.tour-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  font-size: var(--text-sm);
+}
+
+.tour-legend > span {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tour-flow li,
+  .tour-flow li i {
+    animation: none;
+  }
+
+  .tour-flow li {
+    color: var(--text);
+  }
+}

@@ -11,6 +11,7 @@ import { FinancialExceptions } from "./FinancialExceptions";
 import { IntegrationMap } from "./IntegrationMap";
 import { OnrPreviewReview } from "./OnrPreviewReview";
 import { OperationsDashboard } from "./OperationsDashboard";
+import { OrdersHub } from "./OrdersHub";
 import { Organizations } from "./Organizations";
 import { Passkeys } from "./Passkeys";
 import type { PeopleTab } from "./people-model";
@@ -22,6 +23,7 @@ import { ReportsHub } from "./ReportsHub";
 import { RequestDirectory } from "./RequestDirectory";
 import { SiteMaintenance } from "./SiteMaintenance";
 import { SourceClassification } from "./SourceClassification";
+import { TaskInbox } from "./TaskInbox";
 import { TeamMembers } from "./TeamMembers";
 import { Users } from "./Users";
 import type { ToastKind } from "./useToast";
@@ -41,6 +43,8 @@ type Props = {
   setSelectedRequestId: (id: string) => void;
   selectedWorkId: string;
   setSelectedWorkId: (id: string) => void;
+  selectedCaseId: string;
+  setSelectedCaseId: (id: string) => void;
 };
 
 /** Maps the resolved team page to its screen, wiring session and shell state. */
@@ -57,6 +61,8 @@ export function TeamPageContent({
   setSelectedRequestId,
   selectedWorkId,
   setSelectedWorkId,
+  selectedCaseId,
+  setSelectedCaseId,
 }: Props) {
   const peopleTabs: PeopleTab[] = [
     ...(canReview ? [{ page: "users" as const, label: "Usuários" }] : []),
@@ -93,6 +99,31 @@ export function TeamPageContent({
   ) : currentPage === "promotions" &&
     session.member.role === "administrator" ? (
     <Promotions csrf={session.csrf} onUnauthorized={unauthorize} />
+  ) : currentPage === "tasks" ? (
+    <TaskInbox
+      role={session.member.role}
+      memberId={session.member.id}
+      onUnauthorized={unauthorize}
+      onOpen={(page, id) => {
+        if (page === "sources" && id) setSelectedRequestId(id);
+        if (page === "analyses" && id) setSelectedWorkId(id);
+        if (page === "financial") setSelectedCaseId(id ?? "");
+        navigate(page);
+      }}
+    />
+  ) : currentPage === "orders" && canReview ? (
+    <OrdersHub
+      canRead={canReview}
+      onUnauthorized={unauthorize}
+      openSource={(requestId) => {
+        setSelectedRequestId(requestId);
+        navigate("sources");
+      }}
+      openReview={(workId) => {
+        setSelectedWorkId(workId);
+        navigate("analyses");
+      }}
+    />
   ) : currentPage === "requests" ? (
     <RequestDirectory
       canRead={canReview}
@@ -131,6 +162,18 @@ export function TeamPageContent({
       memberId={session.member.id}
       role={session.member.role}
       onUnauthorized={unauthorize}
+      initialCaseId={selectedCaseId}
+      nav={{
+        openPage: navigate,
+        openSource: (requestId) => {
+          setSelectedRequestId(requestId);
+          navigate("sources");
+        },
+        openAnalysis: (workId) => {
+          setSelectedWorkId(workId);
+          navigate("analyses");
+        },
+      }}
     />
   ) : currentPage === "commissions" ? (
     <Commissions csrf={session.csrf} onUnauthorized={unauthorize} />

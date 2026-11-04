@@ -22,7 +22,11 @@ import {
   beginPartnerPasskeyLogin,
   finishPartnerPasskeyLogin,
 } from "./api";
-import { browserSupportsWebAuthn, startAuthentication, type PublicKeyCredentialRequestOptionsJSON } from "@simplewebauthn/browser";
+import {
+  browserSupportsWebAuthn,
+  startAuthentication,
+  type PublicKeyCredentialRequestOptionsJSON,
+} from "@simplewebauthn/browser";
 import { PartnerAuthShell } from "./PartnerAuthShell";
 import { PartnerInvitation } from "./PartnerInvitation";
 import { PartnerLoginForm } from "./PartnerLoginForm";
@@ -64,12 +68,14 @@ export function PartnerPortal() {
   const [switching, setSwitching] = useState(false);
   const [error, setError] = useState("");
   const isInvitation = window.location.hash.startsWith("#convite");
-  const pendingInvitationToken = new URLSearchParams(
-    window.location.hash.split("?")[1] || "",
-  ).get("convite") || "";
-  const supportMode = new URLSearchParams(
-    window.location.hash.split("?")[1] || "",
-  ).get("suporte") === "1";
+  const pendingInvitationToken =
+    new URLSearchParams(window.location.hash.split("?")[1] || "").get(
+      "convite",
+    ) || "";
+  const supportMode =
+    new URLSearchParams(window.location.hash.split("?")[1] || "").get(
+      "suporte",
+    ) === "1";
   const [recoveringMfa, setRecoveringMfa] = useState(() =>
     window.location.hash.startsWith("#recuperar-2fa"),
   );
@@ -92,7 +98,9 @@ export function PartnerPortal() {
         const supportCsrf = supportMode
           ? sessionStorage.getItem("aferis_partner_support_csrf")
           : null;
-        const csrf = supportCsrf ? { csrf_token: supportCsrf } : await renewPartnerCsrf();
+        const csrf = supportCsrf
+          ? { csrf_token: supportCsrf }
+          : await renewPartnerCsrf();
         if (live && csrf) setSession({ member, csrf: csrf.csrf_token });
       })
       .catch(() => {
@@ -116,7 +124,8 @@ export function PartnerPortal() {
     : (sections[0]?.id ?? null);
   const csrfForPeople = session?.csrf;
   const peopleApi = useMemo(
-    () => (csrfForPeople && !supportMode ? ownerPeopleApi(csrfForPeople) : null),
+    () =>
+      csrfForPeople && !supportMode ? ownerPeopleApi(csrfForPeople) : null,
     [csrfForPeople, supportMode],
   );
   useEffect(() => {
@@ -211,7 +220,10 @@ export function PartnerPortal() {
           pendingInvitationToken,
           result.csrf_token,
         );
-        await switchPartnerOrganization(accepted.organization_id, result.csrf_token);
+        await switchPartnerOrganization(
+          accepted.organization_id,
+          result.csrf_token,
+        );
         window.history.replaceState(null, "", "/#parceiro");
       }
       setPassword("");
@@ -237,13 +249,22 @@ export function PartnerPortal() {
     try {
       const options = await beginPartnerPasskeyLogin(email.trim());
       const credential = await startAuthentication({
-        optionsJSON: options.public_key as unknown as PublicKeyCredentialRequestOptionsJSON,
+        optionsJSON:
+          options.public_key as unknown as PublicKeyCredentialRequestOptionsJSON,
       });
-      const result = await finishPartnerPasskeyLogin(email.trim(), options.challenge_id, credential as unknown as Record<string, unknown>);
+      const result = await finishPartnerPasskeyLogin(
+        email.trim(),
+        options.challenge_id,
+        credential as unknown as Record<string, unknown>,
+      );
       const member = await currentPartnerMember();
       setSession({ member, csrf: result.csrf_token });
     } catch (cause) {
-      setError(cause instanceof ApiError ? cause.detail : "A chave de acesso não foi confirmada pelo dispositivo.");
+      setError(
+        cause instanceof ApiError
+          ? cause.detail
+          : "A chave de acesso não foi confirmada pelo dispositivo.",
+      );
     } finally {
       setBusy(false);
     }
@@ -357,8 +378,16 @@ export function PartnerPortal() {
     <div className="pp-shell">
       {supportMode && (
         <div className="alert alert-warning" role="status">
-          Modo suporte ativo: você está visualizando este parceiro como administrador. Alterações estão bloqueadas.
-          <button type="button" className="btn btn-secondary btn-sm" onClick={() => void endSupport()} disabled={busy}>Encerrar suporte</button>
+          Modo suporte ativo: você está visualizando este parceiro como
+          administrador. Alterações estão bloqueadas.
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            onClick={() => void endSupport()}
+            disabled={busy}
+          >
+            Encerrar suporte
+          </button>
         </div>
       )}
       <PartnerPortalHeader

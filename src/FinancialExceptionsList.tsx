@@ -5,6 +5,7 @@ import {
   stageOf,
   type CaseFilter,
 } from "./exception-model";
+import { causeOf, journeyOf, turnOf } from "./case-journey-model";
 import { outcomeLabel } from "./ExceptionPanel";
 import { money } from "./financial-exceptions-format";
 import { stageTone } from "./status-tones";
@@ -70,17 +71,19 @@ export function FinancialExceptionsList({
             <table className="data-table" aria-label="Casos financeiros">
               <thead>
                 <tr>
-                  <th scope="col">Caso</th>
+                  <th scope="col">Cliente e caso</th>
+                  <th scope="col">O que aconteceu</th>
+                  <th scope="col">Etapa</th>
+                  <th scope="col">Quem age agora</th>
                   <th scope="col">Valor</th>
                   <th scope="col">Prazo</th>
-                  <th scope="col">Etapa</th>
-                  <th scope="col">Responsáveis</th>
                 </tr>
               </thead>
               <tbody>
                 {visible.map((item) => {
                   const stage = stageOf(item);
                   const due = dueState(item.due_at, now);
+                  const turn = turnOf(item, person);
                   return (
                     <tr
                       key={item.id}
@@ -90,7 +93,7 @@ export function FinancialExceptionsList({
                       }
                       onClick={() => onOpen(item.id)}
                     >
-                      <td data-label="Caso">
+                      <td data-label="Cliente e caso">
                         <button
                           className="rules-cell-button"
                           data-row-id={item.id}
@@ -101,21 +104,21 @@ export function FinancialExceptionsList({
                             onOpen(item.id);
                           }}
                         >
-                          <strong>Caso {item.id.slice(0, 8)}</strong>
-                          <small>Trabalho {item.work_id}</small>
+                          <strong>
+                            {item.customer_name ??
+                              item.customer_email ??
+                              `Caso ${item.id.slice(0, 8)}`}
+                          </strong>
+                          <small>Caso {item.id.slice(0, 8)}</small>
                         </button>
                       </td>
-                      <td data-label="Valor">{money(item.amount_cents)}</td>
-                      <td data-label="Prazo">
-                        {stage === "done" ? (
-                          <span className="rules-cell-sub">Encerrado</span>
-                        ) : (
-                          <span
-                            className={`badge badge-${due.tone === "neutral" ? "neutral" : due.tone}`}
-                          >
-                            {due.label}
-                          </span>
-                        )}
+                      <td data-label="O que aconteceu">
+                        <span className="rules-cell-stack">
+                          <span>{causeOf(item.reason_code).title}</span>
+                          <small className="rules-cell-sub">
+                            {journeyOf(item).headline}
+                          </small>
+                        </span>
                       </td>
                       <td data-label="Etapa">
                         <span className="rules-cell-stack">
@@ -133,15 +136,31 @@ export function FinancialExceptionsList({
                           )}
                         </span>
                       </td>
-                      <td data-label="Responsáveis">
-                        <span className="exc-people">
-                          <small className="rules-cell-sub">
-                            Gestor: {person(item.manager_assignee_id)}
-                          </small>
-                          <small className="rules-cell-sub">
-                            Financeiro: {person(item.financial_assignee_id)}
-                          </small>
+                      <td data-label="Quem age agora">
+                        <span className="rules-cell-stack">
+                          {turn.role ? (
+                            <>
+                              <strong>{turn.role}</strong>
+                              <small className="rules-cell-sub">
+                                {turn.person ?? "Ninguém assumiu"}
+                              </small>
+                            </>
+                          ) : (
+                            <small className="rules-cell-sub">Ninguém</small>
+                          )}
                         </span>
+                      </td>
+                      <td data-label="Valor">{money(item.amount_cents)}</td>
+                      <td data-label="Prazo">
+                        {stage === "done" ? (
+                          <span className="rules-cell-sub">Encerrado</span>
+                        ) : (
+                          <span
+                            className={`badge badge-${due.tone === "neutral" ? "neutral" : due.tone}`}
+                          >
+                            {due.label}
+                          </span>
+                        )}
                       </td>
                     </tr>
                   );

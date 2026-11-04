@@ -131,11 +131,13 @@ export function canActivate(account: AnalysisProviderAccount): {
 } {
   if (account.status !== "draft")
     return { ok: false, reason: "Só contas em rascunho podem ser ativadas." };
-  if (account.kind !== "vertex_service_account" && account.kind !== "openai_api_key")
+  if (
+    account.kind !== "vertex_service_account" &&
+    account.kind !== "openai_api_key"
+  )
     return {
       ok: false,
-      reason:
-        "Este tipo de conta ainda não tem adaptador de análise aprovado.",
+      reason: "Este tipo de conta ainda não tem adaptador de análise aprovado.",
     };
   if (account.location !== "global")
     return {
@@ -153,7 +155,10 @@ export function activationBody(
 ): ActivateProviderBody {
   return {
     expected_version: account.version,
-    model: account.kind === "vertex_service_account" ? ACTIVATION_MODEL : account.model,
+    model:
+      account.kind === "vertex_service_account"
+        ? ACTIVATION_MODEL
+        : account.model,
     expected_profile_sha256: profileSha256,
     external_reserved: externalReserved,
     reason,

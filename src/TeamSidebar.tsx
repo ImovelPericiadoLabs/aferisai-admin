@@ -2,6 +2,7 @@ import type { RefObject } from "react";
 import { ShellIcon } from "./ShellIcon";
 import {
   navGroups,
+  navParentOf,
   type HiddenPage,
   type NavItem,
   type Page,
@@ -71,7 +72,9 @@ export function TeamSidebar({
             );
             if (items.length === 0) return null;
             const isPanel = group.title === "Painel";
-            const activeGroup = items.some((item) => item.page === currentPage);
+            const activeGroup = items.some(
+              (item) => item.page === navParentOf(currentPage),
+            );
             return (
               <div
                 className={`sidebar-nav-group${activeGroup ? " has-active" : ""}`}
@@ -96,9 +99,11 @@ export function TeamSidebar({
                   {items.map((item) => (
                     <button
                       key={item.page}
-                      className={`nav-link ${currentPage === item.page ? "active" : ""}`}
+                      className={`nav-link ${navParentOf(currentPage) === item.page ? "active" : ""}`}
                       aria-current={
-                        currentPage === item.page ? "page" : undefined
+                        navParentOf(currentPage) === item.page
+                          ? "page"
+                          : undefined
                       }
                       title={sidebarCollapsed ? item.label : undefined}
                       onClick={() => {

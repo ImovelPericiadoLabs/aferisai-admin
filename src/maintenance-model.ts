@@ -90,8 +90,7 @@ const MODE_LABEL: Record<MaintenanceMode, string> = {
 };
 
 export type DraftChange = {
-  field:
-    "mode" | "starts_at" | "ends_at" | "public_message" | "internal_note";
+  field: "mode" | "starts_at" | "ends_at" | "public_message" | "internal_note";
   label: string;
   from: string;
   to: string;

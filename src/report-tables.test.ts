@@ -67,8 +67,14 @@ describe("financeiro", () => {
       "Variação",
     ]);
     const gross = summary.rows.find((r) => cellText(r[0]) === "Receita bruta")!;
-    expect(gross[1]).toEqual({ t: "money", v: data.revenue.totals.gross_cents });
-    expect(gross[2]).toEqual({ t: "money", v: data.revenue.previous!.gross_cents });
+    expect(gross[1]).toEqual({
+      t: "money",
+      v: data.revenue.totals.gross_cents,
+    });
+    expect(gross[2]).toEqual({
+      t: "money",
+      v: data.revenue.previous!.gross_cents,
+    });
     expect((gross[3] as Cell & { t: "delta" }).v).not.toBeNull();
     const off = reportTables("financeiro", noCompare, period)[0];
     expect(off.columns.map((c) => c.label)).toEqual(["Indicador", "Período"]);
@@ -77,7 +83,10 @@ describe("financeiro", () => {
     const daily = tables[1];
     expect(daily.rows).toHaveLength(30);
     const first = daily.rows[0];
-    expect(first[0]).toEqual({ t: "text", v: period.from.split("-").reverse().join("/") });
+    expect(first[0]).toEqual({
+      t: "text",
+      v: period.from.split("-").reverse().join("/"),
+    });
     const day = data.revenue.series[0];
     expect(first[4]).toEqual({
       t: "money",
@@ -86,7 +95,9 @@ describe("financeiro", () => {
   });
   it("shows each slice's share of the revenue, summing to about 100%", () => {
     const channel = tables[2];
-    const shares = channel.rows.map((r) => (r[3] as Cell & { t: "bps" }).v ?? 0);
+    const shares = channel.rows.map(
+      (r) => (r[3] as Cell & { t: "bps" }).v ?? 0,
+    );
     expect(shares.reduce((a, b) => a + b, 0)).toBeGreaterThanOrEqual(9990);
     expect(shares.reduce((a, b) => a + b, 0)).toBeLessThanOrEqual(10010);
   });
@@ -113,13 +124,24 @@ describe("other reports", () => {
     expect(ranking.columns.at(-1)!.label).toBe("Comissão sobre a receita");
   });
   it("suppliers and integrations produce tables with rows", () => {
-    expect(reportTables("fornecedores", data, period).every((t) => t.rows.length > 0)).toBe(true);
-    expect(reportTables("integracoes", data, period).every((t) => t.rows.length > 0)).toBe(true);
+    expect(
+      reportTables("fornecedores", data, period).every(
+        (t) => t.rows.length > 0,
+      ),
+    ).toBe(true);
+    expect(
+      reportTables("integracoes", data, period).every((t) => t.rows.length > 0),
+    ).toBe(true);
   });
 });
 
 describe("csv", () => {
-  const csv = tablesToCsv("Financeiro", reportTables("financeiro", data, period), period, true);
+  const csv = tablesToCsv(
+    "Financeiro",
+    reportTables("financeiro", data, period),
+    period,
+    true,
+  );
   it("states report, period, zone and the sample origin, with a BOM", () => {
     expect(csv.startsWith("﻿")).toBe(true);
     expect(csv).toContain("Relatório Financeiro");
