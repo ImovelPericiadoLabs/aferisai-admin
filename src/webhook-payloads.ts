@@ -5,9 +5,17 @@
  * HMAC-SHA256 over "<X-Aferis-Timestamp>.<body>", header `X-Aferis-Signature:
  * sha256=<hex>`. The tests pin it to values produced by the backend's own functions.
  */
+import { fieldsFromSchema } from "./webhook-docs-model";
+
 export type EventStatus = "implemented" | "proposed";
 
-export type EventField = { name: string; type: string; description: string };
+export type EventField = {
+  name: string;
+  type: string;
+  description: string;
+  /** false only for fields the backend marks optional; envelope fields are always sent. */
+  required?: boolean;
+};
 
 export type EventDefinition = {
   type: string;
@@ -51,6 +59,83 @@ const EVENT_COPY: Record<string, { title: string; description: string }> = {
     title: "Análise em revisão humana",
     description: "Enviado quando uma análise precisa de revisão da equipe.",
   },
+  "registry.created": {
+    title: "Pedido de registro criado",
+    description:
+      "Enviado quando um pedido de registro ligado à sua aplicação é criado.",
+  },
+  "registry.preview.completed": {
+    title: "Prévia do registro concluída",
+    description:
+      "Enviado quando a prévia de um pedido de registro é concluída.",
+  },
+  "registry.quote.created": {
+    title: "Cotação do registro criada",
+    description: "Enviado quando uma cotação de registro é criada.",
+  },
+  "registry.quote.expired": {
+    title: "Cotação do registro expirada",
+    description: "Enviado quando uma cotação de registro expira.",
+  },
+  "payment.created": {
+    title: "Pagamento criado",
+    description: "Enviado quando um pagamento ligado à sua aplicação é criado.",
+  },
+  "payment.confirmed": {
+    title: "Pagamento confirmado",
+    description:
+      "Enviado quando um pagamento ligado à sua aplicação é confirmado.",
+  },
+  "payment.failed": {
+    title: "Pagamento com falha",
+    description: "Enviado quando um pagamento ligado à sua aplicação falha.",
+  },
+  "payment.refunded": {
+    title: "Pagamento reembolsado",
+    description:
+      "Enviado quando um pagamento ligado à sua aplicação é reembolsado.",
+  },
+  "acquisition.submitted": {
+    title: "Aquisição enviada",
+    description: "Enviado quando a aquisição de um documento é submetida.",
+  },
+  "acquisition.completed": {
+    title: "Aquisição concluída",
+    description: "Enviado quando a aquisição de um documento é concluída.",
+  },
+  "acquisition.failed": {
+    title: "Aquisição com falha",
+    description:
+      "Enviado quando a aquisição de um documento termina com falha.",
+  },
+  "certificate.available": {
+    title: "Certidão disponível",
+    description: "Enviado quando uma certidão fica disponível.",
+  },
+  "connection.created": {
+    title: "Conexão criada",
+    description: "Enviado quando uma conexão com a sua aplicação é criada.",
+  },
+  "connection.revoked": {
+    title: "Conexão revogada",
+    description: "Enviado quando o titular revoga o acesso da sua aplicação.",
+  },
+  "credential.created": {
+    title: "Credencial criada",
+    description: "Enviado quando uma credencial da sua aplicação é criada.",
+  },
+  "credential.revoked": {
+    title: "Credencial revogada",
+    description: "Enviado quando uma credencial da sua aplicação é revogada.",
+  },
+  "commission.owed": {
+    title: "Comissão devida",
+    description: "Enviado quando uma comissão passa a ser devida.",
+  },
+  "commission.reverted": {
+    title: "Comissão revertida",
+    description: "Enviado quando uma comissão devida é revertida.",
+  },
   "webhook.test": {
     title: "Teste de integração",
     description:
@@ -58,23 +143,11 @@ const EVENT_COPY: Record<string, { title: string; description: string }> = {
   },
 };
 
-function jsonType(schema: Record<string, unknown>): string {
-  const type = schema.type;
-  if (type === "integer") return "inteiro";
-  if (type === "boolean") return "booleano";
-  if (type === "string" && schema.format === "uuid") return "UUIDv7";
-  if (type === "string") return "texto";
-  return typeof type === "string" ? type : "objeto";
-}
-
 /** Convert the backend source-of-truth catalog into the documentation model. */
 export function eventDefinitionFromBackend(
   item: BackendEventCatalogItem,
 ): EventDefinition {
   const data = (item.example.data ?? {}) as Record<string, unknown>;
-  const dataSchema = ((item.json_schema.properties as Record<string, unknown> | undefined)
-    ?.data as Record<string, unknown> | undefined) ?? {};
-  const properties = (dataSchema.properties ?? {}) as Record<string, Record<string, unknown>>;
   const copy = EVENT_COPY[item.type] ?? {
     title: item.type,
     description: `Evento ${item.type} publicado pelo catálogo da AferisAI.`,
@@ -87,11 +160,7 @@ export function eventDefinitionFromBackend(
     hasConnection: item.example.connection_id !== null,
     description: copy.description,
     data,
-    fields: Object.keys(data).map((name) => ({
-      name: `data.${name}`,
-      type: jsonType(properties[name] ?? {}),
-      description: `Campo ${name} do evento ${item.type}.`,
-    })),
+    fields: fieldsFromSchema(item.json_schema),
     source: `catálogo do backend · v${item.version}`,
   };
 }
@@ -211,8 +280,7 @@ export const eventCatalog: EventDefinition[] = [
     status: "implemented",
     subscribable: true,
     hasConnection: true,
-    description:
-      "Enviado quando a análise precisa de revisão da equipe.",
+    description: "Enviado quando a análise precisa de revisão da equipe.",
     data: { analysis_request_id: SAMPLE_ANALYSIS },
     fields: [analysisField],
     source: "app/integrations/webhook_events.py:45",
@@ -224,11 +292,27 @@ export const eventCatalog: EventDefinition[] = [
     subscribable: true,
     hasConnection: true,
     description: "Enviado quando um pagamento ligado à aplicação é confirmado.",
-    data: { resource_type: "payment", resource_id: SAMPLE_ANALYSIS, status: "confirmed" },
+    data: {
+      resource_type: "payment",
+      resource_id: SAMPLE_ANALYSIS,
+      status: "confirmed",
+    },
     fields: [
-      { name: "data.resource_type", type: "texto", description: "Tipo do recurso relacionado." },
-      { name: "data.resource_id", type: "UUIDv7", description: "Identificador do recurso relacionado." },
-      { name: "data.status", type: "texto", description: "Estado do pagamento." },
+      {
+        name: "data.resource_type",
+        type: "texto",
+        description: "Tipo do recurso relacionado.",
+      },
+      {
+        name: "data.resource_id",
+        type: "UUIDv7",
+        description: "Identificador do recurso relacionado.",
+      },
+      {
+        name: "data.status",
+        type: "texto",
+        description: "Estado do pagamento.",
+      },
     ],
     source: "app/integrations/webhook_events.py:80",
   },
@@ -238,8 +322,7 @@ export const eventCatalog: EventDefinition[] = [
     status: "implemented",
     subscribable: true,
     hasConnection: true,
-    description:
-      "Enviado quando o titular revoga o acesso da aplicação.",
+    description: "Enviado quando o titular revoga o acesso da aplicação.",
     data: {},
     fields: [],
     source: "app/integrations/webhook_events.py:124",

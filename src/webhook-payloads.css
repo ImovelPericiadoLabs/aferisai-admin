@@ -1,8 +1,11 @@
+/* Event documentation: a navigation index beside a reading column. Layout follows the card's own
+   width (container queries), so it behaves the same on a page, in a drawer or on a phone. */
 .wp {
+  container: wp / inline-size;
   display: grid;
   min-width: 0;
   padding: var(--space-5);
-  gap: var(--space-4);
+  gap: var(--space-5);
 }
 
 .wp-head .appws-section-title {
@@ -10,36 +13,89 @@
 }
 
 .wp-head .form-hint {
+  max-width: 70ch;
   margin: 0;
 }
 
 .wp-body {
   display: grid;
   min-width: 0;
-  gap: var(--space-5);
-  grid-template-columns: minmax(220px, 260px) minmax(0, 1fr);
+  gap: var(--space-6);
+  grid-template-columns: minmax(240px, 288px) minmax(0, 1fr);
   align-items: start;
 }
 
-.wp-events {
+/* ── Event index ─────────────────────────────────────────── */
+.wpi {
+  position: sticky;
+  top: var(--space-3);
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-muted);
+}
+
+.wpi-picker {
+  display: none;
+}
+
+.wpi-list {
   display: grid;
   min-width: 0;
+  padding: var(--space-3);
+  gap: var(--space-3);
+}
+
+.wpi-search .input {
+  width: 100%;
+  background: var(--surface);
+}
+
+.wpi-scroll {
+  display: grid;
+  max-height: min(70vh, 640px);
+  padding-right: var(--space-1);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  gap: var(--space-3);
+  scrollbar-width: thin;
+}
+
+.wpi-group {
+  min-width: 0;
+}
+
+.wpi-group-title {
+  display: flex;
+  margin: 0 0 var(--space-1);
+  padding: 0 var(--space-2);
+  justify-content: space-between;
+  color: var(--text-muted);
+  font-size: var(--text-label);
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.wpi-group ul {
+  display: grid;
   margin: 0;
   padding: 0;
-  gap: 2px;
+  gap: 1px;
   list-style: none;
 }
 
-.wp-event {
+.wpi-event {
   display: flex;
   width: 100%;
   min-width: 0;
-  padding: 8px var(--space-3);
+  min-height: 44px;
+  padding: var(--space-1) var(--space-2);
   gap: var(--space-2);
   align-items: center;
   justify-content: space-between;
-  border: 1px solid transparent;
-  border-radius: var(--radius-md);
+  border: 0;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--text);
   font: inherit;
@@ -47,138 +103,463 @@
   cursor: pointer;
 }
 
-.wp-event:hover {
-  background: var(--surface-muted);
-}
-
-.wp-event:focus-visible {
-  outline: 2px solid var(--primary);
-  outline-offset: 2px;
-}
-
-.wp-event[aria-pressed="true"] {
-  border-color: var(--primary-ring);
-  background: var(--primary-faint);
-}
-
-.wp-event[data-proposed="true"] code {
-  color: var(--text-muted);
-}
-
-.wp-event code {
+.wpi-text {
+  display: grid;
   min-width: 0;
-  flex: 1;
-  overflow: hidden;
-  font-size: var(--text-sm);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  gap: 1px;
 }
 
-.wp-event .badge {
+.wpi-label {
+  font-size: var(--text-sm);
+  line-height: 1.3;
+}
+
+.wpi-event code {
+  min-width: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: var(--text-caption);
+  overflow-wrap: anywhere;
+}
+
+.wpi-event[aria-current="true"] code {
+  color: inherit;
+}
+
+.wpi-event:hover {
+  background: var(--surface);
+}
+
+.wpi-event:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+
+.wpi-event[aria-current="true"] {
+  background: var(--surface);
+  color: var(--primary);
+  font-weight: var(--weight-semibold);
+  box-shadow: inset 0 0 0 1px var(--primary-ring);
+}
+
+.wpi-event .badge {
   flex: none;
 }
 
-.wp-panel,
-.wp-stack {
+.wpi-empty {
+  display: grid;
+  padding: var(--space-3) var(--space-2);
+  gap: var(--space-2);
+  justify-items: start;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.wpi-empty p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.wpi-count {
+  margin: 0;
+  padding: 0 var(--space-1);
+}
+
+/* ── Event document ──────────────────────────────────────── */
+.wpd {
+  display: grid;
+  min-width: 0;
+  max-width: 62rem;
+  gap: var(--space-4);
+}
+
+.wpd-head {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.wpd-title {
+  margin: 0;
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+
+.wpd-name {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.wpd-name code {
+  padding: 3px var(--space-2);
+  border: 1px solid var(--border);
+  font-size: var(--text-sm);
+}
+
+.wpd-copy {
+  min-height: 24px;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--primary);
+  font: inherit;
+  font-size: var(--text-caption);
+  cursor: pointer;
+}
+
+.wpd-copy:hover {
+  background: var(--surface-muted);
+}
+
+.wpd-copy:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+
+.wpd-desc {
+  max-width: 70ch;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--text-base);
+  line-height: 1.55;
+}
+
+.wpd-facts {
+  display: flex;
+  margin: 0;
+  padding: 0;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  list-style: none;
+}
+
+.wpd-note {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+/* ── Tabs ────────────────────────────────────────────────── */
+.doc-tabs {
+  display: flex;
+  min-width: 0;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--border);
+  scrollbar-width: none;
+}
+
+.doc-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.doc-tab {
+  position: relative;
+  flex: none;
+  min-height: 40px;
+  margin-bottom: -1px;
+  padding: 0 var(--space-3);
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.doc-tab:hover {
+  color: var(--text);
+}
+
+.doc-tab[aria-selected="true"] {
+  border-bottom-color: var(--primary);
+  color: var(--text);
+  font-weight: var(--weight-semibold);
+}
+
+.doc-tab:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+  border-radius: var(--radius-sm);
+}
+
+.doc-tabs[data-size="sm"] .doc-tab {
+  min-height: 32px;
+}
+
+.wpd-panel {
   display: grid;
   min-width: 0;
   gap: var(--space-3);
 }
 
-.wp-title-row strong {
-  display: block;
-  font-size: var(--text-md);
-}
-
-.wp-title-row p {
-  margin: 2px 0 0;
-}
-
-.wp-panel .seg {
-  justify-self: start;
-  flex-wrap: nowrap;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-
-.wp-panel .seg::-webkit-scrollbar {
+.wpd-panel[hidden] {
   display: none;
 }
 
-.wp-panel .seg-item {
-  flex: none;
-  white-space: nowrap;
+.wpd-panel:focus-visible {
+  outline: 2px solid var(--primary-ring);
+  outline-offset: 4px;
+  border-radius: var(--radius-sm);
 }
 
-.wp-exact summary {
+.wpd-panel > * {
+  min-width: 0;
+}
+
+.wpd-panel p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.wpd .alert {
+  overflow-wrap: anywhere;
+}
+
+.wpd .cb-pre code {
+  overflow-wrap: normal;
+}
+
+/* Header glossary under the request. */
+.wpd-headers {
+  display: grid;
+  margin: 0;
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+}
+
+.wpd-headers > div {
+  display: grid;
+  padding: var(--space-2) 0;
+  gap: var(--space-1) var(--space-4);
+  grid-template-columns: minmax(180px, 220px) minmax(0, 1fr);
+  border-bottom: 1px solid var(--border);
+}
+
+.wpd-headers > div:last-child {
+  border-bottom: 0;
+}
+
+.wpd-headers dt,
+.wpd-headers dd {
+  margin: 0;
+  min-width: 0;
+  font-size: var(--text-sm);
+}
+
+.wpd-headers dt code {
+  background: transparent;
+  padding: 0;
+}
+
+.wpd-headers dd {
+  color: var(--text-muted);
+}
+
+.wpd-exact summary {
+  min-height: 32px;
   color: var(--primary);
   font-size: var(--text-sm);
   cursor: pointer;
 }
 
-.wp-exact summary:focus-visible {
+.wpd-exact summary:focus-visible {
   outline: 2px solid var(--primary);
   outline-offset: 2px;
 }
 
-.wp-exact .form-hint {
-  margin: var(--space-2) 0;
+.wpd-exact[open] {
+  display: grid;
+  gap: var(--space-2);
 }
 
-@media (max-width: 960px) {
+.wpd-exact p {
+  max-width: 70ch;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+/* Field reference. */
+.wpd-table td:first-child code {
+  background: transparent;
+  padding: 0;
+  white-space: nowrap;
+}
+
+.wpd-table td {
+  vertical-align: top;
+}
+
+/* Signature steps and test vector. */
+.wpd-steps {
+  display: grid;
+  max-width: 70ch;
+  margin: 0;
+  padding-left: var(--space-5);
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  line-height: 1.6;
+}
+
+.wpd-steps li::marker {
+  color: var(--text-muted);
+  font-weight: var(--weight-semibold);
+}
+
+.wpd-vector {
+  display: grid;
+  padding: var(--space-3) var(--space-4);
+  gap: var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-muted);
+  font-size: var(--text-sm);
+}
+
+.wpd-vector dl {
+  display: grid;
+  margin: 0;
+  gap: var(--space-2);
+}
+
+.wpd-vector dl > div {
+  display: grid;
+  gap: 2px var(--space-4);
+  grid-template-columns: minmax(140px, 170px) minmax(0, 1fr);
+}
+
+.wpd-vector dt {
+  color: var(--text-muted);
+}
+
+.wpd-vector dd {
+  margin: 0;
+  min-width: 0;
+}
+
+.wpd-vector code {
+  background: var(--surface);
+  overflow-wrap: anywhere;
+}
+
+/* ── Narrow containers ───────────────────────────────────── */
+@container wp (max-width: 860px) {
   .wp-body {
-    gap: var(--space-3);
+    gap: var(--space-4);
     grid-template-columns: minmax(0, 1fr);
   }
 
-  /* The event list becomes a row of chips that scrolls sideways. */
-  .wp-events {
-    display: flex;
-    padding-bottom: var(--space-1);
-    overflow-x: auto;
-    gap: var(--space-2);
-    scroll-snap-type: x proximity;
+  /* One picker instead of a long list. */
+  .wpi {
+    position: static;
+    border: 0;
+    background: transparent;
   }
 
-  .wp-events li {
-    flex: none;
-    scroll-snap-align: start;
+  .wpi-list {
+    display: none;
   }
 
-  .wp-event {
-    width: auto;
-    border-color: var(--border);
-    background: var(--surface);
+  .wpi-picker {
+    display: grid;
+    gap: var(--space-1);
   }
 
-  .wp-event code {
-    flex: none;
-    overflow: visible;
+  .wpi-picker .input {
+    width: 100%;
   }
 }
 
-@media (max-width: 520px) {
+@container wp (max-width: 640px) {
   .wp {
     padding: var(--space-4);
   }
 
-  .wp-panel .seg {
-    flex-wrap: wrap;
-    overflow-x: visible;
+  .wpd-headers > div,
+  .wpd-vector dl > div {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* Field reference becomes one block per field. */
+  .wpd-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .wpd-table,
+  .wpd-table tbody,
+  .wpd-table tr,
+  .wpd-table td {
+    display: block;
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .wpd-table td {
+    overflow-wrap: anywhere;
+  }
+
+  .wpd-table tbody tr {
+    padding: var(--space-3);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .wpd-table tbody tr:last-child {
+    border-bottom: 0;
+  }
+
+  .wpd-table tbody td {
+    display: grid;
+    padding: 2px 0;
+    gap: var(--space-3);
+    grid-template-columns: 84px minmax(0, 1fr);
+    border: 0;
+  }
+
+  .wpd-table tbody td::before {
+    content: attr(data-label);
+    color: var(--text-muted);
+    font-size: var(--text-caption);
+  }
+
+  .wpd-table tbody td:first-child {
+    display: block;
+    padding-bottom: var(--space-1);
+  }
+
+  .wpd-table tbody td:first-child::before {
+    content: none;
+  }
+
+  .wpd-table td:first-child code {
+    white-space: normal;
+    overflow-wrap: anywhere;
+    font-weight: var(--weight-semibold);
   }
 }
 
-/* Long identifiers and signatures in prose wrap instead of widening the card. */
-.wp-stack > *,
-.wp-panel > * {
-  min-width: 0;
-}
-
-.wp p,
-.wp .alert {
-  overflow-wrap: anywhere;
-}
-
-.wp .cb-pre code {
-  overflow-wrap: normal;
+@media (prefers-reduced-motion: no-preference) {
+  .wpi-event,
+  .doc-tab,
+  .wpd-copy {
+    transition:
+      background-color 140ms ease,
+      color 140ms ease,
+      border-color 140ms ease;
+  }
 }
