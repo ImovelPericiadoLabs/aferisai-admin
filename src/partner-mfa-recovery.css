@@ -144,6 +144,9 @@
 .pp-secret-panel small {
   color: var(--text-subtle);
 }
+.pp-copy-secret {
+  justify-self: start;
+}
 .pp-recovery-success {
   display: grid;
   gap: var(--space-3);
