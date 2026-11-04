@@ -38,6 +38,7 @@ export function PartnerPeople({
   viewerId,
   onUnauthorized,
   onToast,
+  onSupport,
 }: {
   api: PeopleApi;
   organizationName: string;
@@ -45,6 +46,7 @@ export function PartnerPeople({
   viewerId?: string;
   onUnauthorized: () => void;
   onToast: (message: string, kind: ToastKind) => void;
+  onSupport?: (person: PartnerPerson) => void;
 }) {
   const [items, setItems] = useState<PartnerPerson[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
@@ -277,6 +279,7 @@ export function PartnerPeople({
             setPending({ action, person });
           }}
           onHistory={(person) => void openHistory(person)}
+          onSupport={onSupport}
         />
         {nextCursor && (
           <button

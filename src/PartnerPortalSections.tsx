@@ -8,6 +8,7 @@ import { PartnerDocumentation } from "./PartnerDocumentation";
 import { PartnerMetrics } from "./PartnerMetrics";
 import { PartnerPeople } from "./PartnerPeople";
 import { PartnerStatement } from "./PartnerStatement";
+import { PartnerPasskeys } from "./PartnerPasskeys";
 import type { PortalSection } from "./partner-finance-model";
 import type { useToast } from "./useToast";
 
@@ -32,6 +33,7 @@ export function PartnerPortalSections({
   onTabChange,
   onUnauthorized,
   onToast,
+  readOnly = false,
 }: {
   sections: { id: PortalSection; label: string }[];
   section: PortalSection | null;
@@ -51,6 +53,7 @@ export function PartnerPortalSections({
   onTabChange: (tab: IntegrationTab) => void;
   onUnauthorized: () => void;
   onToast: ReturnType<typeof useToast>["show"];
+  readOnly?: boolean;
 }) {
   return (
     <>
@@ -73,7 +76,7 @@ export function PartnerPortalSections({
         <PartnerPeople
           api={peopleApi}
           organizationName={member.organization_name || "esta parceria"}
-          canManage
+          canManage={!readOnly}
           viewerId={member.id}
           onUnauthorized={onUnauthorized}
           onToast={onToast}
@@ -88,6 +91,8 @@ export function PartnerPortalSections({
         <PartnerStatement onUnauthorized={onUnauthorized} />
       ) : section === "documentation" ? (
         <PartnerDocumentation />
+      ) : section === "security" ? (
+        <PartnerPasskeys csrf={csrf} onUnauthorized={onUnauthorized} />
       ) : section === null ? (
         <div className="empty-state" role="status">
           <strong>Seu papel não tem telas disponíveis</strong>
@@ -102,8 +107,8 @@ export function PartnerPortalSections({
           selectedApplicationId={selectedId}
           onSelectApplication={onSelectApplication}
           csrfToken={csrf}
-          canManage
-          canEdit
+          canManage={!readOnly}
+          canEdit={!readOnly}
           onUnauthorized={onUnauthorized}
           permissionBusy={false}
           onTogglePermission={() => {}}

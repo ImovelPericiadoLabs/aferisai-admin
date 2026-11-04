@@ -16,15 +16,17 @@ describe("portalSections", () => {
       "statement",
       "people",
       "documentation",
+      "security",
     ]);
     expect(portalSections(roleAccess("developer")).map((s) => s.id)).toEqual([
       "integrations",
       "metrics",
       "documentation",
+      "security",
     ]);
     expect(
       portalSections(roleAccess("financial_reader")).map((s) => s.id),
-    ).toEqual(["metrics", "statement", "documentation"]);
+    ).toEqual(["metrics", "statement", "documentation", "security"]);
   });
   it("keeps only integrations for a backend that does not send the role", () => {
     expect(
@@ -34,7 +36,7 @@ describe("portalSections", () => {
         statement: false,
         people: false,
       }).map((s) => s.id),
-    ).toEqual(["integrations", "documentation"]);
+    ).toEqual(["integrations", "documentation", "security"]);
   });
   it("is empty when nothing is allowed", () => {
     expect(portalSections(roleAccess(null))).toEqual([]);

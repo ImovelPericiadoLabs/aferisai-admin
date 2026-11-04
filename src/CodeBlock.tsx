@@ -9,6 +9,9 @@ const LANGUAGE_LABELS: Record<CodeLanguage, string> = {
   shell: "cURL",
   http: "Cabeçalhos",
   text: "Texto",
+  java: "Java",
+  csharp: "C#",
+  go: "Go",
 };
 
 /**

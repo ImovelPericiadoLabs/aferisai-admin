@@ -23,6 +23,18 @@ describe("highlight keeps the text intact", () => {
       "curl -X POST 'https://x.test/a' \\\n  -H 'A: b' \\\n  --data-raw '{\"m\":\"it'\\''s\"}'",
     ],
     [
+      "java",
+      'import java.util.*;\n// nota\nfinal var a = f(1, "t\\"x", \'c\', 2.5);\n/* b */',
+    ],
+    [
+      "csharp",
+      'using System;\n// nota\nvar a = F(1, "t", $"x{a}", @"c:\\p");\n/* b */',
+    ],
+    [
+      "go",
+      'package main\n// nota\nfunc f(a int) string { return `raw` + "x" }',
+    ],
+    [
       "http",
       "POST /webhooks/aferis HTTP/1.1\nContent-Type: application/json\nX-Aferis-Signature: sha256=ab",
     ],
@@ -122,6 +134,52 @@ describe("http", () => {
       ["keyword", "POST"],
       ["string", "/w"],
       ["key", "Content-Type"],
+    ]);
+  });
+});
+
+describe("java", () => {
+  it("marks keywords, types are plain, strings, comments and called methods", () => {
+    expect(kinds('final String a = encode("x"); // nota', "java")).toEqual([
+      ["keyword", "final"],
+      ["function", "encode"],
+      ["string", '"x"'],
+      ["comment", "// nota"],
+    ]);
+  });
+  it("treats text blocks as one string", () => {
+    expect(kinds('var t = """\n  a "b"\n  """;', "java")).toEqual([
+      ["keyword", "var"],
+      ["string", '"""\n  a "b"\n  """'],
+    ]);
+  });
+});
+
+describe("csharp", () => {
+  it("marks keywords, verbatim and interpolated strings, comments and calls", () => {
+    expect(
+      kinds(
+        'var a = Convert.ToBase64String(x); // nota\nvar p = @"c:\\a";',
+        "csharp",
+      ),
+    ).toEqual([
+      ["keyword", "var"],
+      ["function", "ToBase64String"],
+      ["comment", "// nota"],
+      ["keyword", "var"],
+      ["string", '@"c:\\a"'],
+    ]);
+  });
+});
+
+describe("go", () => {
+  it("marks keywords, raw strings, comments and calls", () => {
+    expect(kinds("func f() { x := g(`raw`) } // nota", "go")).toEqual([
+      ["keyword", "func"],
+      ["function", "f"],
+      ["function", "g"],
+      ["string", "`raw`"],
+      ["comment", "// nota"],
     ]);
   });
 });

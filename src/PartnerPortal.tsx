@@ -7,7 +7,9 @@ import {
 } from "react";
 import {
   ApiError,
+  acceptPartnerOrganizationInvitation,
   createPartnerSession,
+  deletePartnerSupportSession,
   currentPartnerMember,
   deletePartnerSession,
   listPartnerApplicationPermissions,
@@ -17,7 +19,10 @@ import {
   switchPartnerOrganization,
   type PartnerApplication,
   type PartnerMember,
+  beginPartnerPasskeyLogin,
+  finishPartnerPasskeyLogin,
 } from "./api";
+import { browserSupportsWebAuthn, startAuthentication, type PublicKeyCredentialRequestOptionsJSON } from "@simplewebauthn/browser";
 import { PartnerAuthShell } from "./PartnerAuthShell";
 import { PartnerInvitation } from "./PartnerInvitation";
 import { PartnerLoginForm } from "./PartnerLoginForm";
@@ -30,6 +35,7 @@ import { memberAccess } from "./partner-roles";
 import { ToastStack } from "./ToastStack";
 import { useToast } from "./useToast";
 import { PartnerMfaRecovery } from "./PartnerMfaRecovery";
+import { PartnerPasswordRecovery } from "./PartnerPasswordRecovery";
 import "./partner-portal.css";
 
 type PartnerSession = { member: PartnerMember; csrf: string };
@@ -58,8 +64,17 @@ export function PartnerPortal() {
   const [switching, setSwitching] = useState(false);
   const [error, setError] = useState("");
   const isInvitation = window.location.hash.startsWith("#convite");
+  const pendingInvitationToken = new URLSearchParams(
+    window.location.hash.split("?")[1] || "",
+  ).get("convite") || "";
+  const supportMode = new URLSearchParams(
+    window.location.hash.split("?")[1] || "",
+  ).get("suporte") === "1";
   const [recoveringMfa, setRecoveringMfa] = useState(() =>
     window.location.hash.startsWith("#recuperar-2fa"),
+  );
+  const [recoveringPassword, setRecoveringPassword] = useState(() =>
+    window.location.hash.startsWith("#recuperar-senha"),
   );
   const unauthorize = useCallback(() => {
     setSession(null);
@@ -74,8 +89,11 @@ export function PartnerPortal() {
     let live = true;
     currentPartnerMember()
       .then(async (member) => {
-        const csrf = await renewPartnerCsrf();
-        if (live) setSession({ member, csrf: csrf.csrf_token });
+        const supportCsrf = supportMode
+          ? sessionStorage.getItem("aferis_partner_support_csrf")
+          : null;
+        const csrf = supportCsrf ? { csrf_token: supportCsrf } : await renewPartnerCsrf();
+        if (live && csrf) setSession({ member, csrf: csrf.csrf_token });
       })
       .catch(() => {
         if (live) setSession(null);
@@ -86,7 +104,7 @@ export function PartnerPortal() {
     return () => {
       live = false;
     };
-  }, []);
+  }, [supportMode]);
 
   const activeOrganizationId = session?.member.organization_id;
   const access = memberAccess(session?.member.role);
@@ -98,8 +116,8 @@ export function PartnerPortal() {
     : (sections[0]?.id ?? null);
   const csrfForPeople = session?.csrf;
   const peopleApi = useMemo(
-    () => (csrfForPeople ? ownerPeopleApi(csrfForPeople) : null),
-    [csrfForPeople],
+    () => (csrfForPeople && !supportMode ? ownerPeopleApi(csrfForPeople) : null),
+    [csrfForPeople, supportMode],
   );
   useEffect(() => {
     if (!activeOrganizationId || !access.integrations) return;
@@ -188,6 +206,14 @@ export function PartnerPortal() {
       const result = await createPartnerSession({ email, password, otp });
       const member = await currentPartnerMember();
       setSession({ member, csrf: result.csrf_token });
+      if (pendingInvitationToken) {
+        const accepted = await acceptPartnerOrganizationInvitation(
+          pendingInvitationToken,
+          result.csrf_token,
+        );
+        await switchPartnerOrganization(accepted.organization_id, result.csrf_token);
+        window.history.replaceState(null, "", "/#parceiro");
+      }
       setPassword("");
       setOtp("");
     } catch (cause) {
@@ -196,6 +222,28 @@ export function PartnerPortal() {
           ? cause.detail
           : "Não foi possível entrar. Confira os dados e tente novamente.",
       );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function loginWithPasskey() {
+    if (!email.trim()) {
+      setError("Informe seu e-mail para entrar com a chave de acesso.");
+      return;
+    }
+    setBusy(true);
+    setError("");
+    try {
+      const options = await beginPartnerPasskeyLogin(email.trim());
+      const credential = await startAuthentication({
+        optionsJSON: options.public_key as unknown as PublicKeyCredentialRequestOptionsJSON,
+      });
+      const result = await finishPartnerPasskeyLogin(email.trim(), options.challenge_id, credential as unknown as Record<string, unknown>);
+      const member = await currentPartnerMember();
+      setSession({ member, csrf: result.csrf_token });
+    } catch (cause) {
+      setError(cause instanceof ApiError ? cause.detail : "A chave de acesso não foi confirmada pelo dispositivo.");
     } finally {
       setBusy(false);
     }
@@ -216,6 +264,20 @@ export function PartnerPortal() {
     }
   }
 
+  async function endSupport() {
+    if (!session) return;
+    setBusy(true);
+    try {
+      await deletePartnerSupportSession(session.csrf);
+      sessionStorage.removeItem("aferis_partner_support_csrf");
+      window.location.assign("/#");
+    } catch {
+      setError("Não foi possível encerrar o suporte. Tente novamente.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   function openMfaRecovery() {
     setError("");
     setRecoveringMfa(true);
@@ -227,6 +289,17 @@ export function PartnerPortal() {
     window.history.replaceState(null, "", "/#parceiro");
   }
 
+  function openPasswordRecovery() {
+    setError("");
+    setRecoveringPassword(true);
+    window.history.replaceState(null, "", "/#recuperar-senha");
+  }
+
+  function closePasswordRecovery() {
+    setRecoveringPassword(false);
+    window.history.replaceState(null, "", "/#parceiro");
+  }
+
   if (isInvitation) return <PartnerInvitation />;
   if (recoveringMfa)
     return (
@@ -234,6 +307,8 @@ export function PartnerPortal() {
         <PartnerMfaRecovery onBack={closeMfaRecovery} />
       </PartnerAuthShell>
     );
+  if (recoveringPassword)
+    return <PartnerPasswordRecovery onBack={closePasswordRecovery} />;
   if (loading)
     return (
       <PartnerAuthShell>
@@ -261,6 +336,9 @@ export function PartnerPortal() {
         onOtpChange={setOtp}
         onSubmit={(event) => void login(event)}
         onRecoverMfa={openMfaRecovery}
+        onRecoverPassword={openPasswordRecovery}
+        onPasskey={() => void loginWithPasskey()}
+        passkeyAvailable={browserSupportsWebAuthn()}
       />
     );
 
@@ -277,6 +355,12 @@ export function PartnerPortal() {
 
   return (
     <div className="pp-shell">
+      {supportMode && (
+        <div className="alert alert-warning" role="status">
+          Modo suporte ativo: você está visualizando este parceiro como administrador. Alterações estão bloqueadas.
+          <button type="button" className="btn btn-secondary btn-sm" onClick={() => void endSupport()} disabled={busy}>Encerrar suporte</button>
+        </div>
+      )}
       <PartnerPortalHeader
         member={session.member}
         switching={switching}
@@ -334,6 +418,7 @@ export function PartnerPortal() {
               onTabChange={setTab}
               onUnauthorized={unauthorize}
               onToast={showToast}
+              readOnly={supportMode}
             />
           </>
         )}
