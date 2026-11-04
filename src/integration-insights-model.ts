@@ -202,7 +202,15 @@ function redirectProblem(value: string): string | null {
   } catch {
     return "Informe uma URL completa.";
   }
-  if (parsed.protocol !== "https:") return "Use HTTPS.";
+  const isLoopback = ["localhost", "127.0.0.1", "::1"].includes(
+    parsed.hostname.toLowerCase(),
+  );
+  if (isLoopback) {
+    if (parsed.protocol !== "http:" || !parsed.port)
+      return "Para teste local, use http://localhost, 127.0.0.1 ou [::1] com porta.";
+  } else if (parsed.protocol !== "https:") {
+    return "Use HTTPS.";
+  }
   if (value.includes("#")) return "Remova o trecho depois de #.";
   if (value.includes("?")) return "Não use parâmetros (?).";
   if (
@@ -213,9 +221,10 @@ function redirectProblem(value: string): string | null {
   )
     return "A URL tem caracteres não permitidos.";
   if (parsed.username || parsed.password) return "Não inclua usuário ou senha.";
-  if (!HOST_PATTERN.test(parsed.hostname))
+  if (!isLoopback && !HOST_PATTERN.test(parsed.hostname))
     return "Use um domínio público (sem IP nem localhost).";
-  if (parsed.port && parsed.port !== "443") return "Use a porta padrão (443).";
+  if (!isLoopback && parsed.port && parsed.port !== "443")
+    return "Use a porta padrão (443).";
   return null;
 }
 

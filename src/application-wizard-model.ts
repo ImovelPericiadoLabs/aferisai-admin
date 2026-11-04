@@ -66,16 +66,22 @@ export function readDraft(key: string): Draft | null {
 export function validCallback(value: string): string | null {
   try {
     const url = new URL(value);
+    const isLoopback = ["localhost", "127.0.0.1", "::1"].includes(
+      url.hostname.toLowerCase(),
+    );
     if (
-      url.protocol !== "https:" ||
+      (isLoopback
+        ? url.protocol !== "http:" || !url.port
+        : url.protocol !== "https:") ||
       !url.hostname ||
       url.username ||
       url.password ||
       url.search ||
-      url.hash ||
-      ["localhost", "127.0.0.1", "::1"].includes(url.hostname.toLowerCase())
+      url.hash
     )
-      return "Use uma URL HTTPS pública, sem parâmetros, fragmento ou credenciais.";
+      return isLoopback
+        ? "Para teste local, use http://localhost, 127.0.0.1 ou [::1] com porta; sem parâmetros, fragmento ou credenciais."
+        : "Use uma URL HTTPS pública, sem parâmetros, fragmento ou credenciais.";
     return null;
   } catch {
     return "Informe uma URL HTTPS válida.";

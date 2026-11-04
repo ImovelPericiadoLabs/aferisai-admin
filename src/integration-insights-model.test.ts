@@ -288,7 +288,7 @@ describe("validateRedirectUris (backend parity)", () => {
       "Não inclua usuário ou senha.",
     );
     expect(problem("https://localhost/cb")).toBe(
-      "Use um domínio público (sem IP nem localhost).",
+      "Para teste local, use http://localhost, 127.0.0.1 ou [::1] com porta.",
     );
     expect(problem("https://10.0.0.1/cb")).toBe(
       "Use um domínio público (sem IP nem localhost).",
@@ -306,6 +306,12 @@ describe("validateRedirectUris (backend parity)", () => {
       validateRedirectUris(["https://app.exemplo.com.br:443/auth/retorno"]).ok,
     ).toBe(true);
     expect(validateRedirectUris(["https://app.exemplo.com.br"]).ok).toBe(true);
+    expect(
+      validateRedirectUris(["http://localhost:3000/oauth/callback"]).ok,
+    ).toBe(true);
+    expect(validateRedirectUris(["http://127.0.0.1:5173/callback"]).ok).toBe(
+      true,
+    );
   });
 });
 
