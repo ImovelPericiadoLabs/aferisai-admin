@@ -34,9 +34,12 @@ export function PartnerMfaRecovery({ onBack }: { onBack: () => void }) {
   const [secret, setSecret] = useState("");
   const [otpauthUri, setOtpauthUri] = useState("");
   const [qrDataUrl, setQrDataUrl] = useState("");
+  const [secretCopied, setSecretCopied] = useState(false);
   const [otp, setOtp] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const canCopy =
+    typeof navigator !== "undefined" && Boolean(navigator.clipboard);
 
   useEffect(() => {
     if (!otpauthUri) return;
@@ -113,6 +116,19 @@ export function PartnerMfaRecovery({ onBack }: { onBack: () => void }) {
       setError(recoveryMessage(cause));
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function copySecret() {
+    if (!secret || !canCopy) return;
+    try {
+      await navigator.clipboard.writeText(secret);
+      setSecretCopied(true);
+      window.setTimeout(() => setSecretCopied(false), 2500);
+    } catch {
+      setError(
+        "Não foi possível copiar automaticamente. Use a chave exibida para cadastrar manualmente.",
+      );
     }
   }
 
@@ -278,8 +294,17 @@ export function PartnerMfaRecovery({ onBack }: { onBack: () => void }) {
           <div className="pp-secret-panel">
             <span className="form-field-label">Se não puder escanear</span>
             <code>{secret}</code>
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm pp-copy-secret"
+              onClick={() => void copySecret()}
+              disabled={!secret || !canCopy}
+            >
+              {secretCopied ? "Chave copiada" : "Copiar chave"}
+            </button>
             <small>
-              Cadastre esta chave manualmente. Ela aparece somente nesta etapa.
+              Cadastre esta chave manualmente. Ela aparece somente nesta etapa e
+              não deve ser compartilhada.
             </small>
           </div>
           <div className="form-field">
