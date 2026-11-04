@@ -459,29 +459,3 @@ export function curlFor(
     `  --data-raw ${shellQuote(body)}`,
   ].join(" \\\n");
 }
-
-export const nodeVerifySnippet = `import { createHmac, timingSafeEqual } from "node:crypto";
-
-// rawBody: os bytes exatos recebidos (não reserialize o JSON)
-// carimbo: o cabeçalho X-Aferis-Timestamp, tal como veio
-export function assinaturaValida(rawBody, carimbo, cabecalho, segredo) {
-  const assinado = Buffer.concat([Buffer.from(carimbo + "."), rawBody]);
-  const esperado = "sha256=" + createHmac("sha256", segredo).update(assinado).digest("hex");
-  const a = Buffer.from(esperado);
-  const b = Buffer.from(cabecalho ?? "");
-  return a.length === b.length && timingSafeEqual(a, b);
-}
-// Recomendado: rejeite o evento se o carimbo estiver muito distante da hora atual
-// (por exemplo, mais de 5 minutos) para barrar repetições antigas.`;
-
-export const pythonVerifySnippet = `import hashlib
-import hmac
-
-def assinatura_valida(raw_body: bytes, carimbo: str, cabecalho: str, segredo: str) -> bool:
-    # raw_body: os bytes exatos recebidos (não reserialize o JSON)
-    # carimbo: o cabeçalho X-Aferis-Timestamp, tal como veio
-    assinado = carimbo.encode("ascii") + b"." + raw_body
-    esperado = "sha256=" + hmac.new(segredo.encode("ascii"), assinado, hashlib.sha256).hexdigest()
-    return hmac.compare_digest(esperado, cabecalho or "")
-# Recomendado: rejeite o evento se o carimbo estiver muito distante da hora atual
-# (por exemplo, mais de 5 minutos) para barrar repetições antigas.`;

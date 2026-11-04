@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { CodeBlock } from "./CodeBlock";
 import { DocTabs } from "./DocTabs";
+import { effectiveLanguage, SAMPLE_LANGUAGES } from "./docs-languages";
+import type { CodeSample, SampleLanguage } from "./docs-model";
+import { integrationSamples } from "./integration-samples";
 import {
   curlFor,
   envelopeFields,
-  nodeVerifySnippet,
-  pythonVerifySnippet,
   SAMPLE_SECRET,
   type EventDefinition,
   type SignedExample,
@@ -19,11 +20,10 @@ const views = [
 ] as const;
 type View = (typeof views)[number]["id"];
 
-const languages = [
-  { id: "node", label: "Node.js" },
-  { id: "python", label: "Python" },
-] as const;
-type Language = (typeof languages)[number]["id"];
+const verifySample: CodeSample = integrationSamples["verify-webhook"];
+const languages = SAMPLE_LANGUAGES.filter(
+  (item) => verifySample.variants[item.id],
+);
 
 const HEADER_NOTES: { name: string; note: string }[] = [
   {
@@ -80,7 +80,12 @@ export function WebhookEventDoc({
   catalogNote: string;
 }) {
   const [view, setView] = useState<View>("request");
-  const [language, setLanguage] = useState<Language>("node");
+  const [language, setLanguage] = useState<SampleLanguage>("node");
+  const shown =
+    effectiveLanguage(
+      languages.map((item) => item.id),
+      language,
+    ) ?? "node";
   const panel = (id: View) => ({
     role: "tabpanel" as const,
     id: `wpd-panel-${id}`,
@@ -251,21 +256,22 @@ export function WebhookEventDoc({
             <DocTabs
               label="Linguagem"
               items={languages}
-              value={language}
+              value={shown}
               onChange={setLanguage}
               idPrefix="wpd-lang"
               size="sm"
             />
             <div
               role="tabpanel"
-              id={`wpd-lang-panel-${language}`}
-              aria-labelledby={`wpd-lang-tab-${language}`}
+              id={`wpd-lang-panel-${shown}`}
+              aria-labelledby={`wpd-lang-tab-${shown}`}
             >
               <CodeBlock
-                language={language === "node" ? "js" : "python"}
-                code={
-                  language === "node" ? nodeVerifySnippet : pythonVerifySnippet
+                language={
+                  languages.find((item) => item.id === shown)?.highlight ??
+                  "text"
                 }
+                code={verifySample.variants[shown] ?? ""}
               />
             </div>
             <div className="wpd-vector" role="note">

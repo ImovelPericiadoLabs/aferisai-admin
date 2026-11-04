@@ -1,5 +1,6 @@
 import { useRef, type KeyboardEvent } from "react";
 import { nextTabIndex } from "./webhook-docs-model";
+import "./doc-tabs.css";
 
 /** Underlined tab list with the keyboard model of the ARIA tabs pattern (roving tabindex). */
 export function DocTabs<T extends string>({

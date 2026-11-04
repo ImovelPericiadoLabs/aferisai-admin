@@ -245,56 +245,6 @@
   font-size: var(--text-sm);
 }
 
-/* ── Tabs ────────────────────────────────────────────────── */
-.doc-tabs {
-  display: flex;
-  min-width: 0;
-  overflow-x: auto;
-  border-bottom: 1px solid var(--border);
-  scrollbar-width: none;
-}
-
-.doc-tabs::-webkit-scrollbar {
-  display: none;
-}
-
-.doc-tab {
-  position: relative;
-  flex: none;
-  min-height: 40px;
-  margin-bottom: -1px;
-  padding: 0 var(--space-3);
-  border: 0;
-  border-bottom: 2px solid transparent;
-  background: transparent;
-  color: var(--text-muted);
-  font: inherit;
-  font-size: var(--text-sm);
-  font-weight: var(--weight-medium);
-  white-space: nowrap;
-  cursor: pointer;
-}
-
-.doc-tab:hover {
-  color: var(--text);
-}
-
-.doc-tab[aria-selected="true"] {
-  border-bottom-color: var(--primary);
-  color: var(--text);
-  font-weight: var(--weight-semibold);
-}
-
-.doc-tab:focus-visible {
-  outline: 2px solid var(--primary);
-  outline-offset: -2px;
-  border-radius: var(--radius-sm);
-}
-
-.doc-tabs[data-size="sm"] .doc-tab {
-  min-height: 32px;
-}
-
 .wpd-panel {
   display: grid;
   min-width: 0;

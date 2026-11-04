@@ -10,6 +10,7 @@
     "format": "prettier --write src",
     "format:check": "prettier --check src",
     "test": "VITE_API_URL=http://localhost:8000 vitest run",
+    "test:doc-samples": "python3 scripts/verify-doc-samples.py",
     "test:e2e:local": "node scripts/e2e-local.mjs",
     "test:e2e:review": "node scripts/e2e-review.mjs",
     "test:e2e:financial": "node scripts/e2e-financial.mjs",
