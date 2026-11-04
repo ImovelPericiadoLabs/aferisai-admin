@@ -26,6 +26,15 @@ export function ExceptionNextStep({
   onClaim: () => void;
   onExecute: (action: ExecuteAction) => void;
 }) {
+  const deliveryPending = (item.affected_items ?? []).some(
+    (entry) => entry.item_status !== "confirmed",
+  );
+  const note = deliveryPending
+    ? "Os documentos estão sendo processados pelo fornecedor. Quando todos forem entregues, você poderá confirmar a correção."
+    : item.funding_source === "credits"
+      ? "A devolução integral retorna ao saldo de créditos usado nesta compra e fica registrada no extrato."
+      : "O estorno PIX exige confirmação e conciliação no Asaas antes de comunicar o encerramento ao titular.";
+
   return (
     <section className="detail-panel-section">
       <h3 className="detail-panel-section-title">Próximo passo</h3>
@@ -152,11 +161,9 @@ export function ExceptionNextStep({
         </button>
       )}
       <div className="alert exc-note" role="note">
-        {item.funding_source === "credits"
-          ? action.kind === "retry-delivery"
-            ? "A tentativa recoloca os documentos ausentes na fila sem nova cobrança. Se não for possível recuperar, você poderá devolver os créditos."
-            : "A devolução integral retorna ao saldo de créditos usado nesta compra e fica registrada no extrato."
-          : "O estorno PIX exige confirmação e conciliação no Asaas antes de comunicar o encerramento ao titular."}
+        {action.kind === "retry-delivery"
+          ? "A tentativa recoloca os documentos ausentes na fila sem nova cobrança."
+          : note}
       </div>
     </section>
   );
