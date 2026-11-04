@@ -1,0 +1,94 @@
+/* Five stops on one line. Colour is the data: green done, ring for where it is, red when stuck. */
+.jr {
+  position: relative;
+  display: grid;
+  margin: 0;
+  padding: 0;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  list-style: none;
+}
+
+.jr li {
+  position: relative;
+  display: grid;
+  padding-top: 24px;
+  gap: 1px;
+  justify-items: center;
+  color: var(--text-muted);
+  font-size: var(--text-caption);
+  text-align: center;
+}
+
+.jr li::before {
+  content: "";
+  position: absolute;
+  top: 7px;
+  right: 50%;
+  left: -50%;
+  height: 2px;
+  background: var(--border-strong);
+}
+
+.jr li:first-child::before {
+  display: none;
+}
+
+.jr li[data-state="done"]::before,
+.jr li[data-state="current"]::before,
+.jr li[data-state="problem"]::before {
+  background: var(--success);
+}
+
+.jr i {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  z-index: 1;
+  width: 16px;
+  height: 16px;
+  margin-left: -8px;
+  border: 2px solid var(--border-strong);
+  border-radius: 50%;
+  background: var(--surface);
+}
+
+.jr li[data-state="done"] i {
+  border-color: var(--success);
+  background: var(--success);
+}
+
+.jr li[data-state="current"] i {
+  border-color: var(--info);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--info) 22%, transparent);
+}
+
+.jr li[data-state="problem"] i {
+  border-color: var(--danger);
+  background: var(--danger);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--danger) 22%, transparent);
+}
+
+.jr strong {
+  color: var(--text);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+}
+
+.jr li[data-state="pending"] strong {
+  color: var(--text-muted);
+  font-weight: var(--weight-normal);
+}
+
+.jr li[data-state="problem"] small {
+  color: var(--danger);
+}
+
+@media (max-width: 520px) {
+  .jr strong {
+    font-size: var(--text-caption);
+  }
+
+  .jr small {
+    display: none;
+  }
+}

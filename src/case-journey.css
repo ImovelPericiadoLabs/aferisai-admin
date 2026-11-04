@@ -265,3 +265,44 @@
   flex-wrap: wrap;
   gap: var(--space-2);
 }
+
+/* Turn card and its actions read as one block; the rest waits under "Mais detalhes". */
+.cj-act {
+  margin-bottom: var(--space-4);
+}
+
+.cj-act .cj-turn {
+  margin-bottom: 0;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  border-bottom: 0;
+}
+
+.cj-next {
+  display: grid;
+  padding: 0 var(--space-4) var(--space-4);
+  gap: var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-top: 0;
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  background: var(--surface);
+}
+
+.cj-next:empty {
+  display: none;
+}
+
+.cj-more {
+  margin-top: var(--space-4);
+}
+
+.cj-more > summary {
+  padding: var(--space-2) 0;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.cj-more[open] > summary {
+  margin-bottom: var(--space-3);
+}

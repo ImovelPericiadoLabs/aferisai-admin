@@ -23,7 +23,7 @@ import {
   CaseTurn,
   type CaseNavigation,
 } from "./CaseJourneyView";
-import { journeyOf } from "./case-journey-model";
+import { causeOf, journeyOf } from "./case-journey-model";
 import { ExceptionDialogs } from "./ExceptionDialogs";
 import { ExceptionNextStep } from "./ExceptionNextStep";
 import { ExceptionReassign } from "./ExceptionReassign";
@@ -60,6 +60,8 @@ type Props = {
   ) => Promise<boolean>;
   onExecute: (action: ExecuteAction) => void;
   nav?: CaseNavigation;
+  /** Shown inside another screen instead of a drawer: no close button, flows with the page. */
+  inline?: boolean;
 };
 
 export function ExceptionPanel({
@@ -80,6 +82,7 @@ export function ExceptionPanel({
   onReassign,
   onExecute,
   nav = {},
+  inline = false,
 }: Props) {
   const [asking, setAsking] = useState<Asking>(null);
   const [resolution, setResolution] = useState<"correct" | "refund">(
@@ -138,13 +141,11 @@ export function ExceptionPanel({
       <div className="detail-panel-header">
         <div>
           <h2 className="rules-panel-title" id="exc-panel-title">
-            Caso {item.id.slice(0, 8)}
-          </h2>
-          <p className="cj-subtitle">
             {item.customer_name ??
               item.customer_email ??
-              "Cliente não informado"}
-          </p>
+              `Caso ${item.id.slice(0, 8)}`}
+          </h2>
+          <p className="cj-subtitle">{causeOf(item.reason_code).title}</p>
           <div className="rules-panel-badges">
             <span className={`badge ${stageTone(stage)}`}>
               {stageLabel[stage]}
@@ -158,14 +159,16 @@ export function ExceptionPanel({
             )}
           </div>
         </div>
-        <button
-          className="btn btn-ghost btn-sm"
-          type="button"
-          aria-label="Fechar"
-          onClick={onClose}
-        >
-          ✕
-        </button>
+        {!inline && (
+          <button
+            className="btn btn-ghost btn-sm"
+            type="button"
+            aria-label="Fechar"
+            onClick={onClose}
+          >
+            ✕
+          </button>
+        )}
       </div>
       <div className="detail-panel-body">
         {error && (
@@ -178,111 +181,116 @@ export function ExceptionPanel({
             {notice}
           </div>
         )}
-        <CaseTurn
-          item={item}
-          role={role}
-          memberId={memberId}
-          person={person}
-          now={now}
-          nav={nav}
-        />
-        <ExceptionNextStep
-          item={item}
-          role={role}
-          action={action}
-          busy={busy}
-          resolution={resolution}
-          setResolution={setResolution}
-          canReviseProposal={canReviseProposal}
-          setAsking={setAsking}
-          onClaim={onClaim}
-          onExecute={onExecute}
-        />
-        <CaseCause item={item} nav={nav} />
+        <div className="cj-act">
+          <CaseTurn
+            item={item}
+            role={role}
+            memberId={memberId}
+            person={person}
+            now={now}
+          />
+          <ExceptionNextStep
+            item={item}
+            role={role}
+            action={action}
+            busy={busy}
+            resolution={resolution}
+            setResolution={setResolution}
+            canReviseProposal={canReviseProposal}
+            setAsking={setAsking}
+            onClaim={onClaim}
+            onExecute={onExecute}
+            bare
+          />
+        </div>
         <CaseOverview
           journey={journey}
           canOpen={canViewOriginals(role)}
           nav={nav}
         />
-        <section className="detail-panel-section">
-          <h3 className="detail-panel-section-title">Quem e quanto</h3>
-          <dl className="detail-panel-field">
-            <dt>Cliente</dt>
-            <dd>{item.customer_name ?? "Não informado"}</dd>
-            <dt>E-mail</dt>
-            <dd>{item.customer_email ?? "Não informado"}</dd>
-            <dt>Pagamento</dt>
-            <dd>
-              {money(item.amount_cents)}
-              {item.funding_source === "credits"
-                ? " em créditos"
-                : item.funding_source === "pix"
-                  ? " por PIX"
-                  : ""}
-            </dd>
-            <dt>Gestor</dt>
-            <dd>{person(item.manager_assignee_id)}</dd>
-            <dt>Financeiro</dt>
-            <dd>{person(item.financial_assignee_id)}</dd>
-          </dl>
-        </section>
-        {targets.length > 0 && (
+        <details className="cj-more">
+          <summary>Mais detalhes</summary>
+          <CaseCause item={item} nav={nav} />
           <section className="detail-panel-section">
-            <h3 className="detail-panel-section-title">Original</h3>
-            <p className="form-hint">
-              A leitura registra o seu motivo e fica na trilha de auditoria.
-            </p>
-            {originalError && (
-              <div className="alert alert-warning" role="alert">
-                {originalError}
+            <h3 className="detail-panel-section-title">Quem e quanto</h3>
+            <dl className="detail-panel-field">
+              <dt>Cliente</dt>
+              <dd>{item.customer_name ?? "Não informado"}</dd>
+              <dt>E-mail</dt>
+              <dd>{item.customer_email ?? "Não informado"}</dd>
+              <dt>Pagamento</dt>
+              <dd>
+                {money(item.amount_cents)}
+                {item.funding_source === "credits"
+                  ? " em créditos"
+                  : item.funding_source === "pix"
+                    ? " por PIX"
+                    : ""}
+              </dd>
+              <dt>Gestor</dt>
+              <dd>{person(item.manager_assignee_id)}</dd>
+              <dt>Financeiro</dt>
+              <dd>{person(item.financial_assignee_id)}</dd>
+            </dl>
+          </section>
+          {targets.length > 0 && (
+            <section className="detail-panel-section">
+              <h3 className="detail-panel-section-title">Original</h3>
+              <p className="form-hint">
+                A leitura registra o seu motivo e fica na trilha de auditoria.
+              </p>
+              {originalError && (
+                <div className="alert alert-warning" role="alert">
+                  {originalError}
+                </div>
+              )}
+              <div className="exc-originals">
+                {targets.map((ref) => (
+                  <button
+                    key={ref.key}
+                    type="button"
+                    className="btn btn-secondary btn-md"
+                    aria-haspopup="dialog"
+                    aria-busy={locating === ref.key}
+                    data-original-target={ref.key}
+                    onClick={() => void openOriginal(ref)}
+                  >
+                    {locating === ref.key
+                      ? "Localizando…"
+                      : `Ver ${ref.label.toLocaleLowerCase("pt-BR")}`}
+                  </button>
+                ))}
               </div>
-            )}
-            <div className="exc-originals">
-              {targets.map((ref) => (
-                <button
-                  key={ref.key}
-                  type="button"
-                  className="btn btn-secondary btn-md"
-                  aria-haspopup="dialog"
-                  aria-busy={locating === ref.key}
-                  data-original-target={ref.key}
-                  onClick={() => void openOriginal(ref)}
-                >
-                  {locating === ref.key
-                    ? "Localizando…"
-                    : `Ver ${ref.label.toLocaleLowerCase("pt-BR")}`}
-                </button>
-              ))}
-            </div>
-          </section>
-        )}
-        <section className="detail-panel-section">
-          <h3 className="detail-panel-section-title">Andamento</h3>
-          <ol className="exc-timeline">
-            {steps.map((step) => (
-              <li key={step.title} data-state={step.state}>
-                <strong>{step.title}</strong>
-                <span>{step.detail}</span>
-                {"note" in step && step.note && <small>{step.note}</small>}
-              </li>
-            ))}
-          </ol>
-        </section>
-        {role === "administrator" && stage !== "done" && (
+            </section>
+          )}
           <section className="detail-panel-section">
-            <ExceptionReassign
-              target={target}
-              setTarget={setTarget}
-              newMember={newMember}
-              setNewMember={setNewMember}
-              block={block}
-              memberSearch={memberSearch}
-              busy={busy}
-              setAsking={setAsking}
-              onUnauthorized={onUnauthorized}
-            />
+            <h3 className="detail-panel-section-title">Andamento</h3>
+            <ol className="exc-timeline">
+              {steps.map((step) => (
+                <li key={step.title} data-state={step.state}>
+                  <strong>{step.title}</strong>
+                  <span>{step.detail}</span>
+                  {"note" in step && step.note && <small>{step.note}</small>}
+                </li>
+              ))}
+            </ol>
           </section>
-        )}
+          {role === "administrator" && stage !== "done" && (
+            <section className="detail-panel-section">
+              <ExceptionReassign
+                target={target}
+                setTarget={setTarget}
+                newMember={newMember}
+                setNewMember={setNewMember}
+                block={block}
+                memberSearch={memberSearch}
+                busy={busy}
+                setAsking={setAsking}
+                onUnauthorized={onUnauthorized}
+              />
+            </section>
+          )}
+        </details>
       </div>
 
       <ExceptionDialogs

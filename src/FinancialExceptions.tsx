@@ -2,22 +2,18 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   ApiError,
-  claimPaymentException,
-  confirmPaymentException,
-  executePaymentException,
   listPaymentExceptions,
-  proposePaymentException,
-  reassignPaymentException,
   type PaymentExceptionCase,
   type TeamMember,
 } from "./api";
 import { filterCases, sortByUrgency, type CaseFilter } from "./exception-model";
 import type { CaseNavigation } from "./CaseJourneyView";
-import { ExceptionPanel, type ExecuteAction } from "./ExceptionPanel";
+import { ExceptionPanel } from "./ExceptionPanel";
 import { errorMessage } from "./financial-exceptions-format";
 import { FinancialExceptionsList } from "./FinancialExceptionsList";
 import { FinancialExceptionsToolbar } from "./FinancialExceptionsToolbar";
 import { useDialogFocus } from "./useDialogFocus";
+import { useExceptionActions } from "./useExceptionActions";
 import { useTeamNames } from "./useTeamNames";
 import "./commercial-rules.css";
 import "./FinancialExceptions.css";
@@ -49,10 +45,7 @@ export function FinancialExceptions({
   const scope = filter === "done" ? "done" : "open";
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
-  const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [panelError, setPanelError] = useState("");
-  const [notice, setNotice] = useState("");
   const panelRef = useRef<HTMLElement>(null);
   const pagesLoaded = useRef(1);
 
@@ -105,8 +98,6 @@ export function FinancialExceptions({
     ) {
       openedFor.current = initialCaseId;
       setSelectedId(initialCaseId);
-      setNotice("");
-      setPanelError("");
       setOpen(true);
     }
   }, [cases, initialCaseId]);
@@ -141,7 +132,7 @@ export function FinancialExceptions({
 
   function close() {
     setOpen(false);
-    setPanelError("");
+    actions.reset();
   }
 
   function changeFilter(next: CaseFilter) {
@@ -163,108 +154,21 @@ export function FinancialExceptions({
 
   function openCase(id: string) {
     setSelectedId(id);
-    setNotice("");
-    setPanelError("");
+    actions.reset();
     setOpen(true);
   }
 
-  async function run(
-    work: () => Promise<unknown>,
-    success: string,
-    fallback: string,
-  ): Promise<boolean> {
-    setBusy(true);
-    setPanelError("");
-    setNotice("");
-    try {
-      const result = await work();
-      await load(undefined, pagesLoaded.current);
-      setNotice(typeof result === "string" ? result : success);
-      return true;
-    } catch (cause) {
-      if (cause instanceof ApiError && cause.status === 401) {
-        onUnauthorized();
-        return false;
-      }
-      setPanelError(errorMessage(cause, fallback));
-      await load(undefined, pagesLoaded.current);
-      return false;
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  const claim = () =>
-    selected &&
-    void run(
-      () => claimPaymentException(selected.id, csrf),
-      "Caso atribuído à sua conta.",
-      "Não foi possível assumir o caso.",
-    );
-
-  const propose = (resolution: "correct" | "refund", reason: string) =>
-    selected
-      ? run(
-          () => proposePaymentException(selected.id, resolution, reason, csrf),
-          "Proposta registrada. Aguarda decisão financeira.",
-          "Não foi possível registrar a proposta.",
-        )
-      : Promise.resolve(false);
-
-  const confirm = (reason: string) =>
-    selected && selected.latest_proposal_id
-      ? run(
-          () =>
-            confirmPaymentException(
-              selected.id,
-              selected.latest_proposal_id as string,
-              reason,
-              csrf,
-            ),
-          "Decisão financeira registrada. Execute a solução.",
-          "Não foi possível registrar a decisão.",
-        )
-      : Promise.resolve(false);
-
-  const reassign = (
-    target: "manager" | "financial",
-    newMemberId: string,
-    reason: string,
-  ) =>
-    selected
-      ? run(
-          () =>
-            reassignPaymentException(
-              selected.id,
-              target,
-              newMemberId,
-              reason,
-              csrf,
-            ),
-          "Responsável alterado. O motivo foi registrado no histórico.",
-          "Não foi possível reatribuir o caso.",
-        )
-      : Promise.resolve(false);
-
-  const execute = (action: ExecuteAction) =>
-    selected &&
-    run(
-      async () => {
-        const result = await executePaymentException(selected.id, action, csrf);
-        if ("queued_items" in result) {
-          return `${result.queued_items} documento(s) recolocado(s) na fila de entrega.`;
-        }
-        if (result.status === "done") {
-          setSelectedId(null);
-          setOpen(false);
-        }
-        return result.status === "done"
-          ? "Solução concluída. Consulte a aba Concluídos."
-          : "Tentativa registrada. Consulte a conciliação para confirmar o resultado.";
-      },
-      "",
-      "Não foi possível executar a solução.",
-    );
+  const actions = useExceptionActions({
+    csrf,
+    item: selected,
+    onUnauthorized,
+    onChanged: () => load(undefined, pagesLoaded.current),
+    onFinished: () => {
+      setSelectedId(null);
+      setOpen(false);
+    },
+  });
+  const { busy, error: panelError, notice } = actions;
 
   return (
     <section className="page exceptions" aria-labelledby="exc-title">
@@ -349,11 +253,11 @@ export function FinancialExceptions({
                 now={now}
                 onClose={close}
                 onUnauthorized={onUnauthorized}
-                onClaim={() => void claim()}
-                onPropose={propose}
-                onConfirm={confirm}
-                onReassign={reassign}
-                onExecute={(action) => void execute(action)}
+                onClaim={() => void actions.claim()}
+                onPropose={actions.propose}
+                onConfirm={actions.confirm}
+                onReassign={actions.reassign}
+                onExecute={(action) => void actions.execute(action)}
                 nav={nav}
               />
             )}

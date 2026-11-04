@@ -103,6 +103,7 @@ export function TeamPageContent({
     <TaskInbox
       role={session.member.role}
       memberId={session.member.id}
+      csrf={session.csrf}
       onUnauthorized={unauthorize}
       onOpen={(page, id) => {
         if (page === "sources" && id) setSelectedRequestId(id);

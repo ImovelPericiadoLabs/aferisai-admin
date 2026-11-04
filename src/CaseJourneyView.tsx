@@ -1,11 +1,12 @@
 import type { PaymentExceptionCase } from "./api";
+import { JourneyRail } from "./JourneyRail";
+import { railOf } from "./rail-model";
 import {
   causeOf,
   isMyTurn,
   turnOf,
   type DocState,
   type Journey,
-  type StageState,
 } from "./case-journey-model";
 import { dueState, type nextAction } from "./exception-model";
 import { dateTime } from "./exception-panel-model";
@@ -43,19 +44,16 @@ export function CaseTurn({
   memberId,
   person,
   now,
-  nav,
 }: {
   item: PaymentExceptionCase;
   role: Role;
   memberId: string;
   person: (id: string | null) => string;
   now: number;
-  nav: CaseNavigation;
 }) {
   const turn = turnOf(item, person);
   const mine = isMyTurn(item, role, memberId);
   const due = dueState(item.due_at, now);
-  const cause = causeOf(item.reason_code);
   const tone = turn.done ? "done" : mine ? "mine" : "other";
   const pill = turn.done
     ? "Concluído"
@@ -92,36 +90,6 @@ export function CaseTurn({
             </dd>
           </div>
         )}
-        <div>
-          <dt>Onde</dt>
-          <dd>
-            Nesta tela
-            {nav.openPage && !turn.done && (
-              <>
-                {" · acompanhe em "}
-                <button
-                  type="button"
-                  className="cj-link"
-                  onClick={() => nav.openPage?.("registry-requests")}
-                >
-                  Pedidos registrais
-                </button>
-                {cause.uncertain && (
-                  <>
-                    {" e "}
-                    <button
-                      type="button"
-                      className="cj-link"
-                      onClick={() => nav.openPage?.("reconciliation")}
-                    >
-                      Conciliação
-                    </button>
-                  </>
-                )}
-              </>
-            )}
-          </dd>
-        </div>
       </dl>
     </section>
   );
@@ -170,13 +138,6 @@ export function CaseCause({
   );
 }
 
-const STAGE_NAME: Record<StageState, string> = {
-  done: "concluída",
-  current: "em andamento",
-  problem: "com problema",
-  pending: "aguardando",
-};
-
 /** The whole purchase: how many documents, where each one stands and the stages it goes through. */
 export function CaseOverview({
   journey,
@@ -189,17 +150,7 @@ export function CaseOverview({
 }) {
   return (
     <section className="detail-panel-section">
-      <h3 className="detail-panel-section-title">A compra</h3>
-      <p className="cj-headline">{journey.headline}</p>
-      <ol className="cj-stages" aria-label="Etapas da compra">
-        {journey.stages.map((stage) => (
-          <li key={stage.id} data-state={stage.state}>
-            <small>{stage.title}</small>
-            <strong>{stage.detail}</strong>
-            <em>{STAGE_NAME[stage.state]}</em>
-          </li>
-        ))}
-      </ol>
+      <JourneyRail steps={railOf(journey)} />
       {journey.kind === "registry" && (
         <ul className="cj-docs" aria-label="Documentos da compra">
           {journey.documents.map((doc) => {

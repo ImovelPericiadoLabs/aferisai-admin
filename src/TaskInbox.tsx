@@ -1,9 +1,18 @@
-import { useEffect, useMemo, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+} from "react";
 import type { TeamMember } from "./api";
 import { dueState } from "./exception-model";
 import { GuidedTour, type TourStep } from "./GuidedTour";
+import { initialsOf, tintOf } from "./identity";
+import { KindGlyph } from "./KindGlyph";
 import { ageLabel } from "./ops-model";
 import type { Page } from "./team-nav-model";
+import { TaskDetail } from "./TaskDetail";
 import { useNow } from "./useNow";
 import { useWorkQueue } from "./useWorkQueue";
 import {
@@ -32,12 +41,11 @@ const TOOLS: { page: Page; label: string }[] = [
   { page: "financial", label: "Exceções" },
 ];
 
+const TOUR_KEY = "aferis.tour.tasks.v2";
 const clock = new Intl.DateTimeFormat("pt-BR", {
   timeStyle: "short",
   timeZone: "America/Sao_Paulo",
 });
-
-const TOUR_KEY = "aferis.tour.tasks.v1";
 
 const readSeen = () => {
   try {
@@ -70,7 +78,6 @@ function PurchaseTrack({ track }: { track: TaskTrack }) {
         {dots.map((state, index) => (
           <i key={index} data-state={state} />
         ))}
-        {track.total > 8 && <small>+{track.total - 8}</small>}
       </span>
       <small>
         {track.delivered}/{track.total}
@@ -134,15 +141,15 @@ const STEPS: TourStep[] = [
   {
     id: "row",
     target: '[data-tour="row"]',
-    title: "Uma linha, uma tarefa",
+    title: "Uma compra, uma linha",
     visual: <Legend />,
-    body: "Os pontos são os documentos da compra.",
+    body: "Os pontos são os documentos.",
   },
   {
-    id: "action",
-    target: '[data-tour="action"]',
-    title: "Um clique e pronto",
-    body: "Abre só o que importa.",
+    id: "detail",
+    target: '[data-tour="detail"]',
+    title: "Tudo aqui ao lado",
+    body: "Decida sem sair da tela.",
   },
   {
     id: "tools",
@@ -152,18 +159,91 @@ const STEPS: TourStep[] = [
   },
 ];
 
+function Avatar({ task }: { task: Task }) {
+  if (task.customer)
+    return (
+      <span
+        className="tk-avatar"
+        style={tintOf(task.customer)}
+        aria-hidden="true"
+      >
+        {initialsOf(task.customer)}
+      </span>
+    );
+  return (
+    <span className="tk-avatar" data-plain aria-hidden="true">
+      <KindGlyph kind={task.kind} />
+    </span>
+  );
+}
+
+function TaskItem({
+  task,
+  now,
+  selected,
+  first,
+  onSelect,
+}: {
+  task: Task;
+  now: number;
+  selected: boolean;
+  first: boolean;
+  onSelect: () => void;
+}) {
+  const due = task.dueAt ? dueState(task.dueAt, now) : null;
+  return (
+    <li>
+      <button
+        type="button"
+        className="tk-item"
+        aria-current={selected ? "true" : undefined}
+        data-lane={task.lane}
+        data-tour={first ? "row" : undefined}
+        onClick={onSelect}
+      >
+        <Avatar task={task} />
+        <span className="tk-item-main">
+          <span className="tk-item-top">
+            <strong>{task.customer ?? task.title}</strong>
+            {due ? (
+              <span className={due.overdue ? "tk-late" : "tk-age"}>
+                {due.label}
+              </span>
+            ) : task.since ? (
+              <span className="tk-age">há {ageLabel(task.since, now)}</span>
+            ) : null}
+          </span>
+          <span className="tk-item-sub">
+            {task.customer ? task.title : task.subtitle}
+          </span>
+          <span className="tk-item-foot">
+            {task.track ? (
+              <PurchaseTrack track={task.track} />
+            ) : (
+              <small>{KIND_LABEL[task.kind]}</small>
+            )}
+            {task.who && <small>{task.who}</small>}
+          </span>
+        </span>
+      </button>
+    </li>
+  );
+}
+
 export function TaskInbox({
   role,
   memberId,
+  csrf,
   onUnauthorized,
   onOpen,
 }: {
   role: TeamMember["role"];
   memberId: string;
+  csrf: string;
   onUnauthorized: () => void;
   onOpen: (page: Page, id: string | null) => void;
 }) {
-  const { tasks, loading, failed, loadedAt, reload } = useWorkQueue({
+  const { tasks, loading, failed, loadedAt, reload, person } = useWorkQueue({
     role,
     memberId,
     onUnauthorized,
@@ -173,13 +253,35 @@ export function TaskInbox({
   const [filter, setFilter] = useState<TaskFilter | null>(null);
   const active: TaskFilter = filter ?? (counts.mine > 0 ? "mine" : "all");
   const visible = filterTasks(tasks, active);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [sheet, setSheet] = useState(false);
   const [touring, setTouring] = useState(false);
+  const listRef = useRef<HTMLUListElement>(null);
+  // A task that just left your list (you did your part) stays open until you pick another.
+  const selected =
+    visible.find((task) => task.id === selectedId) ??
+    tasks.find((task) => task.id === selectedId) ??
+    visible[0] ??
+    null;
 
   useEffect(() => {
     if (loading || readSeen()) return;
-    const timer = window.setTimeout(() => setTouring(true), 500);
+    const timer = window.setTimeout(() => setTouring(true), 600);
     return () => window.clearTimeout(timer);
   }, [loading]);
+
+  function onListKey(event: KeyboardEvent<HTMLUListElement>) {
+    if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+    const buttons = Array.from(
+      listRef.current?.querySelectorAll<HTMLButtonElement>(".tk-item") ?? [],
+    );
+    const at = buttons.findIndex((button) => button === document.activeElement);
+    const next = buttons[at + (event.key === "ArrowDown" ? 1 : -1)];
+    if (!next) return;
+    event.preventDefault();
+    next.focus();
+    next.click();
+  }
 
   const tools =
     role === "financial"
@@ -212,28 +314,6 @@ export function TaskInbox({
         </div>
       </header>
 
-      <div
-        className="tk-filters"
-        role="group"
-        aria-label="Filtrar tarefas"
-        data-tour="tabs"
-      >
-        {TABS.map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            aria-pressed={active === tab.id}
-            data-alert={
-              tab.id === "overdue" && counts.overdue > 0 ? "" : undefined
-            }
-            onClick={() => setFilter(tab.id)}
-          >
-            <span>{tab.label}</span>
-            <b>{counts[tab.id]}</b>
-          </button>
-        ))}
-      </div>
-
       {failed.length > 0 && (
         <div className="alert alert-warning" role="alert">
           Não carregou: {failed.join(", ")}.{" "}
@@ -247,56 +327,99 @@ export function TaskInbox({
         </div>
       )}
 
-      {loading && tasks.length === 0 ? (
-        <div className="rules-skeleton" role="status" aria-label="Carregando">
-          {Array.from({ length: 4 }, (_, index) => (
-            <span className="skeleton" key={index} />
-          ))}
-        </div>
-      ) : visible.length === 0 ? (
-        <div className="tk-empty" role="status">
-          <strong>
-            {active === "all" ? "Nenhuma tarefa" : "Nada para você agora"}
-          </strong>
-          {active !== "all" && counts.all > 0 && (
-            <button
-              type="button"
-              className="tk-text-button"
-              onClick={() => setFilter("all")}
+      <div className="tk-split" data-sheet={sheet || undefined}>
+        <div className="tk-listpane">
+          <div
+            className="tk-filters"
+            role="group"
+            aria-label="Filtrar tarefas"
+            data-tour="tabs"
+          >
+            {TABS.map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                aria-pressed={active === tab.id}
+                data-alert={
+                  tab.id === "overdue" && counts.overdue > 0 ? "" : undefined
+                }
+                onClick={() => setFilter(tab.id)}
+              >
+                <span>{tab.label}</span>
+                <b>{counts[tab.id]}</b>
+              </button>
+            ))}
+          </div>
+
+          {loading && tasks.length === 0 ? (
+            <div
+              className="rules-skeleton"
+              role="status"
+              aria-label="Carregando"
             >
-              Ver todas ({counts.all})
-            </button>
-          )}
-        </div>
-      ) : (
-        <div className="data-table-wrap tk-wrap">
-          <table className="data-table tk-table" aria-label="Tarefas">
-            <thead>
-              <tr>
-                <th scope="col">Tarefa</th>
-                <th scope="col">Tipo</th>
-                <th scope="col">Documentos</th>
-                <th scope="col">Prazo</th>
-                <th scope="col">Com quem</th>
-                <th scope="col">
-                  <span className="sr-only">Abrir</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
+              {Array.from({ length: 4 }, (_, index) => (
+                <span className="skeleton" key={index} />
+              ))}
+            </div>
+          ) : visible.length === 0 ? (
+            <div className="tk-empty" role="status">
+              <strong>
+                {active === "all" ? "Nenhuma tarefa" : "Nada para você agora"}
+              </strong>
+              {active !== "all" && counts.all > 0 && (
+                <button
+                  type="button"
+                  className="tk-text-button"
+                  onClick={() => setFilter("all")}
+                >
+                  Ver todas ({counts.all})
+                </button>
+              )}
+            </div>
+          ) : (
+            <ul
+              className="tk-list"
+              ref={listRef}
+              onKeyDown={onListKey}
+              aria-label="Tarefas"
+            >
               {visible.map((task, index) => (
-                <TaskRow
+                <TaskItem
                   key={task.id}
                   task={task}
                   now={now}
                   first={index === 0}
-                  onOpen={onOpen}
+                  selected={selected?.id === task.id}
+                  onSelect={() => {
+                    setSelectedId(task.id);
+                    setSheet(true);
+                  }}
                 />
               ))}
-            </tbody>
-          </table>
+            </ul>
+          )}
         </div>
-      )}
+
+        <div className="tk-detailpane" data-tour="detail">
+          {selected ? (
+            <TaskDetail
+              key={selected.id}
+              task={selected}
+              role={role}
+              memberId={memberId}
+              csrf={csrf}
+              person={person}
+              now={now}
+              onUnauthorized={onUnauthorized}
+              onChanged={reload}
+              onOpen={onOpen}
+              onBack={() => setSheet(false)}
+            />
+          ) : (
+            <div className="tk-nodetail">Escolha uma tarefa na lista.</div>
+          )}
+        </div>
+      </div>
 
       <nav className="tk-tools" aria-label="Telas completas" data-tour="tools">
         <span>Abrir a tela completa de</span>
@@ -321,72 +444,5 @@ export function TaskInbox({
         }}
       />
     </section>
-  );
-}
-
-function TaskRow({
-  task,
-  now,
-  first,
-  onOpen,
-}: {
-  task: Task;
-  now: number;
-  first: boolean;
-  onOpen: (page: Page, id: string | null) => void;
-}) {
-  const due = task.dueAt ? dueState(task.dueAt, now) : null;
-  const go = () => onOpen(task.open.page, task.open.id);
-  return (
-    <tr
-      data-clickable
-      data-lane={task.lane}
-      data-tour={first ? "row" : undefined}
-      onClick={go}
-    >
-      <td data-label="Tarefa">
-        <span className="tk-main">
-          <strong>{task.title}</strong>
-          <span>{task.subtitle}</span>
-        </span>
-      </td>
-      <td data-label="Tipo" className="tk-type">
-        {KIND_LABEL[task.kind]}
-      </td>
-      <td data-label="Documentos">
-        {task.track ? (
-          <PurchaseTrack track={task.track} />
-        ) : (
-          <span className="tk-none">—</span>
-        )}
-      </td>
-      <td data-label="Prazo">
-        {due ? (
-          <span className={due.overdue ? "tk-late" : undefined}>
-            {due.label}
-          </span>
-        ) : task.since ? (
-          <span className="tk-age">há {ageLabel(task.since, now)}</span>
-        ) : (
-          <span className="tk-none">—</span>
-        )}
-      </td>
-      <td data-label="Com quem" className="tk-who">
-        {task.who ?? "—"}
-      </td>
-      <td className="tk-action">
-        <button
-          type="button"
-          className="btn btn-secondary btn-sm"
-          data-tour={first ? "action" : undefined}
-          onClick={(event) => {
-            event.stopPropagation();
-            go();
-          }}
-        >
-          {task.action}
-        </button>
-      </td>
-    </tr>
   );
 }

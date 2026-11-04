@@ -14,6 +14,7 @@ export function ExceptionNextStep({
   setAsking,
   onClaim,
   onExecute,
+  bare = false,
 }: {
   item: PaymentExceptionCase;
   role: Role;
@@ -25,6 +26,8 @@ export function ExceptionNextStep({
   setAsking: (value: Asking) => void;
   onClaim: () => void;
   onExecute: (action: ExecuteAction) => void;
+  /** Without its own title: it sits inside the turn card. */
+  bare?: boolean;
 }) {
   const credits = item.funding_source === "credits";
   const deliveryPending = (item.affected_items ?? []).some(
@@ -41,8 +44,8 @@ export function ExceptionNextStep({
           ? "Os documentos estão sendo processados pelo fornecedor. Quando todos forem entregues, você poderá confirmar a correção."
           : null;
   return (
-    <section className="detail-panel-section">
-      <h3 className="detail-panel-section-title">Próximo passo</h3>
+    <section className={bare ? "cj-next" : "detail-panel-section"}>
+      {!bare && <h3 className="detail-panel-section-title">Próximo passo</h3>}
       {action.kind === "wait" && <p className="form-hint">{action.reason}</p>}
       {action.kind === "none" && (
         <p className="form-hint">Este caso está concluído.</p>

@@ -8,6 +8,7 @@ import type {
 import { causeOf, isMyTurn, journeyOf, turnOf } from "./case-journey-model";
 import { analysisWorkStatusLabel } from "./display-labels";
 import { dueState, stageOf } from "./exception-model";
+import { railAt, railOf, type RailStep } from "./rail-model";
 import type { Page } from "./team-nav-model";
 
 /**
@@ -47,6 +48,12 @@ export type Task = {
   who: string | null;
   action: string;
   open: { page: Page; id: string | null };
+  /** The customer, when the queue knows who it is. */
+  customer: string | null;
+  /** The stops of the purchase and where this task sits. */
+  rail: RailStep[];
+  /** The whole case, for the tasks that can be worked on right here. */
+  exception: PaymentExceptionCase | null;
 };
 
 type Role = Parameters<typeof isMyTurn>[1];
@@ -106,6 +113,10 @@ export function caseTask(
     who: turn.role,
     action: mine ? "Decidir" : "Ver caso",
     open: { page: "financial", id: item.id },
+    customer: item.customer_name ?? item.customer_email ?? null,
+    rail:
+      journey.kind === "registry" ? railOf(journey) : railAt("documents", true),
+    exception: item,
   };
 }
 
@@ -124,6 +135,9 @@ export function sendTask(item: UncertainSubmissionItem): Task | null {
     who: "Equipe",
     action: "Conferir",
     open: { page: "reconciliation", id: null },
+    customer: null,
+    rail: railAt("documents", true),
+    exception: null,
   };
 }
 
@@ -143,6 +157,9 @@ export function previewTask(item: OnrPreviewAttentionItem): Task {
     who: "Equipe",
     action: "Revisar",
     open: { page: "onr-review", id: null },
+    customer: null,
+    rail: railAt("order", false),
+    exception: null,
   };
 }
 
@@ -160,6 +177,12 @@ export function analysisTask(item: AttentionPage["items"][number]): Task {
     who: "Equipe",
     action: "Revisar",
     open: { page: "analyses", id: item.work_id },
+    customer: null,
+    rail: railAt(
+      "analysis",
+      item.status === "failed" || item.status === "unknown",
+    ),
+    exception: null,
   };
 }
 
@@ -180,6 +203,9 @@ export function sourceTask(
     who: "Equipe",
     action: "Classificar",
     open: { page: "sources", id: item.request_id },
+    customer: null,
+    rail: railAt("order", false),
+    exception: null,
   };
 }
 

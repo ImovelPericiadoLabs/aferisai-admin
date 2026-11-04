@@ -126,7 +126,7 @@ export function useWorkQueue({
   }, [load]);
 
   return useMemo(
-    () => ({ tasks, loading, failed, loadedAt, reload: load }),
-    [tasks, loading, failed, loadedAt, load],
+    () => ({ tasks, loading, failed, loadedAt, reload: load, person }),
+    [tasks, loading, failed, loadedAt, load, person],
   );
 }
