@@ -227,6 +227,32 @@ export function OrganizationDetail({
                       granted ? "Permissão revogada." : "Permissão concedida.",
                     )
                   }
+                  onGrantAllPermissions={(applicationId, reason) => {
+                    const application = detail.applications.find(
+                      (item) => item.id === applicationId,
+                    );
+                    if (!application) return;
+                    const missing = detail.permissions.filter(
+                      (permission) =>
+                        !application.permissions.includes(permission.code),
+                    );
+                    void changePermission(
+                      async () => {
+                        for (const permission of missing) {
+                          await grantApplicationPermission(
+                            applicationId,
+                            permission.code,
+                            csrfToken,
+                            reason,
+                          );
+                        }
+                      },
+                      `${applicationId}:all-permissions`,
+                      missing.length
+                        ? `${missing.length} permissões concedidas.`
+                        : "A aplicação já possui todas as permissões.",
+                    );
+                  }}
                   additionalApplication={null}
                   onDeleteApplication={
                     isAdmin
