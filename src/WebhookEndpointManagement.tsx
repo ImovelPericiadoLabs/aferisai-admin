@@ -296,7 +296,7 @@ export function WebhookEndpointManagement({
         />
       )}
 
-      <WebhookPayloads endpointUrl={endpoint?.url ?? null} />
+      <WebhookPayloads endpointUrl={endpoint?.url ?? null} channel={channel} />
 
       <WebhookDrawer
         open={drawer !== null}

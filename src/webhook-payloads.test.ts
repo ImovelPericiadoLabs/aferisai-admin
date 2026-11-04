@@ -150,15 +150,30 @@ describe("curlFor", () => {
 });
 
 describe("eventCatalog", () => {
-  it("marks the three events the backend sends as implemented", () => {
+  it("marks the fallback events supported by the backend as implemented", () => {
     expect(
       eventCatalog.filter((e) => e.status === "implemented").map((e) => e.type),
-    ).toEqual(["analysis.created", "analysis.completed", "webhook.test"]);
+    ).toEqual([
+      "analysis.created",
+      "analysis.completed",
+      "webhook.test",
+      "analysis.failed",
+      "analysis.review_required",
+      "payment.confirmed",
+      "connection.revoked",
+    ]);
   });
-  it("lets only the two analysis events be selected", () => {
+  it("lets only implemented operational events be selected", () => {
     expect(
       eventCatalog.filter((e) => e.subscribable).map((e) => e.type),
-    ).toEqual(["analysis.created", "analysis.completed"]);
+    ).toEqual([
+      "analysis.created",
+      "analysis.completed",
+      "analysis.failed",
+      "analysis.review_required",
+      "payment.confirmed",
+      "connection.revoked",
+    ]);
   });
   it("documents every field of every event", () => {
     for (const event of eventCatalog)
