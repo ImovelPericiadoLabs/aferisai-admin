@@ -141,9 +141,21 @@ export function ExceptionNextStep({
           Verificar entrega corrigida
         </button>
       )}
+      {action.kind === "retry-delivery" && (
+        <button
+          className="btn btn-primary btn-md"
+          type="button"
+          disabled={busy}
+          onClick={() => onExecute("delivery-retries")}
+        >
+          Tentar corrigir entrega
+        </button>
+      )}
       <div className="alert exc-note" role="note">
         {item.funding_source === "credits"
-          ? "A devolução integral retorna ao saldo de créditos usado nesta compra e fica registrada no extrato."
+          ? action.kind === "retry-delivery"
+            ? "A tentativa recoloca os documentos ausentes na fila sem nova cobrança. Se não for possível recuperar, você poderá devolver os créditos."
+            : "A devolução integral retorna ao saldo de créditos usado nesta compra e fica registrada no extrato."
           : "O estorno PIX exige confirmação e conciliação no Asaas antes de comunicar o encerramento ao titular."}
       </div>
     </section>
