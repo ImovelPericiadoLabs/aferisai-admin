@@ -168,19 +168,11 @@ export function ExceptionNextStep({
           Tentar corrigir entrega
         </button>
       )}
-<<<<<<< HEAD
-      <div className="alert exc-note" role="note">
-        {action.kind === "retry-delivery"
-          ? "A tentativa recoloca os documentos ausentes na fila sem nova cobrança."
-          : note}
-      </div>
-=======
       {note && (
         <div className="alert exc-note" role="note">
           {note}
         </div>
       )}
->>>>>>> cf1f8ab (feat: single task list for the operation team, guided visual tour, readable case panel and reasons as options)
     </section>
   );
 }
