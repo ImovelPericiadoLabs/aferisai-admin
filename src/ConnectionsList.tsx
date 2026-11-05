@@ -8,10 +8,7 @@ import { groupScopes, partnerLinks, shortId } from "./connection-model";
 import "./connections.css";
 
 const dateFormat = new Intl.DateTimeFormat("pt-BR", {
-  dateStyle: "long",
-  timeZone: "America/Sao_Paulo",
-});
-const timeFormat = new Intl.DateTimeFormat("pt-BR", {
+  dateStyle: "medium",
   timeStyle: "short",
   timeZone: "America/Sao_Paulo",
 });
@@ -102,7 +99,6 @@ function Connection({
         <div className="cx-side">
           <p>
             Conectado em <strong>{dateFormat.format(granted)}</strong>
-            <span> às {timeFormat.format(granted)}</span>
           </p>
           {canRevoke && (
             <button
