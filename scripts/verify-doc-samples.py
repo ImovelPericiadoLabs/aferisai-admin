@@ -90,6 +90,27 @@ def run_driver(lang, cmd, cwd, expect_lines):
     ok(f"{lang} driver produced {expect_lines} OK lines", got == expect_lines, got)
     check_server(lang)
 
+ORDER_KEY = "0190aaaa-bbbb-7ccc-8ddd-eeeeeeeeeeee"
+ORDER_OFFICE = "11111111-1111-7111-8111-111111111111"
+
+def check_orders(lang):
+    calls = [r for r in log if r["p"].startswith("/v1/partner/orders") or r["p"] == "/v1/partner/payment-options"]
+    seq = [(r["m"], r["p"]) for r in calls]
+    ok(f"{lang} orders: four calls in order", seq == [("GET", "/v1/partner/payment-options"), ("POST", "/v1/partner/orders"), ("GET", "/v1/partner/orders/op1"), ("POST", "/v1/partner/orders/op1/payment")], seq)
+    if len(calls) == 4:
+        create, pay = calls[1], calls[3]
+        ok(f"{lang} orders: bearer on every call", all(r["h"].get("authorization") == "Bearer tok" for r in calls), [r["h"].get("authorization") for r in calls])
+        ok(f"{lang} orders: create key + json body", create["h"].get("idempotency-key") == ORDER_KEY and create["h"].get("content-type", "").startswith("application/json") and jl(create["b"]) == {"source": "number", "product": "inteiro_teor_simples", "office_id": ORDER_OFFICE, "registration_numbers": ["12345"]}, create)
+        ok(f"{lang} orders: payment body, no key", jl(pay["b"]) == {"method": "pix", "accepted": True} and "idempotency-key" not in pay["h"], pay)
+
+def run_orders(lang, cmd, cwd):
+    log.clear()
+    rc, out = sh(cmd, cwd)
+    lines = [l for l in out.splitlines() if l.startswith(("OK ", "NO "))]
+    for line in lines: ok(f"{lang} {line[3:]}", line.startswith("OK "), line)
+    ok(f"{lang} orders driver exited 0 and printed 1 OK", rc == 0 and sum(l.startswith("OK ") for l in lines) == 1, out[-700:])
+    check_orders(lang)
+
 only = sys.argv[1:]
 
 # ── shell ───────────────────────────────────────────────
@@ -119,6 +140,11 @@ if not only or "curl" in only:
     rc, out = sh(["bash", "-c", f'CLIENT_ID=cid CLIENT_SECRET=sec CODE="the code" REDIRECT_URI="https://p.example/cb?a=1&b=2" VERIFIER=ver-ifier; {sub(S["oauth-token"]["curl"])}'], d)
     t = [x for x in log if x["p"] == "/oauth/token"]; f = parse_qs(t[0]["b"]) if t else {}
     ok("curl token: Basic + form fields", t and t[0]["h"].get("authorization") == "Basic " + base64.b64encode(b"cid:sec").decode() and {k: v[0] for k, v in f.items()} == {"grant_type": "authorization_code", "code": "the code", "redirect_uri": "https://p.example/cb?a=1&b=2", "code_verifier": "ver-ifier"}, f)
+    log.clear()
+    rc, out = sh(["bash", "-c", f'ACCESS_TOKEN=tok UUIDV7=0190aaaa-bbbb-7ccc-8ddd-eeeeeeeeeeee; {sub(S["create-request"]["curl"])}'], d)
+    log.clear()
+    rc, out = sh(["bash", "-c", f'ACCESS_TOKEN=tok UUIDV7={ORDER_KEY}; ' + sub(S["partner-order"]["curl"]).replace("<ORDER_ID>", "op1").replace("<OFFICE_UUIDV7>", ORDER_OFFICE)], d)
+    check_orders("curl")
     log.clear()
     rc, out = sh(["bash", "-c", f'ACCESS_TOKEN=tok UUIDV7=0190aaaa-bbbb-7ccc-8ddd-eeeeeeeeeeee; {sub(S["create-request"]["curl"])}'], d)
     ok("curl create: POST + GET sent", [x["m"] for x in log] == ["POST", "GET"] and log[0]["h"].get("idempotency-key") == "0190aaaa-bbbb-7ccc-8ddd-eeeeeeeeeeee" and json.loads(log[0]["b"])["registration_numbers"] == ["12345"], log)
@@ -161,6 +187,16 @@ ok("webhook: missing header", !assinaturaValida(body, %s, undefined, %s));
 ok("webhook: tampered body", !assinaturaValida(Buffer.from("{}"), %s, %s, %s));
 ''' % tuple([json.dumps(BODY.decode()) ] + [json.dumps(x) for x in (TS, SIG, SECRET, TS, SECRET, TS, SECRET, TS, SIG, SECRET)]))
     run_driver("node", ["node", "driver.mjs"], d, 13)
+    open(f"{d}/order-driver.mjs", "w").write(r'''
+import { paymentOptions, createOrder, getOrder, payOrder } from "./partner-order.mjs";
+const ok = (n, c) => console.log((c ? "OK " : "NO ") + n);
+const options = await paymentOptions("tok");
+const order = await createOrder("tok", "0190aaaa-bbbb-7ccc-8ddd-eeeeeeeeeeee", "11111111-1111-7111-8111-111111111111", "12345");
+const got = await getOrder("tok", "op1");
+const paid = await payOrder("tok", "op1", "pix");
+ok("orders: parsed", options.id === "op1" && order.id === "op1" && got.id === "op1" && paid.id === "op1");
+''')
+    run_orders("node", ["node", "order-driver.mjs"], d)
 
 # ── python ─────────────────────────────────────────────
 if not only or "python" in only:
@@ -199,6 +235,16 @@ ok("webhook: missing header", not w.assinatura_valida(body, %s, None, %s))
 ok("webhook: tampered body", not w.assinatura_valida(b"{}", %s, %s, %s))
 ''' % tuple([repr(BODY.decode())] + [repr(x) for x in (TS, SIG, SECRET, TS, SECRET, TS, SECRET, TS, SIG, SECRET)]))
     run_driver("python", ["python3", "driver.py"], d, 13)
+    open(f"{d}/order_driver.py", "w").write(r'''
+import partner_order as po
+def ok(n, c): print(("OK " if c else "NO ") + n)
+options = po.payment_options("tok")
+order = po.create_order("tok", "0190aaaa-bbbb-7ccc-8ddd-eeeeeeeeeeee", "11111111-1111-7111-8111-111111111111", "12345")
+got = po.get_order("tok", "op1")
+paid = po.pay_order("tok", "op1", "pix")
+ok("orders: parsed", options["id"] == "op1" and order["id"] == "op1" and got["id"] == "op1" and paid["id"] == "op1")
+''')
+    run_orders("python", ["python3", "order_driver.py"], d)
 
 # ── go ─────────────────────────────────────────────────
 if not only or "go" in only:
@@ -257,7 +303,19 @@ func main() {
 	ok("webhook: tampered body", !assinaturaValida([]byte("{}"), %s, %s, %s))
 }
 ''' % tuple(["`" + BODY.decode() + "`"] + ['"' + x + '"' for x in (TS, SIG, SECRET, TS, SECRET, TS, SECRET, TS, SIG, SECRET)]))
-    for name, n_ok in (("oauth-authorize", 4), ("oauth-token", 1), ("create-request", 4), ("verify-webhook", 4)):
+    open(f"{gd('partner-order')}/main.go", "w").write(r'''package main
+import ("fmt";"strings")
+func ok(n string, c bool) { if c { fmt.Println("OK " + n) } else { fmt.Println("NO " + n) } }
+func main() {
+	options, e1 := paymentOptions("tok")
+	order, e2 := createOrder("tok", "0190aaaa-bbbb-7ccc-8ddd-eeeeeeeeeeee", "11111111-1111-7111-8111-111111111111", "12345")
+	got, e3 := getOrder("tok", "op1")
+	paid, e4 := payOrder("tok", "op1", "pix")
+	all := e1 == nil && e2 == nil && e3 == nil && e4 == nil
+	ok("orders: parsed", all && strings.Contains(string(options)+string(order)+string(got)+string(paid), "op1"))
+}
+''')
+    for name, n_ok in (("oauth-authorize", 4), ("oauth-token", 1), ("create-request", 4), ("verify-webhook", 4), ("partner-order", 1)):
         log.clear()
         d = gd(name)
         rc, out = sh(["go", "vet", "./..."], d); ok(f"go {name}: go vet", rc == 0, out)
@@ -265,6 +323,8 @@ func main() {
         for line in out.splitlines():
             if line.startswith(("OK ", "NO ")): ok(f"go {line[3:]}", line.startswith("OK "), line)
         ok(f"go {name}: ran and printed {n_ok} OK", rc == 0 and sum(l.startswith("OK ") for l in out.splitlines()) == n_ok, out[-500:])
+        if name == "partner-order":
+            check_orders("go")
         if name == "oauth-token":
             t = [x for x in log if x["p"] == "/oauth/token"]; f = parse_qs(t[0]["b"]) if t else {}
             ok("go token: Basic + form", t and t[0]["h"].get("authorization") == "Basic " + base64.b64encode(b"cid:sec").decode() and {k: v[0] for k, v in f.items()} == {"grant_type": "authorization_code", "code": "the code", "redirect_uri": "https://p.example/cb?a=1&b=2", "code_verifier": "ver-ifier"}, f)
@@ -287,6 +347,14 @@ if not only or "java" in only:
 class Check {
   static void ok(String n, boolean c) { System.out.println((c ? "OK " : "NO ") + n); }
   public static void main(String[] args) throws Exception {
+    if (args.length > 0 && args[0].equals("orders")) {
+      String options = PartnerOrders.paymentOptions("tok");
+      String order = PartnerOrders.createOrder("tok", "0190aaaa-bbbb-7ccc-8ddd-eeeeeeeeeeee", "11111111-1111-7111-8111-111111111111", "12345");
+      String got = PartnerOrders.getOrder("tok", "op1");
+      String paid = PartnerOrders.payOrder("tok", "op1", "pix");
+      ok("orders: parsed", options.contains("op1") && order.contains("op1") && got.contains("op1") && paid.contains("op1"));
+      return;
+    }
     Map<String, String> session = new HashMap<>();
     URI uri = URI.create(OAuthStart.start(session, "cid", "https://p.example/cb?a=1&b=2"));
     Map<String, String> q = new HashMap<>();
@@ -314,6 +382,7 @@ class Check {
 ''' % tuple(['"' + BODY.decode().replace("\\", "\\\\").replace('"', '\\"') + '"'] + ['"' + x + '"' for x in (TS, SIG, SECRET, TS, SECRET, TS, SECRET, TS, SIG, SECRET)])
     open(f"{d}/Check.java", "w").write("\n".join(sorted(imports)) + "\n" + driver + "\n".join(bodies) + "\n")
     run_driver("java", ["java", "Check.java"], d, 13)
+    run_orders("java", ["java", "Check.java", "orders"], d)
 
 # ── csharp ─────────────────────────────────────────────
 if not only or "csharp" in only:
@@ -329,6 +398,15 @@ if not only or "csharp" in only:
     usings |= {"using System.Collections.Generic;", "using System.Text.RegularExpressions;"}
     driver = r'''
 static void Ok(string n, bool c) => Console.WriteLine((c ? "OK " : "NO ") + n);
+if (args.Length > 0 && args[0] == "orders")
+{
+    var ordOptions = await PartnerOrders.PaymentOptionsAsync("tok");
+    var ordCreated = await PartnerOrders.CreateOrderAsync("tok", "0190aaaa-bbbb-7ccc-8ddd-eeeeeeeeeeee", "11111111-1111-7111-8111-111111111111", "12345");
+    var ordGot = await PartnerOrders.GetOrderAsync("tok", "op1");
+    var ordPaid = await PartnerOrders.PayOrderAsync("tok", "op1", "pix");
+    Ok("orders: parsed", ordOptions.Contains("op1") && ordCreated.Contains("op1") && ordGot.Contains("op1") && ordPaid.Contains("op1"));
+    return;
+}
 var session = new Dictionary<string, string>();
 var uri = new Uri(OAuthStart.Start(session, "cid", "https://p.example/cb?a=1&b=2"));
 var q = uri.Query.TrimStart('?').Split('&').Select(p => p.Split('=', 2)).ToDictionary(kv => kv[0], kv => Uri.UnescapeDataString(kv[1]));
@@ -354,7 +432,9 @@ Ok("webhook: tampered body", !WebhookSignature.AssinaturaValida(Encoding.UTF8.Ge
 ''' % tuple(['"' + BODY.decode().replace("\\", "\\\\").replace('"', '\\"') + '"'] + ['"' + x + '"' for x in (TS, SIG, SECRET, TS, SECRET, TS, SECRET, TS, SIG, SECRET)])
     open(f"{d}/Program.cs", "w").write("\n".join(sorted(usings)) + "\n" + driver + "\n" + "\n".join(bodies) + "\n")
     rc, out = sh(["dotnet", "build", "-nologo", "-v", "q"], d); ok("csharp: dotnet build", rc == 0, out[-1500:])
-    if rc == 0: run_driver("csharp", ["dotnet", "run", "--no-build"], d, 13)
+    if rc == 0:
+        run_driver("csharp", ["dotnet", "run", "--no-build"], d, 13)
+        run_orders("csharp", ["dotnet", "run", "--no-build", "--", "orders"], d)
 
 shutil.rmtree(ROOT, ignore_errors=True)
 fails = [r for r in results if not r[1]]

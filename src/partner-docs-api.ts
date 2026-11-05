@@ -215,6 +215,7 @@ export const apiPages: DocPage[] = [
             text: "A ordem junta criar, consultar o custo e cotar em uma chamada, e o pagamento em outra. O `id` da ordem é o `operation_id` (registro) ou o `analysis_id` (análise). As rotas detalhadas continuam disponíveis para quem quer controlar cada passo.",
           },
           { type: "code", language: "text", label: "Fluxo", code: ORDER_FLOW },
+          { type: "samples", id: "partner-order" },
           {
             type: "table",
             caption: "Estados da ordem",

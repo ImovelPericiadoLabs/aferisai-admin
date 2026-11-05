@@ -738,6 +738,318 @@ func getRegistryRequest(accessToken, operationID string) ([]byte, error) {
 }`,
     },
   },
+  "partner-order": {
+    title: "Criar, consultar e pagar uma ordem",
+    description:
+      "O caminho simples: opções de pagamento, ordem (cria, consulta o custo e cota), consulta e pagamento por PIX ou créditos.",
+    variants: {
+      curl: `API_URL="https://api.aferis.ai"
+
+# 1. Como o titular pode pagar: saldo de créditos, pagador salvo e meios disponíveis
+curl "$API_URL/v1/partner/payment-options" \\
+  --header "Authorization: Bearer $ACCESS_TOKEN"
+
+# 2. Criar a ordem: cria, consulta o custo e cota. UUIDv7 novo para cada ordem nova
+curl --request POST "$API_URL/v1/partner/orders" \\
+  --header "Authorization: Bearer $ACCESS_TOKEN" \\
+  --header "Idempotency-Key: $UUIDV7" \\
+  --header "Content-Type: application/json" \\
+  --data '{
+    "source": "number",
+    "product": "inteiro_teor_simples",
+    "office_id": "<OFFICE_UUIDV7>",
+    "registration_numbers": ["12345"]
+  }'
+
+# 3. Consultar a ordem (reconcilie sempre por aqui depois de um timeout)
+curl "$API_URL/v1/partner/orders/<ORDER_ID>" \\
+  --header "Authorization: Bearer $ACCESS_TOKEN"
+
+# 4. Pagar por PIX (use "credits" para créditos); accepted confirma os documentos de /v1/legal/catalog
+curl --request POST "$API_URL/v1/partner/orders/<ORDER_ID>/payment" \\
+  --header "Authorization: Bearer $ACCESS_TOKEN" \\
+  --header "Content-Type: application/json" \\
+  --data '{"method": "pix", "accepted": true}'`,
+      node: `const API_URL = "https://api.aferis.ai";
+
+async function call(accessToken, method, path, { key, body } = {}) {
+  const response = await fetch(\`\${API_URL}\${path}\`, {
+    method,
+    headers: {
+      Authorization: \`Bearer \${accessToken}\`,
+      ...(key ? { "Idempotency-Key": key } : {}),
+      ...(body ? { "Content-Type": "application/json" } : {}),
+    },
+    body: body ? JSON.stringify(body) : undefined,
+    signal: AbortSignal.timeout(15_000),
+  });
+  const json = await response.json();
+  if (!response.ok) throw new Error(json.detail ?? json.title);
+  return json;
+}
+
+// 1. Como o titular pode pagar: saldo de créditos, pagador salvo e meios disponíveis
+export const paymentOptions = (accessToken) =>
+  call(accessToken, "GET", "/v1/partner/payment-options");
+
+// 2. Criar a ordem: cria, consulta o custo e cota. A chave é um UUIDv7 novo para cada ordem nova
+export const createOrder = (accessToken, idempotencyKey, officeId, registrationNumber) =>
+  call(accessToken, "POST", "/v1/partner/orders", {
+    key: idempotencyKey,
+    body: {
+      source: "number",
+      product: "inteiro_teor_simples",
+      office_id: officeId,
+      registration_numbers: [registrationNumber],
+    },
+  });
+
+// 3. Consultar a ordem (reconcilie sempre por aqui depois de um timeout)
+export const getOrder = (accessToken, orderId) =>
+  call(accessToken, "GET", \`/v1/partner/orders/\${orderId}\`);
+
+// 4. Pagar por "pix" ou "credits"; accepted confirma os documentos de /v1/legal/catalog
+export const payOrder = (accessToken, orderId, method) =>
+  call(accessToken, "POST", \`/v1/partner/orders/\${orderId}/payment\`, {
+    body: { method, accepted: true },
+  });`,
+      python: `import requests
+
+API_URL = "https://api.aferis.ai"
+
+
+def call(access_token: str, method: str, path: str, **kwargs) -> dict:
+    headers = {"Authorization": f"Bearer {access_token}", **kwargs.pop("headers", {})}
+    response = requests.request(method, f"{API_URL}{path}", headers=headers, timeout=15, **kwargs)
+    body = response.json()
+    if not response.ok:
+        raise RuntimeError(body.get("detail") or body.get("title"))
+    return body
+
+
+# 1. Como o titular pode pagar: saldo de créditos, pagador salvo e meios disponíveis
+def payment_options(access_token):
+    return call(access_token, "GET", "/v1/partner/payment-options")
+
+
+# 2. Criar a ordem: cria, consulta o custo e cota. A chave é um UUIDv7 novo para cada ordem nova
+def create_order(access_token, idempotency_key, office_id, registration_number):
+    return call(
+        access_token,
+        "POST",
+        "/v1/partner/orders",
+        headers={"Idempotency-Key": idempotency_key},
+        json={
+            "source": "number",
+            "product": "inteiro_teor_simples",
+            "office_id": office_id,
+            "registration_numbers": [registration_number],
+        },
+    )
+
+
+# 3. Consultar a ordem (reconcilie sempre por aqui depois de um timeout)
+def get_order(access_token, order_id):
+    return call(access_token, "GET", f"/v1/partner/orders/{order_id}")
+
+
+# 4. Pagar por "pix" ou "credits"; accepted confirma os documentos de /v1/legal/catalog
+def pay_order(access_token, order_id, method):
+    return call(
+        access_token,
+        "POST",
+        f"/v1/partner/orders/{order_id}/payment",
+        json={"method": method, "accepted": True},
+    )`,
+      go: `package main
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"time"
+)
+
+const apiURL = "https://api.aferis.ai"
+
+var httpClient = &http.Client{Timeout: 15 * time.Second}
+
+func call(accessToken, method, path, idempotencyKey string, payload any) ([]byte, error) {
+	var reader io.Reader
+	if payload != nil {
+		encoded, err := json.Marshal(payload)
+		if err != nil {
+			return nil, err
+		}
+		reader = bytes.NewReader(encoded)
+	}
+	request, err := http.NewRequest(method, apiURL+path, reader)
+	if err != nil {
+		return nil, err
+	}
+	request.Header.Set("Authorization", "Bearer "+accessToken)
+	if idempotencyKey != "" {
+		request.Header.Set("Idempotency-Key", idempotencyKey)
+	}
+	if payload != nil {
+		request.Header.Set("Content-Type", "application/json")
+	}
+	response, err := httpClient.Do(request)
+	if err != nil {
+		return nil, err
+	}
+	defer response.Body.Close()
+	body, err := io.ReadAll(response.Body)
+	if err != nil {
+		return nil, err
+	}
+	if response.StatusCode >= 400 {
+		return nil, fmt.Errorf("HTTP %d: %s", response.StatusCode, body)
+	}
+	return body, nil // JSON
+}
+
+// 1. Como o titular pode pagar: saldo de créditos, pagador salvo e meios disponíveis
+func paymentOptions(accessToken string) ([]byte, error) {
+	return call(accessToken, http.MethodGet, "/v1/partner/payment-options", "", nil)
+}
+
+// 2. Criar a ordem: cria, consulta o custo e cota. A chave é um UUIDv7 novo para cada ordem nova
+func createOrder(accessToken, idempotencyKey, officeID, registrationNumber string) ([]byte, error) {
+	return call(accessToken, http.MethodPost, "/v1/partner/orders", idempotencyKey, map[string]any{
+		"source":               "number",
+		"product":              "inteiro_teor_simples",
+		"office_id":            officeID,
+		"registration_numbers": []string{registrationNumber},
+	})
+}
+
+// 3. Consultar a ordem (reconcilie sempre por aqui depois de um timeout)
+func getOrder(accessToken, orderID string) ([]byte, error) {
+	return call(accessToken, http.MethodGet, "/v1/partner/orders/"+orderID, "", nil)
+}
+
+// 4. Pagar por "pix" ou "credits"; accepted confirma os documentos de /v1/legal/catalog
+func payOrder(accessToken, orderID, method string) ([]byte, error) {
+	return call(accessToken, http.MethodPost, "/v1/partner/orders/"+orderID+"/payment", "",
+		map[string]any{"method": method, "accepted": true})
+}`,
+      java: `import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
+
+class PartnerOrders {
+  static final String API_URL = "https://api.aferis.ai";
+  static final HttpClient HTTP = HttpClient.newHttpClient();
+
+  static String send(HttpRequest.Builder builder, String accessToken) throws Exception {
+    HttpRequest request = builder
+        .timeout(Duration.ofSeconds(15))
+        .header("Authorization", "Bearer " + accessToken)
+        .build();
+    HttpResponse<String> response = HTTP.send(request, HttpResponse.BodyHandlers.ofString());
+    if (response.statusCode() >= 400) {
+      throw new IllegalStateException("HTTP " + response.statusCode() + ": " + response.body());
+    }
+    return response.body(); // JSON
+  }
+
+  // 1. Como o titular pode pagar: saldo de créditos, pagador salvo e meios disponíveis
+  static String paymentOptions(String accessToken) throws Exception {
+    return send(HttpRequest.newBuilder(URI.create(API_URL + "/v1/partner/payment-options")).GET(),
+        accessToken);
+  }
+
+  // 2. Criar a ordem: cria, consulta o custo e cota. A chave é um UUIDv7 novo para cada ordem nova
+  static String createOrder(String accessToken, String idempotencyKey, String officeId,
+      String registrationNumber) throws Exception {
+    String json = """
+        {"source": "number", "product": "inteiro_teor_simples", "office_id": "%s",
+         "registration_numbers": ["%s"]}
+        """.formatted(officeId, registrationNumber);
+    return send(HttpRequest.newBuilder(URI.create(API_URL + "/v1/partner/orders"))
+        .header("Idempotency-Key", idempotencyKey)
+        .header("Content-Type", "application/json")
+        .POST(HttpRequest.BodyPublishers.ofString(json)), accessToken);
+  }
+
+  // 3. Consultar a ordem (reconcilie sempre por aqui depois de um timeout)
+  static String getOrder(String accessToken, String orderId) throws Exception {
+    return send(HttpRequest.newBuilder(URI.create(API_URL + "/v1/partner/orders/" + orderId)).GET(),
+        accessToken);
+  }
+
+  // 4. Pagar por "pix" ou "credits"; accepted confirma os documentos de /v1/legal/catalog
+  static String payOrder(String accessToken, String orderId, String method) throws Exception {
+    String json = """
+        {"method": "%s", "accepted": true}
+        """.formatted(method);
+    return send(HttpRequest.newBuilder(
+        URI.create(API_URL + "/v1/partner/orders/" + orderId + "/payment"))
+        .header("Content-Type", "application/json")
+        .POST(HttpRequest.BodyPublishers.ofString(json)), accessToken);
+  }
+}`,
+      csharp: `using System;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
+using System.Threading.Tasks;
+
+static class PartnerOrders
+{
+    const string ApiUrl = "https://api.aferis.ai";
+    static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(15) };
+
+    static async Task<string> SendAsync(HttpRequestMessage request, string accessToken)
+    {
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        using var response = await Http.SendAsync(request);
+        var body = await response.Content.ReadAsStringAsync();
+        if (!response.IsSuccessStatusCode)
+            throw new InvalidOperationException($"HTTP {(int)response.StatusCode}: {body}");
+        return body; // JSON
+    }
+
+    // 1. Como o titular pode pagar: saldo de créditos, pagador salvo e meios disponíveis
+    public static Task<string> PaymentOptionsAsync(string accessToken) =>
+        SendAsync(new HttpRequestMessage(HttpMethod.Get, $"{ApiUrl}/v1/partner/payment-options"), accessToken);
+
+    // 2. Criar a ordem: cria, consulta o custo e cota. A chave é um UUIDv7 novo para cada ordem nova
+    public static Task<string> CreateOrderAsync(string accessToken, string idempotencyKey,
+        string officeId, string registrationNumber)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Post, $"{ApiUrl}/v1/partner/orders")
+        {
+            Content = JsonContent.Create(new
+            {
+                source = "number",
+                product = "inteiro_teor_simples",
+                office_id = officeId,
+                registration_numbers = new[] { registrationNumber },
+            }),
+        };
+        request.Headers.Add("Idempotency-Key", idempotencyKey);
+        return SendAsync(request, accessToken);
+    }
+
+    // 3. Consultar a ordem (reconcilie sempre por aqui depois de um timeout)
+    public static Task<string> GetOrderAsync(string accessToken, string orderId) =>
+        SendAsync(new HttpRequestMessage(HttpMethod.Get, $"{ApiUrl}/v1/partner/orders/{orderId}"), accessToken);
+
+    // 4. Pagar por "pix" ou "credits"; accepted confirma os documentos de /v1/legal/catalog
+    public static Task<string> PayOrderAsync(string accessToken, string orderId, string method) =>
+        SendAsync(new HttpRequestMessage(HttpMethod.Post, $"{ApiUrl}/v1/partner/orders/{orderId}/payment")
+        {
+            Content = JsonContent.Create(new { method, accepted = true }),
+        }, accessToken);
+}`,
+    },
+  },
   "verify-webhook": {
     title: "Validar a assinatura do webhook",
     description:
