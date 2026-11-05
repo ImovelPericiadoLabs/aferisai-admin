@@ -1,0 +1,285 @@
+/* One partnership per block: who it is (logo, links), when it connected, what the owner
+   allowed. Hairlines and type carry the structure; the only fill is the logo tile. */
+.cx-list {
+  display: grid;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cx-item {
+  container-type: inline-size;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+
+.cx-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: var(--space-4);
+  align-items: start;
+  padding: var(--space-5);
+}
+
+.cx-logo {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-subtle, var(--surface));
+  color: var(--primary);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-bold);
+}
+
+.cx-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 6px;
+}
+
+.cx-who {
+  min-width: 0;
+}
+
+.cx-who h2 {
+  margin: 0;
+  color: var(--text);
+  font-size: var(--text-lg);
+  font-weight: var(--weight-semibold);
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.cx-who > p {
+  margin: 2px 0 0;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.cx-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--text-sm);
+}
+
+.cx-links a {
+  color: var(--primary);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--primary) 35%, transparent);
+  text-underline-offset: 3px;
+}
+
+.cx-links a::after {
+  content: " ↗";
+  font-size: 0.85em;
+}
+
+.cx-links a:hover {
+  text-decoration-color: currentColor;
+}
+
+.cx-links a:focus-visible,
+.cx-revoke:focus-visible,
+.cx-tech summary:focus-visible,
+.cx-id button:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+.cx-side {
+  display: grid;
+  gap: var(--space-3);
+  justify-items: end;
+  text-align: right;
+}
+
+.cx-side p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.cx-side strong {
+  color: var(--text);
+  font-weight: var(--weight-semibold);
+}
+
+.cx-side p span {
+  display: block;
+}
+
+.cx-revoke {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--danger, #b42318);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+}
+
+.cx-revoke:hover:not(:disabled) {
+  border-color: currentColor;
+}
+
+.cx-revoke:disabled {
+  color: var(--text-muted);
+  cursor: default;
+}
+
+.cx-body {
+  padding: var(--space-4) var(--space-5) var(--space-5);
+  border-top: 1px solid var(--border);
+}
+
+.cx-body h3 {
+  margin: 0 0 var(--space-3);
+  color: var(--text);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+}
+
+.cx-body h3 span {
+  color: var(--text-muted);
+  font-weight: var(--weight-regular, 400);
+}
+
+.cx-scopes {
+  display: grid;
+  gap: 0;
+  margin: 0;
+}
+
+.cx-group {
+  display: grid;
+  grid-template-columns: 11rem minmax(0, 1fr);
+  gap: var(--space-4);
+  padding: var(--space-3) 0;
+  border-top: 1px solid var(--border);
+}
+
+.cx-group:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.cx-group dt {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.cx-group dd {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+  margin: 0;
+  color: var(--text);
+  font-size: var(--text-sm);
+}
+
+.cx-group dd span:not(:last-child)::after {
+  content: "·";
+  margin-left: var(--space-4);
+  color: var(--text-muted);
+}
+
+.cx-tech {
+  border-top: 1px solid var(--border);
+  background: var(--surface-subtle, var(--surface));
+  font-size: var(--text-sm);
+}
+
+.cx-tech summary {
+  padding: var(--space-3) var(--space-5);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.cx-tech dl {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0 var(--space-5) var(--space-4);
+}
+
+.cx-id {
+  display: grid;
+  grid-template-columns: 11rem minmax(0, 1fr);
+  gap: var(--space-4);
+  align-items: baseline;
+}
+
+.cx-id dt {
+  color: var(--text-muted);
+}
+
+.cx-id dd {
+  display: flex;
+  gap: var(--space-3);
+  align-items: baseline;
+  margin: 0;
+}
+
+.cx-id code {
+  font-size: var(--text-xs, 0.78rem);
+}
+
+.cx-id button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--primary);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+@container (max-width: 640px) {
+  .cx-head {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .cx-side {
+    grid-column: 1 / -1;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    justify-items: start;
+    text-align: left;
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--border);
+  }
+
+  .cx-side p span {
+    display: inline;
+  }
+
+  .cx-group,
+  .cx-id {
+    grid-template-columns: 1fr;
+    gap: var(--space-1);
+  }
+
+  .cx-group dd {
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  .cx-group dd span:not(:last-child)::after {
+    content: none;
+  }
+}

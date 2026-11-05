@@ -24,6 +24,12 @@ export type TeamConnection = {
   scopes: string[];
   grant_version: number;
   granted_at: string;
+  /** Delivered by the backend when it joins the partnership (pedido 013); the screen falls back to lookups. */
+  application?: {
+    name: string;
+    organization?: { id: string; name: string; logo_url: string | null } | null;
+    logo_url?: string | null;
+  } | null;
 };
 
 export type TeamConnectionPage = {

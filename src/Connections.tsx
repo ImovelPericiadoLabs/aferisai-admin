@@ -8,7 +8,7 @@ import {
 import type { ToastKind } from "./useToast";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { ConnectionsFilter } from "./ConnectionsFilter";
-import { ConnectionsTable } from "./ConnectionsTable";
+import { ConnectionsList } from "./ConnectionsList";
 import { resolveApplication, searchApplications } from "./lookups";
 
 export function Connections({
@@ -221,7 +221,7 @@ export function Connections({
           </p>
         </div>
       ) : (
-        <ConnectionsTable
+        <ConnectionsList
           items={items}
           canRevoke={canRevoke}
           revoking={revokingId !== null}
