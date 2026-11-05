@@ -410,8 +410,9 @@ export const apiPages: DocPage[] = [
           },
           {
             type: "callout",
-            tone: "warning",
-            text: "Não há rota para baixar o documento do registro. Hoje o parceiro acompanha o pedido e recebe os eventos.",
+            tone: "tip",
+            title: "Como baixar o documento do registro",
+            text: "Quando o item é obtido e pago, ele ganha um `analysis_id` em `items[]` (`GET /v1/partner/registry-requests/{id}`). Use esse id nas rotas de [Análise de matrícula](analises-api): `original`, `report.pdf` e `complete.pdf`, com `analysis:read`. Em uma ordem, o campo `analysis_ids` já traz esses ids.",
           },
         ],
       },

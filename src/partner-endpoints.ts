@@ -552,7 +552,10 @@ const REQUEST_RESPONSE: [string, string][] = [
     "formatted_address, route, city, state, postal_code …",
     "Endereço citado no original ou informado; só se preenche quando o original confirma.",
   ],
-  ["items", "Um item por matrícula, com o próprio estado."],
+  [
+    "items",
+    "Um item por matrícula, com o próprio estado e, depois da entrega, o `analysis_id` do documento (baixe pelas rotas de análise).",
+  ],
   [
     "result_complete, attention_count, overall_signal",
     "Andamento e pontos de atenção.",
@@ -818,7 +821,7 @@ export const REGISTRY_ENDPOINTS: Endpoint[] = [
       E401,
       E404,
       E409(
-        "Sem evidência vigente de prévia, ou cotação já aprovada e com PIX iniciado.",
+        "`pricing.registry_preview_required` quando ainda não há prévia confirmada (refaça a prévia); ou cotação já aprovada e com PIX iniciado.",
       ),
       E422,
       E503,
@@ -1074,6 +1077,10 @@ const ORDER_RESPONSE: [string, string][] = [
   [
     "quote",
     "`{ amount_cents, currency, expires_at }`, ou nulo antes da cotação.",
+  ],
+  [
+    "analysis_ids",
+    "Em ordens de registro, as análises dos documentos obtidos: use cada id em `GET /v1/partner/analyses/{id}/original` (ou `report.pdf`, `complete.pdf`). Vazio antes da entrega e em ordens de análise.",
   ],
   [
     "methods",
