@@ -154,7 +154,7 @@ class OAuthStart {
     String verifier = randomBase64Url(48); // 64 caracteres
     session.put("oauth_state", state);
     session.put("oauth_verifier", verifier);
-    return authorizationUrl(clientId, redirectUri, "registry:submit registry:read",
+    return authorizationUrl(clientId, redirectUri, "all",
         state, challengeFor(verifier));
   }
 }`,
@@ -203,7 +203,7 @@ static class OAuthStart
         var (verifier, challenge) = CreatePkce();
         session["oauth_state"] = state;
         session["oauth_verifier"] = verifier;
-        return AuthorizationUrl(clientId, redirectUri, "registry:submit registry:read", state, challenge);
+        return AuthorizationUrl(clientId, redirectUri, "all", state, challenge);
     }
 }`,
       go: `package main
@@ -251,7 +251,7 @@ func startAuthorization(session map[string]string, clientID, redirectURI string)
 	verifier, challenge := createPKCE()
 	session["oauth_state"] = state
 	session["oauth_verifier"] = verifier
-	return authorizationURL(clientID, redirectURI, "registry:submit registry:read", state, challenge)
+	return authorizationURL(clientID, redirectURI, "all", state, challenge)
 }`,
     },
   },

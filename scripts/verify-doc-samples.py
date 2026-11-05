@@ -114,7 +114,7 @@ if not only or "curl" in only:
     rc, out = sh(["bash", "-c", f'CLIENT_ID=cid REDIRECT_URI="https://p.example/cb?a=1&b=2"; {script}'], d)
     r = [x for x in log if x["p"].startswith("/oauth/authorize")]
     q = parse_qs(urlparse(r[0]["p"]).query) if r else {}
-    ok("curl authorize: 7 params, scope space-separated", r and q.get("response_type") == ["code"] and q.get("scope") == ["registry:submit registry:read"] and q.get("code_challenge_method") == ["S256"] and q.get("redirect_uri") == ["https://p.example/cb?a=1&b=2"] and len(q["state"][0]) >= 16 and len(q["code_challenge"][0]) == 43, q)
+    ok("curl authorize: 7 params, scope space-separated", r and q.get("response_type") == ["code"] and q.get("scope") == ["all"] and q.get("code_challenge_method") == ["S256"] and q.get("redirect_uri") == ["https://p.example/cb?a=1&b=2"] and len(q["state"][0]) >= 16 and len(q["code_challenge"][0]) == 43, q)
     log.clear()
     rc, out = sh(["bash", "-c", f'CLIENT_ID=cid CLIENT_SECRET=sec CODE="the code" REDIRECT_URI="https://p.example/cb?a=1&b=2" VERIFIER=ver-ifier; {sub(S["oauth-token"]["curl"])}'], d)
     t = [x for x in log if x["p"] == "/oauth/token"]; f = parse_qs(t[0]["b"]) if t else {}
@@ -143,7 +143,7 @@ const url = new URL(startAuthorization(session, "cid", "https://p.example/cb?a=1
 const q = url.searchParams;
 ok("pkce: challenge = base64url(sha256(verifier))", q.get("code_challenge") === createHash("sha256").update(session.oauth.verifier).digest("base64url"));
 ok("pkce: lengths 64/43", session.oauth.verifier.length === 64 && q.get("code_challenge").length === 43);
-ok("authorize: params", q.get("response_type") === "code" && q.get("scope") === "registry:submit registry:read" && q.get("code_challenge_method") === "S256" && q.get("redirect_uri") === "https://p.example/cb?a=1&b=2" && q.get("state") === session.oauth.state && q.get("state").length >= 16 && url.pathname === "/oauth/authorize");
+ok("authorize: params", q.get("response_type") === "code" && q.get("scope") === "all" && q.get("code_challenge_method") === "S256" && q.get("redirect_uri") === "https://p.example/cb?a=1&b=2" && q.get("state") === session.oauth.state && q.get("state").length >= 16 && url.pathname === "/oauth/authorize");
 ok("pkce: verifier alphabet", /^[A-Za-z0-9_-]+$/.test(createPkce().verifier));
 const token = await exchangeCode({ clientId: "cid", clientSecret: "sec", code: "the code", redirectUri: "https://p.example/cb?a=1&b=2", verifier: "ver-ifier" });
 ok("token: parsed", token.access_token === "tok" && token.expires_in === 900);
@@ -180,7 +180,7 @@ q = {k: v[0] for k, v in parse_qs(urlparse(url).query).items()}
 exp = base64.urlsafe_b64encode(hashlib.sha256(session["oauth"]["verifier"].encode()).digest()).rstrip(b"=").decode()
 ok("pkce: challenge = base64url(sha256(verifier))", q["code_challenge"] == exp)
 ok("pkce: lengths 64/43", len(session["oauth"]["verifier"]) == 64 and len(q["code_challenge"]) == 43)
-ok("authorize: params", q["response_type"] == "code" and q["scope"] == "registry:submit registry:read" and q["redirect_uri"] == "https://p.example/cb?a=1&b=2" and q["state"] == session["oauth"]["state"] and len(q["state"]) >= 16 and "scope=registry%%3Asubmit%%20registry%%3Aread" in url)
+ok("authorize: params", q["response_type"] == "code" and q["scope"] == "all" and q["redirect_uri"] == "https://p.example/cb?a=1&b=2" and q["state"] == session["oauth"]["state"] and len(q["state"]) >= 16 and "scope=all" in url)
 ok("pkce: verifier alphabet", re.fullmatch(r"[A-Za-z0-9_-]+", a.create_pkce()[0]) is not None)
 tok = t.exchange_code("cid", "sec", "the code", "https://p.example/cb?a=1&b=2", "ver-ifier")
 ok("token: parsed", tok["access_token"] == "tok" and tok["expires_in"] == 900)
@@ -219,7 +219,7 @@ func main() {
 	sum := sha256.Sum256([]byte(session["oauth_verifier"]))
 	ok("pkce: challenge = base64url(sha256(verifier))", q.Get("code_challenge") == base64.RawURLEncoding.EncodeToString(sum[:]))
 	ok("pkce: lengths 64/43", len(session["oauth_verifier"]) == 64 && len(q.Get("code_challenge")) == 43)
-	ok("authorize: params", q.Get("response_type") == "code" && q.Get("scope") == "registry:submit registry:read" && q.Get("redirect_uri") == "https://p.example/cb?a=1&b=2" && q.Get("state") == session["oauth_state"] && len(q.Get("state")) >= 16 && u.Path == "/oauth/authorize")
+	ok("authorize: params", q.Get("response_type") == "code" && q.Get("scope") == "all" && q.Get("redirect_uri") == "https://p.example/cb?a=1&b=2" && q.Get("state") == session["oauth_state"] && len(q.Get("state")) >= 16 && u.Path == "/oauth/authorize")
 	v, _ := createPKCE()
 	ok("pkce: verifier alphabet", regexp.MustCompile(`^[A-Za-z0-9_-]+$`).MatchString(v))
 }
@@ -293,7 +293,7 @@ class Check {
     for (String pair : uri.getRawQuery().split("&")) { String[] kv = pair.split("=", 2); q.put(kv[0], java.net.URLDecoder.decode(kv[1], "UTF-8")); }
     ok("pkce: challenge = base64url(sha256(verifier))", q.get("code_challenge").equals(OAuthStart.challengeFor(session.get("oauth_verifier"))));
     ok("pkce: lengths 64/43", session.get("oauth_verifier").length() == 64 && q.get("code_challenge").length() == 43);
-    ok("authorize: params", q.get("response_type").equals("code") && q.get("scope").equals("registry:submit registry:read") && q.get("redirect_uri").equals("https://p.example/cb?a=1&b=2") && q.get("state").equals(session.get("oauth_state")) && q.get("state").length() >= 16 && uri.getPath().equals("/oauth/authorize") && uri.getRawQuery().contains("scope=registry%%3Asubmit%%20registry%%3Aread"));
+    ok("authorize: params", q.get("response_type").equals("code") && q.get("scope").equals("all") && q.get("redirect_uri").equals("https://p.example/cb?a=1&b=2") && q.get("state").equals(session.get("oauth_state")) && q.get("state").length() >= 16 && uri.getPath().equals("/oauth/authorize") && uri.getRawQuery().contains("scope=all"));
     ok("pkce: verifier alphabet", Pattern.matches("[A-Za-z0-9_-]+", OAuthStart.randomBase64Url(48)));
     String tok = OAuthToken.exchangeCode("cid", "sec", "the code", "https://p.example/cb?a=1&b=2", "ver-ifier");
     ok("token: parsed", tok.contains("\"access_token\": \"tok\"") || tok.contains("\"access_token\":\"tok\""));
@@ -335,7 +335,7 @@ var q = uri.Query.TrimStart('?').Split('&').Select(p => p.Split('=', 2)).ToDicti
 var (_, expectedChallenge) = (session["oauth_verifier"], Convert.ToBase64String(SHA256.HashData(Encoding.ASCII.GetBytes(session["oauth_verifier"]))).TrimEnd('=').Replace('+', '-').Replace('/', '_'));
 Ok("pkce: challenge = base64url(sha256(verifier))", q["code_challenge"] == expectedChallenge);
 Ok("pkce: lengths 64/43", session["oauth_verifier"].Length == 64 && q["code_challenge"].Length == 43);
-Ok("authorize: params", q["response_type"] == "code" && q["scope"] == "registry:submit registry:read" && q["redirect_uri"] == "https://p.example/cb?a=1&b=2" && q["state"] == session["oauth_state"] && q["state"].Length >= 16 && uri.AbsolutePath == "/oauth/authorize" && uri.Query.Contains("scope=registry%%3Asubmit%%20registry%%3Aread"));
+Ok("authorize: params", q["response_type"] == "code" && q["scope"] == "all" && q["redirect_uri"] == "https://p.example/cb?a=1&b=2" && q["state"] == session["oauth_state"] && q["state"].Length >= 16 && uri.AbsolutePath == "/oauth/authorize" && uri.Query.Contains("scope=all"));
 Ok("pkce: verifier alphabet", Regex.IsMatch(OAuthStart.CreatePkce().Verifier, "^[A-Za-z0-9_-]+$"));
 var tok = await OAuthToken.ExchangeCodeAsync("cid", "sec", "the code", "https://p.example/cb?a=1&b=2", "ver-ifier");
 Ok("token: parsed", tok.GetProperty("access_token").GetString() == "tok" && tok.GetProperty("expires_in").GetInt32() == 900);
