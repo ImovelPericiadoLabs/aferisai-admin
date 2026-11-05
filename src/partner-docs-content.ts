@@ -601,43 +601,386 @@ export const partnerDocs: DocsSite = {
       ],
     },
     {
-      id: "pagamento",
+      id: "referencia-api",
       group: "integracao",
-      title: "Cotação e pagamento",
-      summary: "Use a cotação simplificada e escolha PIX ou créditos.",
-      scopes: ["analysis:pay", "registry:pay", "payment:credits"],
+      title: "Referência de endpoints",
+      summary: "Todas as rotas públicas de parceiro, com método e escopo.",
       sections: [
         {
-          id: "cotacao-simplificada",
-          title: "Cotação simplificada",
+          id: "como-ler",
+          title: "Como ler esta tabela",
           blocks: [
             {
               type: "p",
-              text: "O parceiro opera uma cotação simplificada: envie a operação, consulte o preço e os meios disponíveis e só então pague. Prévia, cotação e opções de certidão são etapas internas e não precisam ser orquestradas pelo integrador. Para PIX, conceda `analysis:pay` ou `registry:pay`; para debitar saldo confirmado, conceda `payment:credits`.",
-            },
-            {
-              type: "code",
-              language: "http",
-              code: "POST /v1/partner/orders\nGET  /v1/partner/orders/<ORDER_ID>\nPOST /v1/partner/orders/<ORDER_ID>/payment",
+              text: "Todas as rotas ficam sob `/v1/partner` e exigem `Authorization: Bearer` com o token delegado obtido por [OAuth e PKCE](oauth). Cada rota pede um escopo próprio; a API só enxerga recursos que a sua aplicação iniciou para o titular conectado. Qualquer outro recurso responde `404`.",
             },
             {
               type: "callout",
               tone: "note",
-              text: "O endpoint de pagamento deriva valor e vencimento da cotação e não aceita valor escolhido pelo parceiro.",
+              text: "A fachada simplificada `/v1/partner/orders` ainda não está publicada. Hoje o fluxo é: enviar, cotar, pagar (PIX ou créditos) e consultar, pelas rotas abaixo.",
             },
           ],
         },
         {
-          id: "pagamentos-delegados",
-          title: "Pagamentos delegados",
+          id: "analises-tabela",
+          title: "Análise de matrícula em arquivo",
+          blocks: [
+            {
+              type: "table",
+              caption: "Rotas de análise",
+              columns: ["Método e rota", "Escopo", "Para quê"],
+              rows: [
+                [
+                  "`POST /v1/partner/analyses`",
+                  "`analysis:submit:upload`",
+                  "Enviar PDF, PNG ou JPEG (corpo binário, até 200 MB).",
+                ],
+                [
+                  "`GET /v1/partner/analyses`",
+                  "`analysis:read`",
+                  "Listar as análises criadas pela aplicação.",
+                ],
+                [
+                  "`GET /v1/partner/analyses/{id}`",
+                  "`analysis:read`",
+                  "Ver estado e disponibilidade.",
+                ],
+                [
+                  "`GET /v1/partner/analyses/{id}/certificate-options`",
+                  "`analysis:quote`",
+                  "Ver certidões opcionais disponíveis.",
+                ],
+                [
+                  "`POST /v1/partner/analyses/{id}/quotes`",
+                  "`analysis:quote`",
+                  "Aprovar o preço (e certidões opcionais).",
+                ],
+                [
+                  "`GET /v1/partner/analyses/{id}/quotes`",
+                  "`analysis:quote`",
+                  "Reler a cotação aprovada.",
+                ],
+                [
+                  "`POST /v1/partner/analyses/{id}/pix`",
+                  "`analysis:pay`",
+                  "Gerar o PIX da cotação.",
+                ],
+                [
+                  "`GET /v1/partner/analyses/{id}/pix`",
+                  "`payment:read`",
+                  "Consultar o PIX criado.",
+                ],
+                [
+                  "`POST /v1/partner/analyses/{id}/credits`",
+                  "`payment:credits`",
+                  "Pagar com créditos.",
+                ],
+                [
+                  "`GET /v1/partner/analyses/{id}/result`",
+                  "`analysis:read`",
+                  "Ler as menções factuais do resultado.",
+                ],
+                [
+                  "`GET /v1/partner/analyses/{id}/report.pdf`",
+                  "`analysis:read`",
+                  "Baixar o relatório em PDF.",
+                ],
+                [
+                  "`GET /v1/partner/analyses/{id}/complete.pdf`",
+                  "`analysis:read`",
+                  "Baixar o dossiê completo em PDF.",
+                ],
+                [
+                  "`GET /v1/partner/analyses/{id}/original`",
+                  "`analysis:read`",
+                  "Baixar o arquivo original.",
+                ],
+                [
+                  "`GET /v1/partner/analyses/{id}/certificates`",
+                  "`analysis:read`",
+                  "Listar as certidões compradas.",
+                ],
+                [
+                  "`GET /v1/partner/analyses/{id}/certificates/{task_id}/document`",
+                  "`analysis:read`",
+                  "Baixar o PDF de uma certidão.",
+                ],
+              ],
+            },
+          ],
+        },
+        {
+          id: "registro-tabela",
+          title: "Pedido de registro",
+          blocks: [
+            {
+              type: "table",
+              caption: "Rotas de pedido registral",
+              columns: ["Método e rota", "Escopo", "Para quê"],
+              rows: [
+                [
+                  "`POST /v1/partner/registry-requests/number`",
+                  "`registry:submit`",
+                  "Pedir por matrícula ou CNM.",
+                ],
+                [
+                  "`POST /v1/partner/registry-requests/address`",
+                  "`registry:submit`",
+                  "Pedir por endereço confirmado.",
+                ],
+                [
+                  "`GET /v1/partner/registry-requests`",
+                  "`registry:read`",
+                  "Listar pedidos (paginação por `next_cursor`).",
+                ],
+                [
+                  "`GET /v1/partner/registry-requests/{id}`",
+                  "`registry:read`",
+                  "Consultar um pedido.",
+                ],
+                [
+                  "`POST /v1/partner/registry-requests/{id}/preview`",
+                  "`registry:preview`",
+                  "Consultar o custo (uma única prévia).",
+                ],
+                [
+                  "`GET /v1/partner/registry-requests/{id}/certificate-options`",
+                  "`certificate:read`",
+                  "Ver certidões opcionais.",
+                ],
+                [
+                  "`POST /v1/partner/registry-requests/{id}/quote`",
+                  "`registry:quote`",
+                  "Aprovar a cotação.",
+                ],
+                [
+                  "`GET /v1/partner/registry-requests/{id}/quote`",
+                  "`registry:quote`",
+                  "Reler a cotação.",
+                ],
+                [
+                  "`POST /v1/partner/registry-requests/{id}/pix`",
+                  "`registry:pay`",
+                  "Gerar o PIX da cotação.",
+                ],
+                [
+                  "`GET /v1/partner/registry-requests/{id}/pix`",
+                  "`payment:read`",
+                  "Consultar o PIX criado.",
+                ],
+                [
+                  "`POST /v1/partner/registry-requests/{id}/credits`",
+                  "`payment:credits`",
+                  "Pagar com créditos e despachar.",
+                ],
+              ],
+            },
+          ],
+        },
+      ],
+    },
+    {
+      id: "analises-api",
+      group: "integracao",
+      title: "Análise de matrícula",
+      summary: "Envie o arquivo, cote, pague e leia o resultado.",
+      scopes: [
+        "analysis:submit:upload",
+        "analysis:quote",
+        "analysis:pay",
+        "analysis:read",
+      ],
+      sections: [
+        {
+          id: "enviar-arquivo",
+          title: "1. Enviar o arquivo",
           blocks: [
             {
               type: "p",
-              text: "PIX e créditos são pagamentos delegados em nome do titular conectado. O campo `payer` é opcional no PIX: informe nome e CPF/CNPJ quando necessário; se o perfil cifrado já existir com os mesmos dados, ele é reutilizado. Uma identidade diferente não substitui o perfil silenciosamente.",
+              text: "Envie o PDF, PNG ou JPEG como **corpo binário único** (até 200 MB), com `Content-Type` do arquivo e um `Idempotency-Key` UUIDv7. A resposta cria uma solicitação aguardando cotação. Uma repetição idêntica pela mesma conexão redireciona (`303`) para o estado atual; a mesma chave em outra origem responde `409`.",
+            },
+            {
+              type: "code",
+              language: "shell",
+              label: "cURL",
+              code: 'curl --request POST "$API_URL/v1/partner/analyses" \\\n  --header "Authorization: Bearer $ACCESS_TOKEN" \\\n  --header "Idempotency-Key: $(uuidgen)" \\\n  --header "Content-Type: application/pdf" \\\n  --data-binary @matricula.pdf',
+            },
+          ],
+        },
+        {
+          id: "cotar-analise",
+          title: "2. Cotar",
+          blocks: [
+            {
+              type: "p",
+              text: "Antes de cotar, `GET …/certificate-options` mostra as certidões opcionais disponíveis. O `POST …/quotes` aprova o preço de arquivos de até três páginas. O corpo é opcional: `promotion_code` e `certificate_selections` (um item por tipo, no máximo 9). Cotar não cria PIX, não debita créditos e não compra nada.",
+            },
+            {
+              type: "code",
+              language: "shell",
+              label: "cURL",
+              code: 'curl --request POST "$API_URL/v1/partner/analyses/$ANALYSIS_ID/quotes" \\\n  --header "Authorization: Bearer $ACCESS_TOKEN" \\\n  --header "Content-Type: application/json" \\\n  --data \'{"certificate_selections": []}\'',
+            },
+          ],
+        },
+        {
+          id: "pagar-analise",
+          title: "3. Pagar",
+          blocks: [
+            {
+              type: "p",
+              text: "Pague a cotação aprovada por PIX ou créditos. Veja os corpos em [Pagamento](pagamento).",
+            },
+          ],
+        },
+        {
+          id: "ler-resultado",
+          title: "4. Ler o resultado",
+          blocks: [
+            {
+              type: "p",
+              text: "`GET …/{id}` devolve só estado e disponibilidade. Depois do pagamento recebido e da conclusão técnica, `…/result` traz as menções factuais preliminares. Os downloads `report.pdf`, `complete.pdf` (relatório, original e certidões, nessa ordem) e `original` exigem `analysis:read`.",
+            },
+            {
+              type: "callout",
+              tone: "warning",
+              text: "O resultado não é laudo jurídico nem prova de regularidade. `client_credentials` não é aceito nestas rotas.",
             },
             {
               type: "p",
-              text: "`payment:credits` debita uma única vez o saldo confirmado e não autoriza PIX, recarga, cartão ou 3DS. Cartão, débito e desafios 3DS continuam somente no checkout da plataforma AferisAI.",
+              text: "`GET …/certificates` lista as certidões compradas e `unavailable_kinds` mostra tipos sem titular identificado; `…/certificates/{task_id}/document` baixa o PDF validado.",
+            },
+          ],
+        },
+      ],
+    },
+    {
+      id: "registro-api",
+      group: "integracao",
+      title: "Pedido de registro: cotar",
+      summary: "Prévia de custo, certidões e cotação do pedido.",
+      scopes: ["registry:preview", "certificate:read", "registry:quote"],
+      sections: [
+        {
+          id: "criar-pedido",
+          title: "Criar por matrícula ou endereço",
+          blocks: [
+            {
+              type: "p",
+              text: "`POST …/number` recebe `product` (`visualizacao`, `inteiro_teor_simples` ou `inteiro_teor`), `office_id` (UUIDv7 do cartório) e `registration_numbers` (1 a 100, sem duplicatas). Visualização aceita só matrícula local; CNM exige um produto de inteiro teor. `address_context` é opcional e só serve para exibição.",
+            },
+            {
+              type: "p",
+              text: "`POST …/address` recebe `office_id`, `product` e `address` (`line` e as respostas explícitas do formulário, como `without_number` e `registration_unknown`). Nada disso consulta fornecedor, cota ou cobra. Ambos exigem `Idempotency-Key`.",
+            },
+          ],
+        },
+        {
+          id: "previa-e-cotacao",
+          title: "Prévia, certidões e cotação",
+          blocks: [
+            {
+              type: "steps",
+              items: [
+                {
+                  title: "Prévia de custo",
+                  text: "`POST …/{id}/preview` consulta o custo uma única vez. Se o resultado for incerto, não repita: o caso vai para conciliação.",
+                },
+                {
+                  title: "Certidões opcionais",
+                  text: "`GET …/{id}/certificate-options` lista a disponibilidade atual. Uma opção disponível ainda é revalidada na cotação.",
+                },
+                {
+                  title: "Cotação",
+                  text: "`POST …/{id}/quote` aprova o preço e exige prévia confirmada. Corpo opcional: `promotion_code` e `certificate_selections` (uma escolha por matrícula). Sem evidência vigente responde `409`.",
+                },
+              ],
+            },
+            {
+              type: "callout",
+              tone: "note",
+              text: "Cotação expirada continua visível em `GET …/{id}/quote`, mas não pode ser paga.",
+            },
+          ],
+        },
+      ],
+    },
+    {
+      id: "pagamento",
+      group: "integracao",
+      title: "Pagamento: PIX e créditos",
+      summary: "Gere o PIX, use créditos e consulte a cobrança.",
+      scopes: [
+        "analysis:pay",
+        "registry:pay",
+        "payment:credits",
+        "payment:read",
+      ],
+      sections: [
+        {
+          id: "regras",
+          title: "Regras do pagamento delegado",
+          blocks: [
+            {
+              type: "list",
+              items: [
+                "O valor e o vencimento vêm sempre da cotação aprovada; o parceiro não escolhe nenhum dos dois.",
+                "PIX e créditos são pagos em nome do titular conectado.",
+                "`payment:credits` debita uma única vez o saldo confirmado e não autoriza PIX, recarga, cartão ou 3DS.",
+                "Cartão, débito e desafios 3DS ficam somente no checkout da plataforma AferisAI.",
+                "Resultado externo incerto não gera novo POST: consulte pelo GET.",
+              ],
+            },
+          ],
+        },
+        {
+          id: "corpo-juridico",
+          title: "Confirmação jurídica no corpo",
+          blocks: [
+            {
+              type: "p",
+              text: "Todo POST de pagamento leva a confirmação do que o titular leu: `legal_policy_version` e, em `documents`, uma entrada por documento (`politica-de-privacidade`, `termos-de-servico`, `politica-de-cancelamento-e-reembolso`, `exclusao-de-dados` e `aviso-de-cookies`) com `version` e o `sha256` do texto exibido.",
+            },
+            {
+              type: "code",
+              language: "json",
+              code: '{\n  "legal_policy_version": "2.0",\n  "documents": {\n    "termos-de-servico": { "version": "2.1", "sha256": "<64 hex minúsculos>" }\n  },\n  "payer": { "name": "Maria Souza", "document": "12345678901" }\n}',
+            },
+          ],
+        },
+        {
+          id: "pix",
+          title: "Gerar o PIX",
+          blocks: [
+            {
+              type: "p",
+              text: "`POST /v1/partner/analyses/{id}/pix` (`analysis:pay`) e `POST /v1/partner/registry-requests/{id}/pix` (`registry:pay`) criam ou recuperam o PIX. `payer` (nome e CPF/CNPJ) é opcional: se o perfil cifrado já existir com os mesmos dados, ele é reutilizado, e uma identidade diferente não o substitui em silêncio.",
+            },
+            {
+              type: "p",
+              text: "A resposta traz `intent_id`, `amount_cents`, `due_date`, `pix_payload` (copia e cola), `qr_image_base64` e `qr_expires_at`. Para acompanhar, use `GET` na mesma rota, com `payment:read`, ou o webhook `payment.confirmed`.",
+            },
+            {
+              type: "code",
+              language: "shell",
+              label: "cURL",
+              code: 'curl --request POST "$API_URL/v1/partner/registry-requests/$OPERATION_ID/pix" \\\n  --header "Authorization: Bearer $ACCESS_TOKEN" \\\n  --header "Content-Type: application/json" \\\n  --data @pagamento.json',
+            },
+          ],
+        },
+        {
+          id: "creditos",
+          title: "Usar créditos",
+          blocks: [
+            {
+              type: "p",
+              text: "`POST /v1/partner/analyses/{id}/credits` e `POST /v1/partner/registry-requests/{id}/credits` exigem `payment:credits`. O corpo é só a confirmação jurídica, sem `payer` e sem valor. A repetição idêntica devolve o mesmo débito; no pedido registral o débito também despacha o pedido.",
+            },
+            {
+              type: "code",
+              language: "shell",
+              label: "cURL",
+              code: 'curl --request POST "$API_URL/v1/partner/analyses/$ANALYSIS_ID/credits" \\\n  --header "Authorization: Bearer $ACCESS_TOKEN" \\\n  --header "Content-Type: application/json" \\\n  --data @confirmacao-juridica.json',
             },
           ],
         },
