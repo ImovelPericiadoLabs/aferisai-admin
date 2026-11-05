@@ -56,11 +56,11 @@ describe("partner documentation content", () => {
         );
   });
 
-  it("documents the 19 delegated scopes the backend defines", () => {
+  it("documents the 20 delegated scopes the backend defines", () => {
     const scopes = ofType("table").find(
       (table) => table.caption === "Escopos delegados",
     );
-    expect(scopes?.rows.length).toBe(19);
+    expect(scopes?.rows.length).toBe(20);
     expect(scopes?.rows.map((row) => row[0])).toContain("`registry:submit`");
   });
 
