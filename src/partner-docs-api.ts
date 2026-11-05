@@ -2,6 +2,7 @@ import { endpointRows, endpointSection } from "./api-reference";
 import type { DocPage } from "./docs-model";
 import {
   ANALYSIS_ENDPOINTS,
+  ORDER_ENDPOINTS,
   PAYMENT_SUPPORT_ENDPOINTS,
   REGISTRY_ENDPOINTS,
 } from "./partner-endpoints";
@@ -103,7 +104,12 @@ export const EVENT_ROWS: string[][] = [
   ],
 ];
 
-const MAP = `① CONECTAR
+const ORDER_FLOW = `POST /v1/partner/orders  ──► cria + consulta o custo + cota\n        │\n        ▼\nGET  /v1/partner/orders/{id}   state / next_action / quote / methods\n        │\n        ├─ next_action = pay ──► POST /v1/partner/orders/{id}/payment\n        │                          method: pix | credits, accepted: true\n        ├─ next_action = wait ──► consulte de novo ou espere o webhook\n        └─ next_action = download ► rotas de download da análise`;
+
+const MAP = `ATALHO  POST /v1/partner/orders → GET /v1/partner/orders/{id} → POST …/payment
+        (junta ②, ③ e ④; veja "Ordens: o caminho simples")
+
+① CONECTAR
    GET  /oauth/authorize        (PKCE S256)  → titular aprova → 303 com code
    POST /oauth/token                          → Bearer de 15 min, sem refresh
 
@@ -187,6 +193,72 @@ export const apiPages: DocPage[] = [
     ],
   },
   {
+    id: "ordens-api",
+    group: "integracao",
+    title: "Ordens: o caminho simples",
+    summary: "Crie, consulte e pague com três chamadas.",
+    scopes: [
+      "registry:submit",
+      "registry:preview",
+      "registry:quote",
+      "registry:read",
+      "registry:pay",
+      "payment:credits",
+    ],
+    sections: [
+      {
+        id: "visao",
+        title: "O caminho simples",
+        blocks: [
+          {
+            type: "p",
+            text: "A ordem junta criar, consultar o custo e cotar em uma chamada, e o pagamento em outra. O `id` da ordem é o `operation_id` (registro) ou o `analysis_id` (análise). As rotas detalhadas continuam disponíveis para quem quer controlar cada passo.",
+          },
+          { type: "code", language: "text", label: "Fluxo", code: ORDER_FLOW },
+          {
+            type: "table",
+            caption: "Estados da ordem",
+            columns: ["Estado", "O que significa", "next_action"],
+            rows: [
+              [
+                "`awaiting_quote`",
+                "Criada; a cotação ainda não saiu.",
+                "`quote`",
+              ],
+              [
+                "`awaiting_payment`",
+                "Cotada; aguardando o pagamento.",
+                "`pay`",
+              ],
+              ["`paid`", "Pago; o pedido ainda não foi despachado.", "`wait`"],
+              [
+                "`processing`",
+                "Em andamento no fornecedor ou na análise.",
+                "`wait`",
+              ],
+              [
+                "`delivered`",
+                "Pronta: baixe o documento ou o resultado.",
+                "`download`",
+              ],
+              [
+                "`failed`",
+                "Não será entregue (indisponível, expirada ou falha).",
+                "`none`",
+              ],
+            ],
+          },
+          {
+            type: "callout",
+            tone: "note",
+            text: "A ordem exige todos os escopos dos passos que executa: nunca dá mais poder do que as rotas detalhadas.",
+          },
+        ],
+      },
+      ...ORDER_ENDPOINTS.map(endpointSection),
+    ],
+  },
+  {
     id: "referencia-api",
     group: "integracao",
     title: "Referência de endpoints",
@@ -199,6 +271,18 @@ export const apiPages: DocPage[] = [
           {
             type: "p",
             text: "Todas as rotas `/v1/partner` exigem `Authorization: Bearer` com o token delegado de [OAuth e PKCE](oauth). Cada página de uso (Análise, Registro, Pagamento) detalha corpo, resposta, erros e exemplos de cada rota.",
+          },
+        ],
+      },
+      {
+        id: "tabela-ordens",
+        title: "Ordens (caminho simples)",
+        blocks: [
+          {
+            type: "table",
+            caption: "Rotas de ordem",
+            columns: ["Rota", "Escopo", "Para quê"],
+            rows: endpointRows(ORDER_ENDPOINTS),
           },
         ],
       },

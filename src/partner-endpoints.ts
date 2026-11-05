@@ -1057,7 +1057,189 @@ export const PAYMENT_SUPPORT_ENDPOINTS: Endpoint[] = [
   },
 ];
 
+const ORDER_RESPONSE: [string, string][] = [
+  [
+    "id",
+    "`operation_id` (registro) ou `analysis_id` (análise): não existe id novo.",
+  ],
+  ["kind", "`registry` ou `analysis`."],
+  [
+    "state",
+    "`awaiting_quote`, `awaiting_payment`, `paid`, `processing`, `delivered` ou `failed`.",
+  ],
+  [
+    "next_action",
+    "O que fazer agora: `quote` (a cotação ainda não saiu), `pay`, `wait`, `download` ou `none`.",
+  ],
+  [
+    "quote",
+    "`{ amount_cents, currency, expires_at }`, ou nulo antes da cotação.",
+  ],
+  [
+    "methods",
+    "Meios que este token pode usar agora (`pix` e/ou `credits`); só vem preenchido em `awaiting_payment`.",
+  ],
+];
+
+export const ORDER_ENDPOINTS: Endpoint[] = [
+  {
+    method: "POST",
+    path: "/v1/partner/orders",
+    title: "Criar a ordem",
+    scope: "registry:submit + registry:preview + registry:quote",
+    purpose:
+      "Cria a ordem, consulta o custo e cota, em uma chamada. Para `source` = `analysis` (arquivo já enviado) o escopo é `analysis:quote`. Não paga nem cobra.",
+    headers: [AUTH, KEY, JSON_TYPE],
+    body: {
+      caption: "Corpo",
+      fields: [
+        [
+          "source",
+          "texto",
+          "sim",
+          "`number` (matrícula ou CNM), `address` (endereço) ou `analysis` (arquivo enviado em `POST /v1/partner/analyses`).",
+        ],
+        [
+          "product",
+          "texto",
+          "number: sim",
+          "`visualizacao`, `inteiro_teor_simples` ou `inteiro_teor`. Em `address` é opcional.",
+        ],
+        [
+          "office_id",
+          "UUIDv7",
+          "number e address",
+          "Cartório de `GET /v1/registry-offices`.",
+        ],
+        [
+          "registration_numbers",
+          "lista",
+          "number",
+          "De 1 a 100 matrículas ou CNMs do mesmo cartório.",
+        ],
+        [
+          "address_context",
+          "objeto",
+          "não",
+          "Só em `number`: endereço informado, para exibição.",
+        ],
+        [
+          "address",
+          "objeto",
+          "address",
+          "Endereço confirmado e respostas `without_*`, como em [Como solicitar](solicitar).",
+        ],
+        [
+          "analysis_id",
+          "UUIDv7",
+          "analysis",
+          "Solicitação criada em `POST /v1/partner/analyses`.",
+        ],
+      ],
+    },
+    response: {
+      status: "201",
+      text: "A ordem, com `Location` para o GET.",
+      fields: ORDER_RESPONSE,
+    },
+    errors: [
+      E401,
+      E404,
+      E409(
+        "A chave foi usada com outro conteúdo, ou o passo não é permitido neste estado.",
+      ),
+      E422,
+      E503,
+    ],
+    notes: [
+      "Criar, consultar o custo e cotar rodam em transações separadas: se a prévia ou a cotação falhar, a ordem continua criada e `state` e `next_action` dizem o que fazer.",
+      "Repita com a mesma `Idempotency-Key` para recuperar a mesma ordem.",
+      "Depois de timeout, reconcilie sempre por `GET /v1/partner/orders/{id}`.",
+    ],
+    events: ["registry.created", "registry.quote.created"],
+    example: {
+      label: "cURL",
+      language: "shell",
+      code: 'curl --request POST "$API_URL/v1/partner/orders" \\\n  --header "Authorization: Bearer $ACCESS_TOKEN" \\\n  --header "Idempotency-Key: $(uuidgen)" \\\n  --header "Content-Type: application/json" \\\n  --data \'{"source":"number","product":"inteiro_teor_simples","office_id":"<OFFICE_ID>","registration_numbers":["12345"]}\'',
+    },
+  },
+  {
+    method: "GET",
+    path: "/v1/partner/orders/{order_id}",
+    title: "Consultar a ordem",
+    scope: "registry:read + registry:quote",
+    purpose:
+      "Mostra o estado, a cotação e os meios de pagamento. Para ordens de análise o escopo é `analysis:read` + `analysis:quote`.",
+    headers: [AUTH],
+    response: { status: "200", text: "A ordem.", fields: ORDER_RESPONSE },
+    errors: [E401, E404, E422, E503],
+    notes: [
+      "É a reconciliação depois de qualquer timeout ou resposta incerta.",
+    ],
+  },
+  {
+    method: "POST",
+    path: "/v1/partner/orders/{order_id}/payment",
+    title: "Pagar a ordem",
+    scope: "registry:pay ou payment:credits",
+    purpose:
+      "Paga a cotação vigente por PIX (`registry:pay`, ou `analysis:pay` em análise) ou por créditos (`payment:credits`). O valor vem da cotação.",
+    headers: [AUTH, JSON_TYPE],
+    body: {
+      caption: "Corpo",
+      fields: [
+        ["method", "texto", "sim", "`pix` ou `credits`."],
+        [
+          "accepted",
+          "booleano",
+          "sim",
+          "`true` confirma os documentos de `GET /v1/legal/catalog`; o backend copia as versões e hashes vigentes.",
+        ],
+        [
+          "payer",
+          "objeto",
+          "não",
+          "Só com `pix`: `{ name, document }`, reutilizado se já existir. Com `credits` responde `422`.",
+        ],
+      ],
+    },
+    response: {
+      status: "200",
+      text: "O pagamento e a ordem atualizada.",
+      fields: [
+        [
+          "status",
+          "`payment_created` (PIX gerado) ou `paid` (créditos debitados).",
+        ],
+        [
+          "pix",
+          "A cobrança PIX, quando `method` é `pix` (campos de [Pagamento](pagamento)).",
+        ],
+        [
+          "credits",
+          "O débito, com `balance_cents`, quando `method` é `credits`.",
+        ],
+        ["order", "A ordem no estado atual."],
+      ],
+    },
+    errors: [
+      E401,
+      E404,
+      E409(
+        "Cotação ausente ou expirada, saldo insuficiente, pagador diferente do cadastrado ou resultado incerto.",
+      ),
+      E422,
+      E503,
+    ],
+    notes: [
+      "Resultado incerto não deve ser repetido: consulte `GET /v1/partner/orders/{id}`.",
+    ],
+    events: ["payment.created", "payment.confirmed", "payment.failed"],
+  },
+];
+
 export const PARTNER_ENDPOINTS: Endpoint[] = [
+  ...ORDER_ENDPOINTS,
   ...ANALYSIS_ENDPOINTS,
   ...REGISTRY_ENDPOINTS,
   ...PAYMENT_SUPPORT_ENDPOINTS,
