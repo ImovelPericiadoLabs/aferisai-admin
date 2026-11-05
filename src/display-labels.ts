@@ -89,7 +89,7 @@ const scopeLabels: Record<string, string> = {
   "application:read": "Consultar integração",
   "analysis:read": "Consultar análises",
   "analysis:submit:upload": "Enviar matrícula para análise",
-  "analysis:quote": "Consultar cotação de análise",
+  "analysis:quote": "Consultar preço de arquivo",
   "analysis:pay": "Pagar análise por PIX",
   "analysis:create": "Solicitar análises",
   "analysis:write": "Gerenciar análises",
@@ -102,9 +102,10 @@ const scopeLabels: Record<string, string> = {
   "events:credential": "Receber eventos de credencial",
   "events:commission": "Receber eventos de comissão",
   "payment:read": "Consultar pagamento PIX",
+  "payment:credits": "Pagar com créditos",
   "registry:submit": "Solicitar documento registral",
   "registry:read": "Consultar pedidos registrais",
-  "registry:quote": "Consultar cotação registral",
+  "registry:quote": "Consultar preços registrais",
   "registry:preview": "Consultar prévia registral",
   "certificate:read": "Consultar certidões disponíveis",
   "registry:pay": "Pagar registro por PIX",
@@ -171,10 +172,25 @@ const permissionDescriptions: Record<string, string> = {
   "analysis:read": "Consulta resultados e estado das análises.",
   "analysis:create": "Solicita uma nova análise.",
   "analysis:submit:upload": "Envia arquivos para análise.",
+  "analysis:quote":
+    "Consulta opções e cota arquivos enviados pela aplicação; não cria PIX nem paga automaticamente.",
+  "analysis:pay":
+    "Inicia ou consulta o PIX de uma cotação aprovada; o pagador é opcional e pode ser reutilizado.",
+  "payment:read":
+    "Consulta o estado e o QR pendente de um PIX criado pela aplicação.",
+  "payment:credits":
+    "Debita uma única vez o saldo confirmado da conta conectada; não autoriza PIX, cartão ou recarga.",
   "analysis:write": "Gerencia solicitações de análise.",
   "events:analysis": "Recebe eventos das análises que a aplicação iniciou.",
+  "events:registry": "Recebe eventos de pedidos, prévias e cotações registrais.",
+  "events:payment": "Recebe eventos de criação, confirmação, falha e estorno de pagamentos.",
   "registry:submit": "Solicita um documento registral em nome do titular.",
   "registry:read": "Consulta os pedidos registrais da própria aplicação.",
+  "registry:quote": "Consulta a prévia de custo e cota pedidos registrais da própria aplicação.",
+  "registry:preview": "Executa ou consulta a prévia de custo registral da própria aplicação.",
+  "certificate:read": "Consulta certidões opcionais disponíveis para uma cotação registral.",
+  "registry:pay":
+    "Inicia ou consulta o PIX de uma cotação registral aprovada; o pagador é opcional e pode ser reutilizado.",
   "registry:create": "Solicita uma matrícula ao cartório.",
   "registry:write": "Gerencia pedidos de matrícula.",
 };

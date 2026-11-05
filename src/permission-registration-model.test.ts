@@ -3,28 +3,28 @@ import {
   registrableCodes,
   registrationErrorMessage,
 } from "./permission-registration-model";
+import { permissions } from "./integration-catalog";
 
 describe("registrableCodes", () => {
   it("offers implemented codes that the organization does not have yet", () => {
     const codes = registrableCodes(["application:read", "analysis:read"]).map(
       (item) => item.code,
     );
-    expect(codes).toEqual([
-      "analysis:submit:upload",
-      "registry:submit",
-      "registry:read",
-      "events:analysis",
-    ]);
+    expect(codes).toEqual(
+      permissions
+        .filter((permission) => permission.status === "implemented")
+        .map((permission) => permission.code)
+        .filter((code) => !["application:read", "analysis:read"].includes(code)),
+    );
   });
   it("is empty when everything implemented is already registered", () => {
     expect(
       registrableCodes([
         "application:read",
         "analysis:read",
-        "analysis:submit:upload",
-        "events:analysis",
-        "registry:submit",
-        "registry:read",
+        ...permissions
+          .filter((permission) => permission.status === "implemented")
+          .map((permission) => permission.code),
       ]),
     ).toEqual([]);
   });
