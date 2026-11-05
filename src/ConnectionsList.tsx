@@ -113,14 +113,18 @@ function Connection({
         </div>
       </header>
 
-      <div className="cx-body">
-        <h3>
-          O titular autorizou{" "}
-          <span>
+      <details className="cx-more">
+        <summary>
+          <span className="cx-count">
             {item.scopes.length}{" "}
             {item.scopes.length === 1 ? "permissão" : "permissões"}
           </span>
-        </h3>
+          <span className="cx-summary">
+            {groups
+              .map((group) => `${group.label} ${group.items.length}`)
+              .join(" · ")}
+          </span>
+        </summary>
         <dl className="cx-scopes">
           {groups.map((group) => (
             <div key={group.id} className="cx-group">
@@ -133,11 +137,7 @@ function Connection({
             </div>
           ))}
         </dl>
-      </div>
-
-      <details className="cx-tech">
-        <summary>Identificadores e versão</summary>
-        <dl>
+        <dl className="cx-ids">
           <CopyId label="Conexão" value={item.id} />
           <CopyId label="Titular" value={item.user_id} />
           <CopyId label="Aplicação" value={item.application_id} />

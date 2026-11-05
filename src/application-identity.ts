@@ -114,9 +114,17 @@ export function useApplicationIdentities(items: TeamConnection[]) {
           const profile = await profileOf(id);
           const given = known.get(id);
           const entry = dir.get(id);
-          const logoUrl = await blobOf(
-            profile?.logo_url ?? given?.logo_url ?? entry?.organizationLogo,
-          );
+          // A broken application logo must not hide the organization's: try each in turn.
+          let logoUrl: string | null = null;
+          for (const path of [
+            profile?.logo_url,
+            given?.logo_url,
+            given?.organization?.logo_url,
+            entry?.organizationLogo,
+          ]) {
+            logoUrl = await blobOf(path);
+            if (logoUrl) break;
+          }
           if (!live) return;
           setIdentities((current) =>
             new Map(current).set(id, {
