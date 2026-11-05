@@ -468,7 +468,7 @@ export const partnerDocs: DocsSite = {
           blocks: [
             {
               type: "p",
-              text: "A aba Acessos mostra a matriz de escopos, a descrição de cada permissão e a quantidade concedida. No painel parceiro a consulta é somente leitura: a equipe Aferis concede ou revoga escopos, e o servidor revalida papel, organização, aplicação e consentimento em cada operação.",
+              text: "A aba Acessos mostra os escopos reais da aplicação: análise (leitura, envio, cotação e PIX), registro (envio, leitura, prévia, cotação e PIX), certidões, pagamento (leitura e créditos) e eventos de análise, registro, pagamento, aquisição, certidão, conexão, credencial e comissão. No painel parceiro a consulta é somente leitura; a API revalida organização, aplicação e consentimento em cada operação.",
             },
           ],
         },
@@ -601,6 +601,49 @@ export const partnerDocs: DocsSite = {
       ],
     },
     {
+      id: "pagamento",
+      group: "integracao",
+      title: "Cotação e pagamento",
+      summary: "Use a cotação simplificada e escolha PIX ou créditos.",
+      scopes: ["analysis:pay", "registry:pay", "payment:credits"],
+      sections: [
+        {
+          id: "cotacao-simplificada",
+          title: "Cotação simplificada",
+          blocks: [
+            {
+              type: "p",
+              text: "O parceiro opera uma cotação simplificada: envie a operação, consulte o preço e os meios disponíveis e só então pague. Prévia, cotação e opções de certidão são etapas internas e não precisam ser orquestradas pelo integrador. Para PIX, conceda `analysis:pay` ou `registry:pay`; para debitar saldo confirmado, conceda `payment:credits`.",
+            },
+            {
+              type: "code",
+              language: "http",
+              code: "POST /v1/partner/orders\nGET  /v1/partner/orders/<ORDER_ID>\nPOST /v1/partner/orders/<ORDER_ID>/payment",
+            },
+            {
+              type: "callout",
+              tone: "note",
+              text: "O endpoint de pagamento deriva valor e vencimento da cotação e não aceita valor escolhido pelo parceiro.",
+            },
+          ],
+        },
+        {
+          id: "pagamentos-delegados",
+          title: "Pagamentos delegados",
+          blocks: [
+            {
+              type: "p",
+              text: "PIX e créditos são pagamentos delegados em nome do titular conectado. O campo `payer` é opcional no PIX: informe nome e CPF/CNPJ quando necessário; se o perfil cifrado já existir com os mesmos dados, ele é reutilizado. Uma identidade diferente não substitui o perfil silenciosamente.",
+            },
+            {
+              type: "p",
+              text: "`payment:credits` debita uma única vez o saldo confirmado e não autoriza PIX, recarga, cartão ou 3DS. Cartão, débito e desafios 3DS continuam somente no checkout da plataforma AferisAI.",
+            },
+          ],
+        },
+      ],
+    },
+    {
       id: "webhooks",
       group: "eventos",
       title: "Webhooks",
@@ -613,7 +656,7 @@ export const partnerDocs: DocsSite = {
           blocks: [
             {
               type: "p",
-              text: "Na aba Webhooks, o proprietário ou desenvolvedor cadastra o endpoint HTTPS, escolhe os eventos disponíveis, prepara a rotação da chave, testa a assinatura e ativa, suspende ou remove o destino conforme o fluxo exibido no painel.",
+              text: "Na aba Webhooks, o proprietário ou desenvolvedor cadastra o endpoint HTTPS, escolhe entre os eventos reais de análise, registro, pagamento, aquisição, certidão, conexão, credencial e comissão, prepara a rotação da chave, testa a assinatura e ativa, suspende ou remove o destino conforme o fluxo exibido no painel.",
             },
             {
               type: "callout",
@@ -749,7 +792,7 @@ export const partnerDocs: DocsSite = {
           blocks: [
             {
               type: "p",
-              text: "Entregas lista eventos enviados, estado, status HTTP, duração, endpoint e horário. Use os filtros por estado e tipo, abra o detalhe para investigar a resposta e reconcilie pelo GET da operação quando houver estado local incerto. Reenvie somente quando a ação estiver autorizada e auditada.",
+              text: "Entregas lista eventos enviados, estado, status HTTP, duração, endpoint e horário. Os eventos de saída incluem `analysis.created/completed/failed/review_required`, `registry.created/preview.completed/quote.created/quote.expired`, `payment.created/confirmed/failed/refunded`, `acquisition.submitted/completed/failed`, `certificate.available`, `connection.created/revoked`, `credential.created/revoked` e `commission.owed/reverted`. Deduplique por `id` do evento e reconcilie pelo GET da operação quando houver estado local incerto.",
             },
           ],
         },
