@@ -601,6 +601,244 @@ export const partnerDocs: DocsSite = {
       ],
     },
     {
+      id: "solicitar",
+      group: "integracao",
+      title: "Como solicitar",
+      summary:
+        "Por documento, matrícula, CNM ou endereço: escolha a entrada certa.",
+      scopes: ["analysis:submit:upload", "registry:submit"],
+      sections: [
+        {
+          id: "qual-entrada",
+          title: "Qual entrada usar",
+          blocks: [
+            {
+              type: "p",
+              text: "Há duas famílias de solicitação. Com o **arquivo da matrícula em mãos**, use a análise (`/v1/partner/analyses`). Sem o arquivo, peça o **registro** ao cartório (`/v1/partner/registry-requests`), por número ou por endereço.",
+            },
+            {
+              type: "table",
+              caption: "Formas de solicitar",
+              columns: ["Você tem", "Rota", "Escopo", "Depois"],
+              rows: [
+                [
+                  "O PDF ou imagem da matrícula",
+                  "`POST /v1/partner/analyses`",
+                  "`analysis:submit:upload`",
+                  "Cotar, pagar e ler o resultado",
+                ],
+                [
+                  "O número da matrícula",
+                  "`POST /v1/partner/registry-requests/number`",
+                  "`registry:submit`",
+                  "Prévia, cotação e pagamento",
+                ],
+                [
+                  "O CNM (matrícula nacional)",
+                  "`POST /v1/partner/registry-requests/number`",
+                  "`registry:submit`",
+                  "Igual ao número; exige inteiro teor",
+                ],
+                [
+                  "Só o endereço do imóvel",
+                  "`POST /v1/partner/registry-requests/address`",
+                  "`registry:submit`",
+                  "Prévia, cotação e pagamento",
+                ],
+              ],
+            },
+            {
+              type: "callout",
+              tone: "note",
+              text: "Criar a solicitação nunca consulta fornecedor, cota ou cobra. É sempre o primeiro passo; o preço só aparece na cotação.",
+            },
+          ],
+        },
+        {
+          id: "por-documento",
+          title: "Por documento (arquivo)",
+          blocks: [
+            {
+              type: "p",
+              text: "Envie o arquivo como **corpo binário único** (não use multipart). Tipos aceitos: `application/pdf`, `image/png` e `image/jpeg`, até 200 MB. O `Content-Type` deve ser exatamente um desses e o `Idempotency-Key` um UUIDv7 canônico.",
+            },
+            {
+              type: "code",
+              language: "shell",
+              label: "cURL",
+              code: 'curl --request POST "$API_URL/v1/partner/analyses" \\\n  --header "Authorization: Bearer $ACCESS_TOKEN" \\\n  --header "Idempotency-Key: $(uuidgen)" \\\n  --header "Content-Type: application/pdf" \\\n  --data-binary @matricula.pdf',
+            },
+            {
+              type: "code",
+              language: "json",
+              label: "Resposta 201",
+              code: '{\n  "id": "0192f3a8-…",\n  "state": "awaiting_quote"\n}',
+            },
+            {
+              type: "p",
+              text: "`state` é `awaiting_quote` quando o arquivo foi admitido e já pode ser cotado, ou `source_not_eligible` quando o tipo está fora da oferta e não pode ser cobrado. A resposta traz `Location` para consultar o estado. Repetir o mesmo envio com a mesma chave responde `303` para o estado atual.",
+            },
+            {
+              type: "table",
+              caption: "Erros do envio",
+              columns: ["Status", "Quando"],
+              rows: [
+                [
+                  "`401`",
+                  "Token revogado ou expirado, inclusive durante o envio. Nada é criado.",
+                ],
+                ["`409`", "A mesma chave foi usada por outra origem."],
+                ["`413`", "Arquivo maior que 200 MB."],
+                ["`415`", "Tipo de arquivo não aceito."],
+                [
+                  "`422`",
+                  "Arquivo vazio, chave que não é UUIDv7 canônico ou arquivo incompatível.",
+                ],
+                [
+                  "`503`",
+                  "Envio ocupado ou capacidade temporária; tente de novo com a mesma chave.",
+                ],
+              ],
+            },
+          ],
+        },
+        {
+          id: "achar-cartorio",
+          title: "Achar o cartório",
+          blocks: [
+            {
+              type: "p",
+              text: "Os pedidos de registro pedem o `office_id` (UUIDv7) do cartório. Busque no diretório público, que não precisa de token: `GET /v1/registry-offices?state=SC&city=Florianópolis`. Os filtros são `state` (UF, obrigatório), `city`, `cns`, `search` (nome), `cursor` e `limit` (1 a 100).",
+            },
+            {
+              type: "code",
+              language: "shell",
+              label: "cURL",
+              code: 'curl "$API_URL/v1/registry-offices?state=SC&city=Florian%C3%B3polis&limit=20"',
+            },
+            {
+              type: "callout",
+              tone: "warning",
+              text: "O diretório é histórico: não confirma serviço nem preço vigentes. Um CNS pode pertencer a mais de um cadastro (`cns_ambiguous`); mostre as opções ao titular e envie o UUID escolhido.",
+            },
+          ],
+        },
+        {
+          id: "por-matricula",
+          title: "Por número de matrícula ou CNM",
+          blocks: [
+            {
+              type: "code",
+              language: "shell",
+              label: "cURL",
+              code: 'curl --request POST "$API_URL/v1/partner/registry-requests/number" \\\n  --header "Authorization: Bearer $ACCESS_TOKEN" \\\n  --header "Idempotency-Key: $(uuidgen)" \\\n  --header "Content-Type: application/json" \\\n  --data \'{\n    "product": "inteiro_teor_simples",\n    "office_id": "<OFFICE_ID>",\n    "registration_numbers": ["12345"]\n  }\'',
+            },
+            {
+              type: "list",
+              items: [
+                "`product`: `visualizacao`, `inteiro_teor_simples` ou `inteiro_teor`.",
+                "`registration_numbers`: de 1 a 100 itens do **mesmo cartório**, sem repetição.",
+                "A visualização aceita só matrícula local. Para informar um CNM, use um produto de inteiro teor.",
+                "`address_context` (opcional, uma só matrícula): o endereço que o titular informou, só para exibição. Não prova vínculo com o registro e não muda fornecedor nem preço.",
+              ],
+            },
+          ],
+        },
+        {
+          id: "por-endereco",
+          title: "Por endereço",
+          blocks: [
+            {
+              type: "p",
+              text: "Use quando o titular não sabe a matrícula. Envie o endereço **já confirmado por ele** e as respostas explícitas do formulário. A API não resolve nem valida o endereço: ela guarda a intenção.",
+            },
+            {
+              type: "code",
+              language: "shell",
+              label: "cURL",
+              code: 'curl --request POST "$API_URL/v1/partner/registry-requests/address" \\\n  --header "Authorization: Bearer $ACCESS_TOKEN" \\\n  --header "Idempotency-Key: $(uuidgen)" \\\n  --header "Content-Type: application/json" \\\n  --data \'{\n    "office_id": "<OFFICE_ID>",\n    "product": "inteiro_teor_simples",\n    "address": {\n      "line": "Rua das Flores, 100, Centro",\n      "postal_code": "89360-730",\n      "number": "100",\n      "registration_unknown": true,\n      "without_allotment": true,\n      "without_block": true,\n      "without_lot": true\n    }\n  }\'',
+            },
+            {
+              type: "table",
+              caption: "Campos de address",
+              columns: ["Campo", "Descrição"],
+              rows: [
+                [
+                  "`line`",
+                  "Obrigatório. Endereço confirmado pelo titular (3 a 500 caracteres).",
+                ],
+                [
+                  "`postal_code`",
+                  "CEP no formato `89360-730`. Obrigatório para a prévia e a cotação por endereço no RI Digital.",
+                ],
+                [
+                  "`number` / `without_number`",
+                  "Número predial, ou a confirmação de que o endereço não tem número.",
+                ],
+                [
+                  "`registration_number` / `registration_unknown`",
+                  "Matrícula conhecida, ou a confirmação de que o titular não sabe.",
+                ],
+                [
+                  "`allotment` / `without_allotment`",
+                  "Loteamento, ou a confirmação de que não há.",
+                ],
+                [
+                  "`block` / `without_block`",
+                  "Quadra, ou a confirmação de que não há.",
+                ],
+                [
+                  "`lot` / `without_lot`",
+                  "Lote, ou a confirmação de que não há.",
+                ],
+                ["`complement`", "Complemento livre (até 120 caracteres)."],
+                [
+                  "`place_id` / `location_hint`",
+                  "Identificador de local escolhido, ou uma referência livre com ao menos 10 caracteres quando não houver `place_id`.",
+                ],
+              ],
+            },
+            {
+              type: "callout",
+              tone: "tip",
+              text: 'Cada campo de detalhe tem um par `without_…`. Mande a confirmação explícita em vez de omitir o campo: é o que distingue "não existe" de "não perguntei".',
+            },
+          ],
+        },
+        {
+          id: "depois-de-criar",
+          title: "Depois de criar",
+          blocks: [
+            {
+              type: "p",
+              text: "A resposta `201` traz o pedido, com `id`, `status`, `product`, `office_id`, `notary` e um rótulo de endereço. O `status` é técnico: consulte `GET /v1/partner/registry-requests/{id}` ou assine os eventos de registro. Os campos `route`, `city`, `state` e `postal_code` só são preenchidos quando o original confirma o dado; `city` e `state` do cartório ficam em `office_city` e `office_state`.",
+            },
+            {
+              type: "steps",
+              items: [
+                {
+                  title: "Consultar o custo",
+                  text: "`POST …/{id}/preview`, uma única vez.",
+                },
+                {
+                  title: "Cotar",
+                  text: "`POST …/{id}/quote`, com certidões opcionais se houver.",
+                },
+                {
+                  title: "Pagar",
+                  text: "PIX ou créditos, como em [Pagamento](pagamento).",
+                },
+              ],
+            },
+            {
+              type: "p",
+              text: "Para a análise por documento, o caminho é cotar em `…/quotes`, pagar e ler o resultado. Veja [Análise de matrícula](analises-api).",
+            },
+          ],
+        },
+      ],
+    },
+    {
       id: "referencia-api",
       group: "integracao",
       title: "Referência de endpoints",
